@@ -25,6 +25,9 @@ import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 type FamilyWithStudents = {
   id: string;
   name: string;
+  address: string | null;
+  city: string | null;
+  province: string | null;
   students: {
     id: string;
     first_name: string;
@@ -41,6 +44,12 @@ type FamilyWaiverInfo = {
   missing_waivers: string[];
 };
 
+type FamilyProfileInfo = {
+  family_id: string;
+  profile_complete: boolean;
+  missing_fields: string[];
+};
+
 export async function loader({ request }: LoaderFunctionArgs) {
   await requireAdminUser(request);
 
@@ -54,6 +63,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
       .select(`
         id,
         name,
+        address,
+        city,
+        province,
         students (
           id,
           first_name,
@@ -86,6 +98,20 @@ export async function loader({ request }: LoaderFunctionArgs) {
     })
   );
 
+  // Check profile completeness for all families
+  const familyProfileInfo: FamilyProfileInfo[] = filteredFamilies.map((family) => {
+    const missingFields: string[] = [];
+    if (!family.address) missingFields.push('address');
+    if (!family.city) missingFields.push('city');
+    if (!family.province) missingFields.push('province');
+
+    return {
+      family_id: family.id,
+      profile_complete: missingFields.length === 0,
+      missing_fields: missingFields,
+    };
+  });
+
   // Get program waivers for all programs
   const programWaivers = await Promise.all(
     programs.map(async (program) => {
@@ -103,6 +129,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     families: filteredFamilies,
     enrollments,
     familyWaiverInfo,
+    familyProfileInfo,
     programWaivers,
   });
 }

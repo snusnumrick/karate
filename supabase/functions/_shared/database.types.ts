@@ -3098,26 +3098,47 @@ export type Database = {
         Returns: boolean
       }
       complete_new_user_registration: {
-        Args: {
-          p_address: string
-          p_city: string
-          p_contact1_cell_phone?: string
-          p_contact1_first_name?: string
-          p_contact1_home_phone?: string
-          p_contact1_last_name?: string
-          p_contact1_type?: string
-          p_contact1_work_phone?: string
-          p_emergency_contact?: string
-          p_family_name: string
-          p_health_info?: string
-          p_postal_code: string
-          p_primary_phone: string
-          p_province: string
-          p_referral_name?: string
-          p_referral_source?: string
-          p_user_email: string
-          p_user_id: string
-        }
+        Args:
+          | {
+              p_address: string
+              p_city: string
+              p_contact1_cell_phone?: string
+              p_contact1_first_name?: string
+              p_contact1_home_phone?: string
+              p_contact1_last_name?: string
+              p_contact1_type?: string
+              p_contact1_work_phone?: string
+              p_emergency_contact?: string
+              p_family_name: string
+              p_health_info?: string
+              p_postal_code: string
+              p_primary_phone: string
+              p_province: string
+              p_referral_name?: string
+              p_referral_source?: string
+              p_user_email: string
+              p_user_id: string
+            }
+          | {
+              p_address?: string
+              p_city?: string
+              p_contact1_cell_phone?: string
+              p_contact1_first_name?: string
+              p_contact1_home_phone?: string
+              p_contact1_last_name?: string
+              p_contact1_type?: string
+              p_contact1_work_phone?: string
+              p_emergency_contact?: string
+              p_family_name: string
+              p_health_info?: string
+              p_postal_code: string
+              p_primary_phone: string
+              p_province?: string
+              p_referral_name?: string
+              p_referral_source?: string
+              p_user_email: string
+              p_user_id: string
+            }
         Returns: string
       }
       count_successful_student_payments: {

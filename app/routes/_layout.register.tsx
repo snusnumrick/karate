@@ -1,7 +1,9 @@
-// Removed unused useState import
-import {Form, isRouteErrorResponse, Link, Outlet, useActionData, useLocation, useRouteError, useSearchParams} from "@remix-run/react"; // Import Outlet and useLocation
-import type {ActionFunctionArgs} from "@remix-run/node"; // or cloudflare/deno
-import {json, redirect} from "@remix-run/node"; // or cloudflare/deno
+import { useState } from "react";
+import {Form, isRouteErrorResponse, Link, Outlet, useActionData, useLoaderData, useLocation, useRouteError, useSearchParams} from "@remix-run/react";
+import type {ActionFunctionArgs, LoaderFunctionArgs} from "@remix-run/node";
+import {json, redirect} from "@remix-run/node";
+import {EventService} from "~/services/event.server";
+import {formatDate} from "~/utils/misc";
 import {getSupabaseServerClient} from "~/utils/supabase.server";
 import {AuthenticityTokenInput} from "remix-utils/csrf/react";
 import {csrf} from "~/utils/csrf.server";
@@ -12,8 +14,12 @@ import {Checkbox} from "~/components/ui/checkbox";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "~/components/ui/select";
 import { Textarea } from "~/components/ui/textarea";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "~/components/ui/accordion";
+import { Badge } from "~/components/ui/badge";
 import { siteConfig } from "~/config/site";
 import { safeRedirect } from "~/utils/redirect";
+import { PasswordStrengthIndicator } from "~/components/PasswordStrengthIndicator";
+import { MapPin, Info } from "lucide-react";
 
 type ActionData = {
   errors?: {
@@ -39,6 +45,66 @@ type ActionData = {
 };
 // Removed unused BELT_RANKS import
 
+type RegistrationContext = {
+  type: 'general' | 'event' | 'class';
+  eventDetails?: {
+    id: string;
+    title: string;
+    start_date: string | null;
+    location: string | null;
+  } | null;
+  requiresFullAddress: boolean;
+};
+
+type LoaderData = {
+  context: RegistrationContext;
+  redirectTo: string | null;
+};
+
+// Loader function to detect registration context from redirectTo parameter
+export async function loader({request}: LoaderFunctionArgs) {
+  const url = new URL(request.url);
+  const redirectTo = url.searchParams.get('redirectTo');
+
+  const context: RegistrationContext = {
+    type: 'general',
+    eventDetails: null,
+    requiresFullAddress: true
+  };
+
+  // Detect event registration
+  if (redirectTo?.includes('/events/')) {
+    const eventIdMatch = redirectTo.match(/\/events\/([^/]+)/);
+    if (eventIdMatch) {
+      const eventId = eventIdMatch[1];
+      try {
+        const event = await EventService.getEventById(eventId, false);
+        if (event) {
+          context.type = 'event';
+          context.eventDetails = {
+            id: event.id,
+            title: event.title,
+            start_date: event.start_date,
+            location: event.location
+          };
+          context.requiresFullAddress = false; // Events don't require full address
+        }
+      } catch (error) {
+        console.error('Failed to fetch event details:', error);
+        // Fall back to general context
+      }
+    }
+  }
+
+  // Detect class enrollment
+  if (redirectTo?.includes('/classes/')) {
+    context.type = 'class';
+    context.requiresFullAddress = true; // Classes need full address
+  }
+
+  return json<LoaderData>({ context, redirectTo });
+}
+
 // Action function to handle form submission
 export async function action({request}: ActionFunctionArgs) {
     try {
@@ -50,14 +116,14 @@ export async function action({request}: ActionFunctionArgs) {
     }
     
     const formData = await request.formData();
-    const redirectToParam = formData.get('redirectTo');
-    // console.log(formData);
+    const redirectToParam = formData.get('redirectTo') as string | null;
     const {supabaseServer} = getSupabaseServerClient(request);
 
-    // Validate matching emails and passwords
+    // Detect registration context from redirectTo parameter
+
+    // Extract form values
     const contact1Email = formData.get('contact1Email') as string;
     const portalPassword = formData.get('portalPassword') as string;
-    const portalPasswordConfirm = formData.get('portalPasswordConfirm') as string;
     const referralSource = formData.get('referralSource') as string;
     const familyName = formData.get('familyName') as string;
     const address = formData.get('address') as string;
@@ -69,33 +135,44 @@ export async function action({request}: ActionFunctionArgs) {
     const contact1LastName = formData.get('contact1LastName') as string;
     const contact1Type = formData.get('contact1Type') as string;
     const contact1CellPhone = formData.get('contact1CellPhone') as string;
-    const contact1EmailConfirm = formData.get('contact1EmailConfirm') as string;
 
-    // --- Server-Side Validation ---
+    // --- Context-Aware Server-Side Validation ---
     const errors: { [key: string]: string } = {};
 
-    const requiredFields = {
-        referralSource, familyName, address, city, province, postalCode, primaryPhone,
-        contact1FirstName, contact1LastName, contact1Type, contact1CellPhone,
-        contact1Email, contact1EmailConfirm, portalPassword, portalPasswordConfirm
+    // Core required fields for ALL registrations (event and general)
+    const requiredFields: { [key: string]: string } = {
+        contact1FirstName,
+        contact1LastName,
+        contact1Email,
+        portalPassword,
+        contact1CellPhone,
+        postalCode,
     };
 
+    // Validate required fields
     for (const [key, value] of Object.entries(requiredFields)) {
         if (!value || String(value).trim() === '') {
             errors[key] = "This field is required";
         }
     }
 
-    if (contact1Email && contact1EmailConfirm && contact1Email !== contact1EmailConfirm) {
-        errors.contact1EmailConfirm = 'Guardian emails do not match';
-    }
-
-    if (portalPassword && portalPasswordConfirm && portalPassword !== portalPasswordConfirm) {
-        errors.portalPasswordConfirm = 'Passwords do not match';
-    }
-
+    // Password validation
     if (portalPassword && portalPassword.length < 8) {
         errors.portalPassword = 'Password must be at least 8 characters';
+    }
+
+    // Conditional address validation: if any address field is provided, all must be provided
+    const hasAnyAddressField = !!(address || city || province);
+    if (hasAnyAddressField) {
+        if (!address || address.trim() === '') {
+            errors.address = 'Address is required if providing address details';
+        }
+        if (!city || city.trim() === '') {
+            errors.city = 'City is required if providing address details';
+        }
+        if (!province || province.trim() === '') {
+            errors.province = 'Province is required if providing address details';
+        }
     }
 
     if (Object.keys(errors).length > 0) {
@@ -128,25 +205,29 @@ export async function action({request}: ActionFunctionArgs) {
         if (authError || !user) throw authError || new Error('User creation failed');
 
         // Call RPC function to create family, update profile, and create guardian
+        // For event context, use last name as family name and cell phone as primary
+        // Note: Parameter order changed in migration 031 - required params first, then optional
         const rpcParams = {
+            // Required parameters
             p_user_id: user.id,
-            p_family_name: formData.get('familyName') as string,
-            p_address: formData.get('address') as string,
-            p_city: formData.get('city') as string,
-            p_province: formData.get('province') as string,
-            p_postal_code: formData.get('postalCode') as string,
-            p_primary_phone: formData.get('primaryPhone') as string,
+            p_family_name: familyName || contact1LastName,
+            p_postal_code: postalCode,
+            p_primary_phone: primaryPhone || contact1CellPhone,
             p_user_email: contact1Email,
-            p_referral_source: formData.get('referralSource') as string || '',
+            // Optional parameters (can be empty string or null after migration)
+            p_address: address || '',
+            p_city: city || '',
+            p_province: province || '',
+            p_referral_source: referralSource || '',
             p_referral_name: formData.get('referralName') as string || '',
             p_emergency_contact: formData.get('emergencyContact') as string || '',
             p_health_info: formData.get('healthNumber') as string || '',
-            p_contact1_first_name: formData.get('contact1FirstName') as string,
-            p_contact1_last_name: formData.get('contact1LastName') as string,
-            p_contact1_type: formData.get('contact1Type') as string,
+            p_contact1_first_name: contact1FirstName,
+            p_contact1_last_name: contact1LastName,
+            p_contact1_type: contact1Type || 'Guardian',
             p_contact1_home_phone: formData.get('contact1HomePhone') as string || '',
             p_contact1_work_phone: formData.get('contact1WorkPhone') as string || '',
-            p_contact1_cell_phone: formData.get('contact1CellPhone') as string
+            p_contact1_cell_phone: contact1CellPhone
         };
 
         const { data: rpcData, error: rpcError } = await supabaseServer.rpc(
@@ -182,34 +263,52 @@ export async function action({request}: ActionFunctionArgs) {
 
 export default function RegisterPage() {
     const actionData = useActionData<ActionData>();
+    const { context, redirectTo: loaderRedirectTo } = useLoaderData<LoaderData>();
     const errors = actionData && "errors" in actionData ? actionData.errors : null;
     const error = actionData && "error" in actionData ? actionData.error : null;
-    // Removed multi-step state: const [currentStep, setCurrentStep] = useState(1);
-    // Removed state used for pre-filling: const [familyName, setFamilyName] = useState("");
-    // Removed state used for pre-filling: const [primaryPhone, setPrimaryPhone] = useState("");
-
-    // Removed multi-step functions: nextStep, prevStep
 
     const location = useLocation(); // Get the current location
     const [searchParams] = useSearchParams();
-    const redirectTo = searchParams.get('redirectTo') || undefined;
+    const redirectTo = searchParams.get('redirectTo') || loaderRedirectTo || undefined;
 
     // Determine if we are on the base /register route or a child route
     const isBaseRegisterRoute = location.pathname === '/register';
+
+    const isEventContext = context.type === 'event';
+
+    // State for password strength indicator
+    const [password, setPassword] = useState('');
 
     return (
         <div className="min-h-screen page-background-styles py-12 text-foreground">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 {isBaseRegisterRoute ? (
                     <>
-                        {/* Page Header */}
+                        {/* Context-Aware Page Header */}
                         <div className="text-center mb-12">
-                            <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white sm:text-4xl">
-                                Registration
-                            </h1>
-                            <p className="mt-3 max-w-2xl mx-auto text-xl text-gray-500 dark:text-gray-400 sm:mt-4">
-                                Join our karate family and start your martial arts journey
-                            </p>
+                            {isEventContext && context.eventDetails ? (
+                                <>
+                                    <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white sm:text-4xl">
+                                        Register for {context.eventDetails.title}
+                                    </h1>
+                                    <p className="mt-3 max-w-2xl mx-auto text-xl text-gray-500 dark:text-gray-400 sm:mt-4">
+                                        {context.eventDetails.start_date && formatDate(context.eventDetails.start_date, { formatString: 'EEEE, MMMM d, yyyy' })}
+                                        {context.eventDetails.location && ` · ${context.eventDetails.location}`}
+                                    </p>
+                                    <p className="mt-2 text-sm text-green-600 dark:text-green-400">
+                                        Quick registration - we&apos;ll get you signed up in under 2 minutes
+                                    </p>
+                                </>
+                            ) : (
+                                <>
+                                    <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white sm:text-4xl">
+                                        Registration
+                                    </h1>
+                                    <p className="mt-3 max-w-2xl mx-auto text-xl text-gray-500 dark:text-gray-400 sm:mt-4">
+                                        Join our karate family and start your martial arts journey
+                                    </p>
+                                </>
+                            )}
                         </div>
 
                         {/* Registration Form */}
@@ -223,231 +322,33 @@ export default function RegisterPage() {
                                 </Link>
                             </div>
 
-                        <div
-                            className="mb-6 p-4 bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-md text-center">
-                            <p className="font-semibold text-green-800 dark:text-green-200">Your first class is a <span
-                                className="font-bold">{siteConfig.promotions.freeTrialLabel}</span>!</p>
-                        </div>
+                        {/* Only show for non-event registrations */}
+                        {!isEventContext && (
+                            <>
+                                <div
+                                    className="mb-6 p-4 bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-md text-center">
+                                    <p className="font-semibold text-green-800 dark:text-green-200">Your first class is a <span
+                                        className="font-bold">{siteConfig.promotions.freeTrialLabel}</span>!</p>
+                                </div>
 
-                        <p className="mb-6 text-muted-foreground">
-                            Welcome to Karate Greenegin! We are so excited to meet your performer and
-                            family! Please complete the following registration form. Afterwards you will be able to
-                            enroll in the classes of your choice!
-                        </p>
+                                <p className="mb-6 text-muted-foreground">
+                                    Welcome to Karate Greenegin! We are so excited to meet your performer and
+                                    family! Please complete the following registration form. Afterwards you will be able to
+                                    enroll in the classes of your choice!
+                                </p>
+                            </>
+                        )}
 
                         {/* Removed Step Indicator */}
 
                         <Form method="post" noValidate className="space-y-8">
                             <AuthenticityTokenInput />
                             {redirectTo && <input type="hidden" name="redirectTo" value={redirectTo} />}
-                            {/* Form sections are now rendered sequentially */}
-                            <div> {/* Wrap sections for structure if needed */}
-                                <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">REFERRAL
-                                    INFORMATION</h2>
+
+                            {/* Core Account Section - Always Visible */}
+                            <div className="space-y-6">
+                                {/* Guardian Name */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div>
-                                        <Label htmlFor="referralSource" className="text-sm font-medium mb-1">
-                                            How did you hear about us?<span className="text-red-500">*</span>
-                                        </Label>
-                                        <Select name="referralSource" required>
-                                            <SelectTrigger id="referralSource"
-                                           className="input-custom-styles"
-                                           aria-invalid={!!errors?.referralSource}
-                                           aria-describedby="referralSource-error"
-                                           tabIndex={1}>
-                                <SelectValue placeholder="How did you hear about us?" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="friend">Friend</SelectItem>
-                                                <SelectItem value="social">Social Media</SelectItem>
-                                                <SelectItem value="search">Search Engine</SelectItem>
-                                                <SelectItem value="flyer">Flyer</SelectItem>
-                                                <SelectItem value="event">Event</SelectItem>
-                                                <SelectItem value="other">Other</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                        {errors?.referralSource && (
-                                            <p className="text-red-500 text-sm mt-1">{errors.referralSource}</p>
-                                        )}
-                                    </div>
-
-                                    <div>
-                                        <Label htmlFor="referralName" className="text-sm font-medium mb-1">
-                                            Referral Name
-                                        </Label>
-                                        <Input
-                                            type="text"
-                                            id="referralName"
-                                            name="referralName"
-                                            className="input-custom-styles"
-                                            tabIndex={2}
-                                        />
-                                    </div>
-                                </div>
-
-                                <h2 className="text-xl font-semibold text-foreground mt-8 mb-4 pb-2 border-b border-border">FAMILY
-                                    INFORMATION</h2>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    <div>
-                                        <Label htmlFor="familyName" className="text-sm font-medium mb-1">
-                                            Family Last Name<span className="text-red-500">*</span>
-                                        </Label>
-                                        <Input
-                                            type="text"
-                                            id="familyName"
-                                            name="familyName"
-                                            required
-                                            className={`input-custom-styles ${errors?.familyName ? 'border-red-500' : ''}`}
-                                            tabIndex={3}
-                                        />
-                                        {errors?.familyName && (
-                                            <p className="text-red-500 text-sm mt-1">{errors.familyName}</p>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <h2 className="text-xl font-semibold text-foreground mt-8 mb-4 pb-2 border-b border-border">WHERE
-                                    DO YOU LIVE?</h2>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    <div className="md:col-span-2 lg:col-span-3">
-                                        <Label htmlFor="address" className="text-sm font-medium mb-1">
-                                            Home Address<span className="text-red-500">*</span>
-                                        </Label>
-                                        <Input
-                                            type="text"
-                                            id="address"
-                                            name="address"
-                                            required
-                                            className={`input-custom-styles ${errors?.address ? 'border-red-500' : ''}`}
-                                            tabIndex={4}
-                                        />
-                                        {errors?.address && (
-                                            <p className="text-red-500 text-sm mt-1">{errors.address}</p>
-                                        )}
-                                    </div>
-
-                                    <div>
-                                        <Label htmlFor="city" className="text-sm font-medium mb-1">
-                                            City<span className="text-red-500">*</span>
-                                        </Label>
-                                        <Input
-                                            type="text"
-                                            id="city"
-                                            name="city"
-                                            required
-                                            className={`input-custom-styles ${errors?.city ? 'border-red-500' : ''}`}
-                                            tabIndex={5}
-                                        />
-                                        {errors?.city && (
-                                            <p className="text-red-500 text-sm mt-1">{errors.city}</p>
-                                        )}
-                                    </div>
-
-                                    <div>
-                                        <Label htmlFor="province" className="text-sm font-medium mb-1">
-                                            Province<span className="text-red-500">*</span>
-                                        </Label>
-                                        <Select name="province" required>
-                                            <SelectTrigger id="province"
-                                           className="input-custom-styles"
-                                           aria-describedby="province-error"
-                                           tabIndex={6}>
-                                <SelectValue placeholder="Select province" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {/* Use provinces from siteConfig */}
-                                                {siteConfig.provinces.map((prov) => (
-                                                    <SelectItem key={prov.value} value={prov.value}>
-                                                        {prov.label}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                        {errors?.province && (
-                                            <p className="text-red-500 text-sm mt-1">{errors.province}</p>
-                                        )}
-                                    </div>
-
-                                    <div>
-                                        <Label htmlFor="postalCode" className="text-sm font-medium mb-1">
-                                            Postal Code<span className="text-red-500">*</span>
-                                        </Label>
-                                        <Input
-                                            type="text"
-                                            id="postalCode"
-                                            name="postalCode"
-                                            required
-                                            className={`input-custom-styles ${errors?.postalCode ? 'border-red-500' : ''}`}
-                                            tabIndex={7}
-                                        />
-                                        {errors?.postalCode && (
-                                            <p className="text-red-500 text-sm mt-1">{errors.postalCode}</p>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                                    <div>
-                                        <Label htmlFor="primaryPhone" className="text-sm font-medium mb-1">
-                                            Primary Phone<span className="text-red-500">*</span>
-                                        </Label>
-                                        <Input
-                                            type="tel"
-                                            id="primaryPhone"
-                                            name="primaryPhone"
-                                            required
-                                            autoComplete="tel"
-                                            className={`input-custom-styles ${errors?.primaryPhone ? 'border-red-500' : ''}`}
-                                            tabIndex={8}
-                                        />
-                                        {errors?.primaryPhone && (
-                                            <p className="text-red-500 text-sm mt-1">{errors.primaryPhone}</p>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Removed "Continue" button for Step 1 */}
-                            </div>
-
-                            {/* Step 2: Additional Info & Contact 1 (Now part of the main flow) */}
-                            <div>
-                                <h2 className="text-xl font-semibold text-foreground mt-8 mb-4 pb-2 border-b border-border">ADDITIONAL
-                                    INFO</h2>
-                                <div className="space-y-6">
-                                    <div>
-                                        <Label htmlFor="emergencyContact" className="text-sm font-medium mb-1">
-                                            Emergency Contact Info {/* Removed required asterisk */}
-                                        </Label>
-                                        <Textarea
-                                            id="emergencyContact"
-                                            name="emergencyContact"
-                                            required
-                                            rows={3}
-                                            className="input-custom-styles"
-                                            tabIndex={9} // Removed redundant focus/dark styles
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <Label htmlFor="healthNumber" className="text-sm font-medium mb-1">
-                                            Personal Health Number
-                                        </Label>
-                                        <Textarea
-                                            id="healthNumber"
-                                            name="healthNumber"
-                                            rows={3}
-                                            className="input-custom-styles"
-                                            tabIndex={10} // Applied custom style
-                                        />
-                                    </div>
-                                </div>
-
-                                <h2 className="text-xl font-semibold text-foreground mt-8 mb-4 pb-2 border-b border-border">Primary
-                                    Guardian</h2>
-                                <p className="text-sm text-muted-foreground mb-4 -mt-3">
-                                    This is the main contact for the family. You can add additional guardians later via the family portal.
-                                </p>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div>
                                         <Label htmlFor="contact1FirstName" className="block text-sm font-medium mb-1">
                                             First Name<span className="text-red-500">*</span>
@@ -458,7 +359,7 @@ export default function RegisterPage() {
                                             name="contact1FirstName"
                                             required
                                             className={`input-custom-styles ${errors?.contact1FirstName ? 'border-red-500' : ''}`}
-                                            tabIndex={11}
+                                            tabIndex={1}
                                         />
                                         {errors?.contact1FirstName && (
                                             <p className="text-red-500 text-sm mt-1">{errors.contact1FirstName}</p>
@@ -474,65 +375,64 @@ export default function RegisterPage() {
                                             id="contact1LastName"
                                             name="contact1LastName"
                                             required
-                                            // Removed defaultValue={familyName}
                                             className={`input-custom-styles ${errors?.contact1LastName ? 'border-red-500' : ''}`}
-                                            tabIndex={12}
+                                            tabIndex={2}
                                         />
                                         {errors?.contact1LastName && (
                                             <p className="text-red-500 text-sm mt-1">{errors.contact1LastName}</p>
                                         )}
                                     </div>
-
-                                    <div>
-                                        <Label htmlFor="contact1Type" className="block text-sm font-medium mb-1">
-                                            Type<span className="text-red-500">*</span>
-                                        </Label>
-                                        <Select name="contact1Type" required>
-                                            <SelectTrigger id="contact1Type"
-                                                           className={`input-custom-styles w-full ${errors?.contact1Type ? 'border-red-500' : ''}`}
-                                                           tabIndex={13}> {/* Applied custom style, removed redundant */}
-                                                <SelectValue placeholder="Select relationship"/>
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="Mother">Mother</SelectItem>
-                                                <SelectItem value="Father">Father</SelectItem>
-                                                <SelectItem value="Guardian">Guardian</SelectItem>
-                                                <SelectItem value="Other">Other</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                        {errors?.contact1Type && (
-                                            <p className="text-red-500 text-sm mt-1">{errors.contact1Type}</p>
-                                        )}
-                                    </div>
                                 </div>
 
-                                <h3 className="text-lg font-medium text-foreground mt-6 mb-3">HOW CAN WE CONTACT
-                                    YOU?</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    <div>
-                                        <Label htmlFor="contact1HomePhone" className="block text-sm font-medium mb-1">
-                                            Home Phone
-                                        </Label>
-                                        <Input
-                                            type="tel"
-                                            id="contact1HomePhone"
-                                            name="contact1HomePhone"
-                                            //required
-                                            // Removed defaultValue={primaryPhone}
-                                            autoComplete="home tel"
-                                            className={`input-custom-styles ${errors?.contact1HomePhone ? 'border-red-500' : ''}`}
-                                            tabIndex={14}
-                                        />
-                                        {errors?.contact1HomePhone && (
-                                            <p className="text-red-500 text-sm mt-1">{errors.contact1HomePhone}</p>
-                                        )}
-                                    </div>
-                                  
-                                    {/* Removed Work Phone Input */}
+                                {/* Email */}
+                                <div>
+                                    <Label htmlFor="contact1Email" className="block text-sm font-medium mb-1">
+                                        Email<span className="text-red-500">*</span>
+                                    </Label>
+                                    <Input
+                                        type="email"
+                                        id="contact1Email"
+                                        name="contact1Email"
+                                        required
+                                        autoComplete="username"
+                                        className={`input-custom-styles ${errors?.contact1Email ? 'border-red-500' : ''}`}
+                                        tabIndex={3}
+                                    />
+                                    {errors?.contact1Email && (
+                                        <p className="text-red-500 text-sm mt-1">{errors.contact1Email}</p>
+                                    )}
+                                    <p className="text-xs text-muted-foreground mt-1">(Emails are kept confidential)</p>
+                                </div>
 
+                                {/* Password with Strength Indicator */}
+                                <div>
+                                    <Label htmlFor="portalPassword" className="block text-sm font-medium mb-1">
+                                        Password<span className="text-red-500">*</span>
+                                    </Label>
+                                    <Input
+                                        type="password"
+                                        id="portalPassword"
+                                        name="portalPassword"
+                                        required
+                                        minLength={8}
+                                        autoComplete="new-password"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        className={`input-custom-styles ${errors?.portalPassword ? 'border-red-500' : ''}`}
+                                        tabIndex={4}
+                                    />
+                                    {errors?.portalPassword && (
+                                        <p className="text-red-500 text-sm mt-1">{errors.portalPassword}</p>
+                                    )}
+                                    <p className="text-xs text-muted-foreground mt-1">Minimum 8 characters</p>
+                                    {!isEventContext && <PasswordStrengthIndicator password={password} />}
+                                </div>
+
+                                {/* Phone and Postal Code */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
                                         <Label htmlFor="contact1CellPhone" className="block text-sm font-medium mb-1">
-                                            Cell Phone<span className="text-red-500">*</span>
+                                            Phone Number<span className="text-red-500">*</span>
                                         </Label>
                                         <Input
                                             type="tel"
@@ -541,98 +441,252 @@ export default function RegisterPage() {
                                             required
                                             autoComplete="mobile tel"
                                             className={`input-custom-styles ${errors?.contact1CellPhone ? 'border-red-500' : ''}`}
-                                            tabIndex={15}
+                                            tabIndex={5}
                                         />
                                         {errors?.contact1CellPhone && (
                                             <p className="text-red-500 text-sm mt-1">{errors.contact1CellPhone}</p>
                                         )}
                                     </div>
-                                </div>
 
-                                <h3 className="text-lg font-medium text-foreground mt-6 mb-3">PORTAL ACCESS (YOUR EMAIL
-                                    IS YOUR LOGIN)</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
-                                        <Label htmlFor="contact1Email" className="block text-sm font-medium mb-1">
-                                            Email<span className="text-red-500">*</span>
+                                        <Label htmlFor="postalCode" className="text-sm font-medium mb-1">
+                                            Postal Code<span className="text-red-500">*</span>
                                         </Label>
                                         <Input
-                                            type="email"
-                                            id="contact1Email"
-                                            name="contact1Email"
+                                            type="text"
+                                            id="postalCode"
+                                            name="postalCode"
                                             required
-                                            autoComplete="username" // Added autocomplete attribute
-                                            className={`input-custom-styles ${errors?.contact1Email ? 'border-red-500' : ''}`}
-                                            tabIndex={16}
+                                            className={`input-custom-styles ${errors?.postalCode ? 'border-red-500' : ''}`}
+                                            tabIndex={6}
                                         />
-                                        {errors?.contact1Email && (
-                                            <p className="text-red-500 text-sm mt-1">{errors.contact1Email}</p>
+                                        {errors?.postalCode && (
+                                            <p className="text-red-500 text-sm mt-1">{errors.postalCode}</p>
                                         )}
-                                        <p className="text-xs text-muted-foreground mt-1">(Emails are kept
-                                            confidential)</p>
-                                    </div>
-
-                                    <div>
-                                        <Label htmlFor="contact1EmailConfirm"
-                                               className="block text-sm font-medium mb-1">
-                                            Confirm Email<span className="text-red-500">*</span>
-                                        </Label>
-                                        <Input
-                                            type="email"
-                                            id="contact1EmailConfirm"
-                                            name="contact1EmailConfirm"
-                                            required
-                                            className={`input-custom-styles ${errors?.contact1EmailConfirm ? 'border-red-500' : ''}`}
-                                            tabIndex={17}
-                                        />
-                                        {errors?.contact1EmailConfirm && (
-                                            <p className="text-red-500 text-sm mt-1">{errors.contact1EmailConfirm}</p>
-                                        )}
-                                    </div>
-
-                                    <div>
-                                        <Label htmlFor="portalPassword" className="block text-sm font-medium mb-1">
-                                            Portal Account Password
-                                        </Label>
-                                        <Input
-                                            type="password"
-                                            id="portalPassword"
-                                            name="portalPassword"
-                                            minLength={8}
-                                            autoComplete="new-password" // Added autocomplete attribute
-                                            className={`input-custom-styles ${errors?.portalPassword ? 'border-red-500' : ''}`}
-                                            tabIndex={18}
-                                        />
-                                        {errors?.portalPassword && (
-                                            <p className="text-red-500 text-sm mt-1">{errors.portalPassword}</p>
-                                        )}
-                                        <p className="text-xs text-muted-foreground mt-1">Minimum number of characters
-                                            is 8</p>
-                                    </div>
-
-                                    <div>
-                                        <Label htmlFor="portalPasswordConfirm"
-                                               className="block text-sm font-medium mb-1">
-                                            Confirm Portal Account Password
-                                        </Label>
-                                        <Input
-                                            type="password"
-                                            id="portalPasswordConfirm"
-                                            name="portalPasswordConfirm"
-                                            minLength={8}
-                                            autoComplete="new-password" // Added autocomplete attribute
-                                            className={`input-custom-styles ${errors?.portalPasswordConfirm ? 'border-red-500' : ''}`}
-                                            tabIndex={19}
-                                        />
-                                        {errors?.portalPasswordConfirm && (
-                                            <p className="text-red-500 text-sm mt-1">{errors.portalPasswordConfirm}</p>
-                                        )}
-                                        <p className="text-xs text-muted-foreground mt-1">Minimum number of characters
-                                            is 8</p>
                                     </div>
                                 </div>
+                            </div>
 
-                                <div className="md:col-span-2 mt-4">
+                            {/* Collapsible Sections for General Registration Only */}
+                            {!isEventContext && (
+                                <Accordion type="multiple" className="mt-6">
+                                    {/* Address Details Section */}
+                                    <AccordionItem value="address">
+                                        <AccordionTrigger className="hover:no-underline">
+                                            <div className="flex items-center gap-2">
+                                                <MapPin className="h-5 w-5 text-green-600" />
+                                                <span className="font-semibold">Address Details</span>
+                                                <Badge variant="outline" className="text-xs">Optional - Add now or later</Badge>
+                                            </div>
+                                        </AccordionTrigger>
+                                        <AccordionContent>
+                                            <div className="space-y-4 pt-4">
+                                                <p className="text-sm text-muted-foreground mb-4">
+                                                    You can add this now or complete it later when enrolling in classes.
+                                                </p>
+
+                                                {/* Hidden family name field - auto-populated from last name */}
+                                                <input type="hidden" name="familyName" id="familyName" />
+
+                                                <div>
+                                                    <Label htmlFor="address" className="text-sm font-medium mb-1">
+                                                        Home Address
+                                                    </Label>
+                                                    <Input
+                                                        type="text"
+                                                        id="address"
+                                                        name="address"
+                                                        className={`input-custom-styles ${errors?.address ? 'border-red-500' : ''}`}
+                                                    />
+                                                    {errors?.address && (
+                                                        <p className="text-red-500 text-sm mt-1">{errors.address}</p>
+                                                    )}
+                                                </div>
+
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div>
+                                                        <Label htmlFor="city" className="text-sm font-medium mb-1">
+                                                            City
+                                                        </Label>
+                                                        <Input
+                                                            type="text"
+                                                            id="city"
+                                                            name="city"
+                                                            className={`input-custom-styles ${errors?.city ? 'border-red-500' : ''}`}
+                                                        />
+                                                        {errors?.city && (
+                                                            <p className="text-red-500 text-sm mt-1">{errors.city}</p>
+                                                        )}
+                                                    </div>
+
+                                                    <div>
+                                                        <Label htmlFor="province" className="text-sm font-medium mb-1">
+                                                            Province
+                                                        </Label>
+                                                        <Select name="province">
+                                                            <SelectTrigger id="province" className="input-custom-styles">
+                                                                <SelectValue placeholder="Select province" />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                {siteConfig.provinces.map((prov) => (
+                                                                    <SelectItem key={prov.value} value={prov.value}>
+                                                                        {prov.label}
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                        {errors?.province && (
+                                                            <p className="text-red-500 text-sm mt-1">{errors.province}</p>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <Label htmlFor="primaryPhone" className="text-sm font-medium mb-1">
+                                                        Primary/Home Phone
+                                                    </Label>
+                                                    <Input
+                                                        type="tel"
+                                                        id="primaryPhone"
+                                                        name="primaryPhone"
+                                                        autoComplete="tel"
+                                                        className={`input-custom-styles ${errors?.primaryPhone ? 'border-red-500' : ''}`}
+                                                    />
+                                                    {errors?.primaryPhone && (
+                                                        <p className="text-red-500 text-sm mt-1">{errors.primaryPhone}</p>
+                                                    )}
+                                                    <p className="text-xs text-muted-foreground mt-1">Optional - if different from cell phone</p>
+                                                </div>
+                                            </div>
+                                        </AccordionContent>
+                                    </AccordionItem>
+
+                                    {/* Optional Information Section */}
+                                    <AccordionItem value="optional">
+                                        <AccordionTrigger className="hover:no-underline">
+                                            <div className="flex items-center gap-2">
+                                                <Info className="h-5 w-5 text-blue-600" />
+                                                <span className="font-semibold">Optional Information</span>
+                                                <Badge variant="outline" className="text-xs">Help us serve you better</Badge>
+                                            </div>
+                                        </AccordionTrigger>
+                                        <AccordionContent>
+                                            <div className="space-y-6 pt-4">
+                                                <p className="text-sm text-muted-foreground mb-4">
+                                                    This information helps us personalize your experience but can be added later.
+                                                </p>
+
+                                                {/* Referral Information */}
+                                                <div>
+                                                    <h3 className="text-base font-medium mb-3">Referral Information</h3>
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        <div>
+                                                            <Label htmlFor="referralSource" className="text-sm font-medium mb-1">
+                                                                How did you hear about us?
+                                                            </Label>
+                                                            <Select name="referralSource">
+                                                                <SelectTrigger id="referralSource" className="input-custom-styles">
+                                                                    <SelectValue placeholder="Select one" />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    <SelectItem value="friend">Friend</SelectItem>
+                                                                    <SelectItem value="social">Social Media</SelectItem>
+                                                                    <SelectItem value="search">Search Engine</SelectItem>
+                                                                    <SelectItem value="flyer">Flyer</SelectItem>
+                                                                    <SelectItem value="event">Event</SelectItem>
+                                                                    <SelectItem value="other">Other</SelectItem>
+                                                                </SelectContent>
+                                                            </Select>
+                                                        </div>
+
+                                                        <div>
+                                                            <Label htmlFor="referralName" className="text-sm font-medium mb-1">
+                                                                Referral Name (if applicable)
+                                                            </Label>
+                                                            <Input
+                                                                type="text"
+                                                                id="referralName"
+                                                                name="referralName"
+                                                                className="input-custom-styles"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Guardian Type */}
+                                                <div>
+                                                    <h3 className="text-base font-medium mb-3">Guardian Information</h3>
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        <div>
+                                                            <Label htmlFor="contact1Type" className="text-sm font-medium mb-1">
+                                                                Relationship
+                                                            </Label>
+                                                            <Select name="contact1Type">
+                                                                <SelectTrigger id="contact1Type" className="input-custom-styles">
+                                                                    <SelectValue placeholder="Select relationship" />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    <SelectItem value="Mother">Mother</SelectItem>
+                                                                    <SelectItem value="Father">Father</SelectItem>
+                                                                    <SelectItem value="Guardian">Guardian</SelectItem>
+                                                                    <SelectItem value="Other">Other</SelectItem>
+                                                                </SelectContent>
+                                                            </Select>
+                                                        </div>
+
+                                                        <div>
+                                                            <Label htmlFor="contact1HomePhone" className="text-sm font-medium mb-1">
+                                                                Home Phone (optional)
+                                                            </Label>
+                                                            <Input
+                                                                type="tel"
+                                                                id="contact1HomePhone"
+                                                                name="contact1HomePhone"
+                                                                autoComplete="home tel"
+                                                                className="input-custom-styles"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Emergency Contact and Health Info */}
+                                                <div>
+                                                    <h3 className="text-base font-medium mb-3">Additional Details</h3>
+                                                    <div className="space-y-4">
+                                                        <div>
+                                                            <Label htmlFor="emergencyContact" className="text-sm font-medium mb-1">
+                                                                Emergency Contact Info
+                                                            </Label>
+                                                            <Textarea
+                                                                id="emergencyContact"
+                                                                name="emergencyContact"
+                                                                rows={3}
+                                                                className="input-custom-styles"
+                                                                placeholder="Name and phone number of emergency contact"
+                                                            />
+                                                        </div>
+
+                                                        <div>
+                                                            <Label htmlFor="healthNumber" className="text-sm font-medium mb-1">
+                                                                Personal Health Number
+                                                            </Label>
+                                                            <Input
+                                                                type="text"
+                                                                id="healthNumber"
+                                                                name="healthNumber"
+                                                                className="input-custom-styles"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </AccordionContent>
+                                    </AccordionItem>
+                                </Accordion>
+                            )}
+
+                            {/* Marketing Emails Checkbox */}
+                            <div className="mt-6">
                                     <div className="flex items-center space-x-2">
                                         <Checkbox
                                             id="marketingEmails"
@@ -652,7 +706,6 @@ export default function RegisterPage() {
 
                                 {/* Removed Employer Section for Guardian 1 */}
                                 {/* Removed Back/Continue buttons for Step 2 */}
-                            </div>
 
                             {/* Step 3: Contact 2 (Removed) */}
 
@@ -663,7 +716,7 @@ export default function RegisterPage() {
                                     className="w-full font-bold py-3 px-6 bg-green-600 text-white hover:bg-green-700"
                                     tabIndex={21}
                                 >
-                                    SUBMIT REGISTRATION
+                                    {isEventContext ? 'CREATE ACCOUNT & CONTINUE TO EVENT' : 'CREATE ACCOUNT & GET STARTED'}
                                 </Button>
                             </div>
 

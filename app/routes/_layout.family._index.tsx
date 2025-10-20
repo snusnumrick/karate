@@ -92,6 +92,8 @@ interface LoaderData {
     pendingWaivers?: PendingWaiver[];
     upcomingClasses?: UpcomingClassSession[];
     studentAttendanceData?: StudentAttendance[];
+    profileComplete?: boolean;
+    missingProfileFields?: string[];
 }
 
 // Placeholder loader - will need to fetch actual family data later
@@ -416,14 +418,23 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
         }
     }
 
-    // Return profile, combined family data, waiver status, upcoming classes, and attendance data
+    // Check if profile is complete (has address information)
+    const missingProfileFields: string[] = [];
+    if (!finalFamilyData.address) missingProfileFields.push('address');
+    if (!finalFamilyData.city) missingProfileFields.push('city');
+    if (!finalFamilyData.province) missingProfileFields.push('province');
+    const profileComplete = missingProfileFields.length === 0;
+
+    // Return profile, combined family data, waiver status, upcoming classes, attendance data, and profile completeness
     return json({
         profile: {familyId: String(profileData.family_id)},
         family: finalFamilyData, // Use the combined data
         allWaiversSigned,
         pendingWaivers,
         upcomingClasses,
-        studentAttendanceData
+        studentAttendanceData,
+        profileComplete,
+        missingProfileFields
     }, {headers});
 }
 
@@ -447,7 +458,7 @@ const getEligibilityBadgeVariant = (status: EligibilityStatus['reason']): "defau
 export default function FamilyDashboard() {
     // Always call hooks at the top level
     const loaderData = useLoaderData<typeof loader>();
-    const {family, error, allWaiversSigned, pendingWaivers, upcomingClasses, studentAttendanceData} = loaderData;
+    const {family, error, allWaiversSigned, pendingWaivers, upcomingClasses, studentAttendanceData, profileComplete, missingProfileFields} = loaderData;
     const isClientReady = useClientReady();
 
     // Cache data for offline access when component mounts
@@ -514,6 +525,28 @@ export default function FamilyDashboard() {
         <OfflineErrorBoundary>
             <div className="min-h-screen page-background-styles text-foreground">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                    {/* Incomplete Profile Banner - Show when profile is missing address information */}
+                    {!profileComplete && missingProfileFields && missingProfileFields.length > 0 && (
+                        <Alert className="mb-6 bg-blue-50 dark:bg-blue-900/20 border-blue-500">
+                            <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400"/>
+                            <AlertTitle className="text-blue-900 dark:text-blue-100 font-semibold">
+                                Complete Your Profile
+                            </AlertTitle>
+                            <AlertDescription className="text-blue-700 dark:text-blue-300 mt-2">
+                                <p className="mb-3">
+                                    Your profile is missing some information ({missingProfileFields.join(', ')}).
+                                    Complete your profile to enable class enrollment.
+                                </p>
+                                <Button asChild className="bg-blue-600 hover:bg-blue-700 text-white">
+                                    <Link to="/family/complete-profile" className="inline-flex items-center gap-2">
+                                        <UserCheck className="h-4 w-4"/>
+                                        Complete Profile Now
+                                    </Link>
+                                </Button>
+                            </AlertDescription>
+                        </Alert>
+                    )}
+
                     {/* No Students Banner - Show when family has no students */}
                     {family.students && family.students.length === 0 && (
                         <Alert className="mb-6 bg-green-50 dark:bg-green-900/20 border-green-500">
