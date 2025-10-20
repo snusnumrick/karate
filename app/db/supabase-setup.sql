@@ -380,6 +380,12 @@ BEGIN
 END
 $$;
 
+-- Note: No trigger needed for profile deletion
+-- Profile deletion is handled via:
+-- 1. deleteFamily() service function explicitly deletes auth.users for non-admin profiles
+-- 2. ON DELETE CASCADE from auth.users to profiles handles UI deletion
+-- 3. This avoids circular dependencies and auth system conflicts
+
 
 -- --- Store Related Tables ---
 
@@ -1172,7 +1178,7 @@ BEGIN
             ENABLE ROW LEVEL SECURITY;
 
         ALTER TABLE public.attendance
-            ADD COLUMN IF NOT EXISTS marked_by uuid REFERENCES public.profiles(id);
+            ADD COLUMN IF NOT EXISTS marked_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL;
 
         COMMENT ON COLUMN public.attendance.marked_by IS 'User (instructor/admin) who recorded the attendance entry';
     END IF;
@@ -3610,7 +3616,7 @@ CREATE TABLE IF NOT EXISTS public.classes (
     name text NOT NULL,
     description text NULL,
     max_capacity integer NULL,
-    instructor_id uuid REFERENCES public.profiles(id),
+    instructor_id uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
     is_active boolean NOT NULL DEFAULT true,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now()
@@ -3901,7 +3907,7 @@ CREATE TABLE IF NOT EXISTS public.class_sessions (
     start_time TIME NOT NULL,
     end_time TIME NOT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'completed', 'cancelled')),
-    instructor_id uuid REFERENCES public.profiles(id),
+    instructor_id uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
     notes TEXT,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),
@@ -4713,7 +4719,7 @@ CREATE TABLE IF NOT EXISTS invoice_entities (
     tax_id VARCHAR,
     payment_terms VARCHAR DEFAULT 'Net 30' CHECK (payment_terms IN ('Due on Receipt', 'Net 15', 'Net 30', 'Net 60', 'Net 90')),
     credit_limit_cents INTEGER, -- Migrated from DECIMAL(10,2) to INT4 cents storage
-    family_id UUID REFERENCES families(id),
+    family_id UUID REFERENCES families(id) ON DELETE CASCADE,
     is_active BOOLEAN DEFAULT true,
     notes TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -4725,7 +4731,7 @@ CREATE TABLE IF NOT EXISTS invoices (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     invoice_number VARCHAR UNIQUE NOT NULL,
     entity_id UUID NOT NULL REFERENCES invoice_entities(id),
-    family_id UUID REFERENCES families(id),
+    family_id UUID REFERENCES families(id) ON DELETE CASCADE,
     status invoice_status DEFAULT 'draft',
     issue_date DATE NOT NULL DEFAULT CURRENT_DATE,
     due_date DATE NOT NULL,
@@ -5238,7 +5244,7 @@ CREATE TABLE IF NOT EXISTS invoice_templates (
     category VARCHAR NOT NULL CHECK (category IN ('enrollment', 'fees', 'products', 'custom')),
     is_active BOOLEAN DEFAULT true,
     is_system_template BOOLEAN DEFAULT false, -- For built-in vs custom templates
-    created_by UUID REFERENCES profiles(id),
+    created_by UUID REFERENCES profiles(id) ON DELETE SET NULL,
     default_terms TEXT,
     default_notes TEXT,
     default_footer TEXT,
@@ -5565,8 +5571,8 @@ CREATE TABLE IF NOT EXISTS events (
     requires_equipment text[], -- Array of required equipment
     
     -- Administrative
-    instructor_id uuid REFERENCES profiles(id),
-    created_by uuid REFERENCES profiles(id) NOT NULL,
+    instructor_id uuid REFERENCES profiles(id) ON DELETE SET NULL,
+    created_by uuid REFERENCES profiles(id) ON DELETE SET NULL, -- Nullable to allow profile deletion
     created_at timestamptz DEFAULT now(),
     updated_at timestamptz DEFAULT now(),
     

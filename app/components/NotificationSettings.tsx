@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { Button } from '~/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
 import { Switch } from '~/components/ui/switch';
@@ -168,16 +169,16 @@ function NotificationSettingsContent({ className }: NotificationSettingsProps) {
       // Enhanced error handling for Android
       if (error instanceof Error) {
         if (error.name === 'TimeoutError') {
-          alert('Subscription timed out. Please check your internet connection and try again.');
+          toast.error('Subscription timed out. Please check your internet connection and try again.');
         } else if (error.name === 'NotAllowedError') {
-          alert('Push notifications were denied. Please enable notifications in your browser settings.');
+          toast.error('Push notifications were denied. Please enable notifications in your browser settings.');
         } else if (error.name === 'NotSupportedError') {
-          alert('Push notifications are not supported on this device/browser.');
+          toast.error('Push notifications are not supported on this device/browser.');
         } else {
-          alert(`Subscription failed: ${error.message}`);
+          toast.error(`Subscription failed: ${error.message}`);
         }
       } else {
-        alert('An unknown error occurred while subscribing to push notifications.');
+        toast.error('An unknown error occurred while subscribing to push notifications.');
       }
     } finally {
       setIsLoading(false);
@@ -256,7 +257,7 @@ function NotificationSettingsContent({ className }: NotificationSettingsProps) {
       // Check if we're on Android without HTTPS
       if (isAndroid && !isHTTPS && window.location.hostname !== 'localhost') {
         console.warn('⚠️ Android devices require HTTPS for push notifications to work properly');
-        alert('Android devices require HTTPS for push notifications. Please access this site via HTTPS.');
+        toast.warning('Android devices require HTTPS for push notifications. Please access this site via HTTPS.');
         return;
       }
 
@@ -267,7 +268,7 @@ function NotificationSettingsContent({ className }: NotificationSettingsProps) {
       
       if (!currentSubscription) {
         console.error('❌ No push subscription found during test');
-        alert('Push subscription lost. Please refresh the page and try again.');
+        toast.error('Push subscription lost. Please refresh the page and try again.');
         return;
       }
 
@@ -380,11 +381,11 @@ function NotificationSettingsContent({ className }: NotificationSettingsProps) {
         
         // Show user-friendly error message
         if (response.status === 404) {
-          alert('Push notification service not found. Please contact support.');
+          toast.error('Push notification service not found. Please contact support.');
         } else if (response.status >= 500) {
-          alert('Server error occurred. Please try again later.');
+          toast.error('Server error occurred. Please try again later.');
         } else {
-          alert(`Push notification failed: ${responseData.message || 'Unknown error'}`);
+          toast.error(`Push notification failed: ${responseData.message || 'Unknown error'}`);
         }
       }
     } catch (error) {
@@ -393,20 +394,20 @@ function NotificationSettingsContent({ className }: NotificationSettingsProps) {
       if (error instanceof Error) {
         if (error.name === 'TimeoutError') {
           console.error('⏰ Request timed out - possible network issue');
-          alert('Request timed out. Please check your internet connection and try again.');
+          toast.error('Request timed out. Please check your internet connection and try again.');
         } else if (error.name === 'NotAllowedError') {
           console.error('🚫 Notification permission denied');
-          alert('Notification permission was denied. Please enable notifications in your browser settings.');
+          toast.error('Notification permission was denied. Please enable notifications in your browser settings.');
         } else {
           console.error('🔍 Full error details:', {
             name: error.name,
             message: error.message,
             stack: error.stack
           });
-          alert(`Test failed: ${error.message}`);
+          toast.error(`Test failed: ${error.message}`);
         }
       } else {
-        alert('An unknown error occurred during the test.');
+        toast.error('An unknown error occurred during the test.');
       }
     } finally {
       setIsTestingPush(false);

@@ -57,7 +57,16 @@ export async function loader({request}: LoaderFunctionArgs) {
         headers.append('Set-Cookie', csrfCookieHeader);
     }
 
-    return json({familyId: profileData.family_id, familyName: familyData?.name || 'Your Family', csrfToken}, {headers});
+    // Get returnTo parameter for event registration flow
+    const url = new URL(request.url);
+    const returnTo = url.searchParams.get('returnTo');
+
+    return json({
+        familyId: profileData.family_id,
+        familyName: familyData?.name || 'Your Family',
+        csrfToken,
+        returnTo: returnTo || null
+    }, {headers});
 }
 
 
@@ -161,8 +170,12 @@ export async function action({request}: ActionFunctionArgs): Promise<Response> {
         }
 
 
-        // Redirect back to the family portal on success
-        return redirect("/family", {headers});
+        // Check for returnTo parameter (for event registration flow)
+        const url = new URL(request.url);
+        const returnTo = url.searchParams.get('returnTo');
+
+        // Redirect to returnTo if provided, otherwise go to family portal
+        return redirect(returnTo || "/family", {headers});
 
     } catch (error: unknown) {
         console.error('Add student error:', error);

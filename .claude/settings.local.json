@@ -32,7 +32,8 @@
       "Bash(timeout 30 npm run typecheck)",
       "Bash(curl -s http://localhost:5178/sitemap.xml)",
       "Bash(curl -s http://localhost:5176/sitemap.xml)",
-      "Bash(curl -s http://localhost:5176/robots.txt)"
+      "Bash(curl -s http://localhost:5176/robots.txt)",
+      "Bash(npx shadcn@latest add sonner)"
     ],
     "deny": [],
     "ask": []

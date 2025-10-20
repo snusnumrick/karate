@@ -2,14 +2,26 @@ import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from '@remix-r
 import { Form, useActionData, useLoaderData } from '@remix-run/react';
 import { requireUserId } from '~/utils/auth.server';
 import { getSupabaseServerClient } from '~/utils/supabase.server';
-import { 
-  generateVAPIDKeys, 
+import {
+  generateVAPIDKeys,
   validateVAPIDConfiguration,
-  clearAllPushSubscriptions 
+  clearAllPushSubscriptions
 } from '~/utils/push-notifications.server';
 import { formatDate } from '~/utils/misc';
 import { csrf } from "~/utils/csrf.server";
 import { AuthenticityTokenInput } from "remix-utils/csrf/react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "~/components/ui/alert-dialog";
+import { Button } from "~/components/ui/button";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   await requireUserId(request);
@@ -213,21 +225,41 @@ export default function PushDiagnostics() {
               or when you need to force all users to re-subscribe.
               <strong className="text-red-600"> Warning: This action cannot be undone.</strong>
             </p>
-            <Form method="post">
-              <AuthenticityTokenInput />
-              <input type="hidden" name="action" value="clear-subscriptions" />
-              <button 
-                type="submit" 
-                className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
-                onClick={(e) => {
-                  if (!confirm('Are you sure you want to clear all push subscriptions? This cannot be undone.')) {
-                    e.preventDefault();
-                  }
-                }}
-              >
-                Clear All Subscriptions
-              </button>
-            </Form>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  className="bg-red-500 hover:bg-red-700"
+                >
+                  Clear All Subscriptions
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Clear All Push Subscriptions</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to clear all push subscriptions from the database?
+                    This will force all users to re-subscribe to push notifications.
+                    <strong className="block mt-2 text-red-600">This action cannot be undone.</strong>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <Form method="post" id="clear-subscriptions-form">
+                    <AuthenticityTokenInput />
+                    <input type="hidden" name="action" value="clear-subscriptions" />
+                    <AlertDialogAction
+                      type="submit"
+                      form="clear-subscriptions-form"
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Clear All Subscriptions
+                    </AlertDialogAction>
+                  </Form>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
       </div>

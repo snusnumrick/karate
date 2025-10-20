@@ -172,3 +172,91 @@ export async function getFamilyDetails(
 
     return finalFamilyDetails;
 }
+
+/**
+ * Deletes a family and all associated records.
+ * This will cascade delete students, guardians, enrollments, payments, etc.
+ * Also deletes non-admin profiles and their auth records.
+ * Admin profiles are preserved (family_id set to NULL via database constraint).
+ * Uses the Supabase Admin client for direct database access.
+ *
+ * @param familyId The ID of the family to delete.
+ * @param supabaseAdmin Optional Supabase admin client instance. If not provided, it will be created.
+ * @throws {Response} Throws Remix Response objects for errors (e.g., 404 Not Found, 500 Server Error).
+ */
+export async function deleteFamily(
+    familyId: string,
+    supabaseAdmin?: SupabaseClient<Database>
+): Promise<void> {
+    invariant(familyId, "Missing familyId parameter");
+    console.log(`[Service/deleteFamily] Attempting to delete family ID: ${familyId}`);
+
+    const client = supabaseAdmin || getSupabaseAdminClient();
+
+    // First check if family exists
+    const { data: familyExists, error: checkError } = await client
+        .from('families')
+        .select('id')
+        .eq('id', familyId)
+        .maybeSingle();
+
+    if (checkError) {
+        console.error(`[Service/deleteFamily] Error checking family existence:`, checkError.message);
+        throw new Response(`Database error: ${checkError.message}`, { status: 500 });
+    }
+
+    if (!familyExists) {
+        console.warn(`[Service/deleteFamily] Family ${familyId} not found`);
+        throw new Response("Family not found", { status: 404 });
+    }
+
+    // Get all profiles associated with this family
+    const { data: familyProfiles, error: profilesError } = await client
+        .from('profiles')
+        .select('id, role, email')
+        .eq('family_id', familyId);
+
+    if (profilesError) {
+        console.error(`[Service/deleteFamily] Error fetching family profiles:`, profilesError.message);
+        throw new Response(`Database error: ${profilesError.message}`, { status: 500 });
+    }
+
+    // Separate admin and non-admin profiles
+    const nonAdminProfiles = (familyProfiles || []).filter(p => p.role !== 'admin');
+    const adminProfiles = (familyProfiles || []).filter(p => p.role === 'admin');
+
+    console.log(`[Service/deleteFamily] Found ${nonAdminProfiles.length} non-admin profiles and ${adminProfiles.length} admin profiles`);
+
+    // Delete non-admin auth users (this will cascade to profiles due to ON DELETE CASCADE)
+    for (const profile of nonAdminProfiles) {
+        try {
+            const { error: authDeleteError } = await client.auth.admin.deleteUser(profile.id);
+            if (authDeleteError) {
+                console.error(`[Service/deleteFamily] Error deleting auth user ${profile.email}:`, authDeleteError.message);
+                // Continue with deletion even if auth deletion fails
+            } else {
+                console.log(`[Service/deleteFamily] Deleted auth user: ${profile.email}`);
+            }
+        } catch (error) {
+            console.error(`[Service/deleteFamily] Exception deleting auth user ${profile.email}:`, error);
+            // Continue with deletion
+        }
+    }
+
+    // Delete the family (cascade will handle students, invoices, etc.)
+    // Admin profiles will have their family_id set to NULL
+    const { error: deleteError } = await client
+        .from('families')
+        .delete()
+        .eq('id', familyId);
+
+    if (deleteError) {
+        console.error(`[Service/deleteFamily] Error deleting family ${familyId}:`, deleteError.message);
+        throw new Response(`Failed to delete family: ${deleteError.message}`, { status: 500 });
+    }
+
+    console.log(`[Service/deleteFamily] Successfully deleted family ${familyId}`);
+    if (adminProfiles.length > 0) {
+        console.log(`[Service/deleteFamily] Preserved ${adminProfiles.length} admin profile(s): ${adminProfiles.map(p => p.email).join(', ')}`);
+    }
+}

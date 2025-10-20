@@ -5,6 +5,17 @@ import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Alert, AlertDescription } from "~/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "~/components/ui/alert-dialog";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import {
   getInvoiceById,
@@ -438,25 +449,44 @@ export default function InvoiceDetailPage() {
               )}
               
               {invoice.status === "draft" && (
-                <Form method="post" className="inline">
-                  <AuthenticityTokenInput />
-                  <input type="hidden" name="action" value="delete" />
-                  <Button 
-                    type="submit" 
-                    variant="destructive" 
-                    size="sm" 
-                    disabled={isSubmitting}
-                    className="flex items-center gap-2"
-                    onClick={(e) => {
-                      if (!confirm("Are you sure you want to delete this invoice? This action cannot be undone.")) {
-                        e.preventDefault();
-                      }
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    Delete
-                  </Button>
-                </Form>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      disabled={isSubmitting}
+                      className="flex items-center gap-2"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Delete
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Invoice</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to delete invoice <strong>#{invoice.invoice_number}</strong>?
+                        This action cannot be undone and will permanently remove all associated line items and records.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <Form method="post" id="delete-invoice-form">
+                        <AuthenticityTokenInput />
+                        <input type="hidden" name="action" value="delete" />
+                        <AlertDialogAction
+                          type="submit"
+                          form="delete-invoice-form"
+                          disabled={isSubmitting}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          {isSubmitting ? 'Deleting...' : 'Delete Invoice'}
+                        </AlertDialogAction>
+                      </Form>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               )}
             </div>
           </CardContent>

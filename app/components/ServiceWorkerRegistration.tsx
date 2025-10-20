@@ -1,7 +1,19 @@
 import { useEffect, useState } from 'react';
 import type { BeforeInstallPromptEvent, NavigatorWithStandalone } from './PWAInstallPrompt';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '~/components/ui/alert-dialog';
 
 export function ServiceWorkerRegistration() {
+  const [showUpdatePrompt, setShowUpdatePrompt] = useState(false);
+
   useEffect(() => {
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
       // Register service worker
@@ -18,10 +30,8 @@ export function ServiceWorkerRegistration() {
             if (newWorker) {
               newWorker.addEventListener('statechange', () => {
                 if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  // New content is available, prompt user to refresh
-                  if (confirm('New version available! Refresh to update?')) {
-                    window.location.reload();
-                  }
+                  // New content is available, show update prompt
+                  setShowUpdatePrompt(true);
                 }
               });
             }
@@ -47,7 +57,29 @@ export function ServiceWorkerRegistration() {
     }
   }, []);
 
-  return null; // This component doesn't render anything
+  const handleUpdate = () => {
+    setShowUpdatePrompt(false);
+    window.location.reload();
+  };
+
+  return (
+    <AlertDialog open={showUpdatePrompt} onOpenChange={setShowUpdatePrompt}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Update Available</AlertDialogTitle>
+          <AlertDialogDescription>
+            A new version of the application is available. Would you like to refresh to update?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Later</AlertDialogCancel>
+          <AlertDialogAction onClick={handleUpdate}>
+            Refresh Now
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
 }
 
 // Hook for PWA installation
