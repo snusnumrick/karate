@@ -251,13 +251,18 @@ export type Database = {
           min_capacity: number | null
           name: string
           on_demand: boolean
+          price_override_cents: number | null
           program_id: string
+          registration_fee_override_cents: number | null
+          registration_status: Database["public"]["Enums"]["registration_status"]
           series_end_on: string | null
           series_label: string | null
           series_session_quota: number | null
           series_start_on: string | null
+          series_status: Database["public"]["Enums"]["series_status"]
           session_duration_minutes: number | null
           sessions_per_week_override: number | null
+          topic: string | null
           updated_at: string
         }
         Insert: {
@@ -271,13 +276,18 @@ export type Database = {
           min_capacity?: number | null
           name: string
           on_demand?: boolean
+          price_override_cents?: number | null
           program_id: string
+          registration_fee_override_cents?: number | null
+          registration_status?: Database["public"]["Enums"]["registration_status"]
           series_end_on?: string | null
           series_label?: string | null
           series_session_quota?: number | null
           series_start_on?: string | null
+          series_status?: Database["public"]["Enums"]["series_status"]
           session_duration_minutes?: number | null
           sessions_per_week_override?: number | null
+          topic?: string | null
           updated_at?: string
         }
         Update: {
@@ -291,13 +301,18 @@ export type Database = {
           min_capacity?: number | null
           name?: string
           on_demand?: boolean
+          price_override_cents?: number | null
           program_id?: string
+          registration_fee_override_cents?: number | null
+          registration_status?: Database["public"]["Enums"]["registration_status"]
           series_end_on?: string | null
           series_label?: string | null
           series_session_quota?: number | null
           series_start_on?: string | null
+          series_status?: Database["public"]["Enums"]["series_status"]
           session_duration_minutes?: number | null
           sessions_per_week_override?: number | null
+          topic?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -644,6 +659,13 @@ export type Database = {
           valid_until?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "discount_codes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "discount_codes_family_id_fkey"
             columns: ["family_id"]
@@ -1508,13 +1530,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "enrollments"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "invoice_line_items_enrollment_id_fkey"
-            columns: ["enrollment_id"]
-            isOneToOne: false
-            referencedRelation: "pending_waiver_enrollments"
-            referencedColumns: ["enrollment_id"]
           },
           {
             foreignKeyName: "invoice_line_items_invoice_id_fkey"
@@ -2463,6 +2478,7 @@ export type Database = {
           registration_fee: number | null
           registration_fee_cents: number
           required_waiver_id: string | null
+          seminar_type: Database["public"]["Enums"]["seminar_type"] | null
           sessions_per_week: number
           single_purchase_price_cents: number | null
           slug: string | null
@@ -2506,6 +2522,7 @@ export type Database = {
           registration_fee?: number | null
           registration_fee_cents?: number
           required_waiver_id?: string | null
+          seminar_type?: Database["public"]["Enums"]["seminar_type"] | null
           sessions_per_week?: number
           single_purchase_price_cents?: number | null
           slug?: string | null
@@ -2549,6 +2566,7 @@ export type Database = {
           registration_fee?: number | null
           registration_fee_cents?: number
           required_waiver_id?: string | null
+          seminar_type?: Database["public"]["Enums"]["seminar_type"] | null
           sessions_per_week?: number
           single_purchase_price_cents?: number | null
           slug?: string | null
@@ -2725,24 +2743,30 @@ export type Database = {
         Row: {
           agreement_version: string
           id: string
+          pdf_storage_path: string | null
           signature_data: string
           signed_at: string
+          student_ids: string[]
           user_id: string
           waiver_id: string
         }
         Insert: {
           agreement_version: string
           id?: string
+          pdf_storage_path?: string | null
           signature_data: string
           signed_at?: string
+          student_ids?: string[]
           user_id: string
           waiver_id: string
         }
         Update: {
           agreement_version?: string
           id?: string
+          pdf_storage_path?: string | null
           signature_data?: string
           signed_at?: string
+          student_ids?: string[]
           user_id?: string
           waiver_id?: string
         }
@@ -2902,13 +2926,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "programs_required_waiver_id_fkey"
-            columns: ["required_waiver_id"]
-            isOneToOne: false
-            referencedRelation: "waivers"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "students_family_id_fkey"
             columns: ["family_id"]
             isOneToOne: false
@@ -2949,57 +2966,6 @@ export type Database = {
             columns: ["invoice_id"]
             isOneToOne: false
             referencedRelation: "invoices"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      pending_waiver_enrollments: {
-        Row: {
-          enrollment_id: string | null
-          family_email: string | null
-          family_id: string | null
-          family_name: string | null
-          program_id: string | null
-          program_name: string | null
-          required_waiver_id: string | null
-          required_waiver_name: string | null
-          student_id: string | null
-          student_name: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "enrollments_program_id_fkey"
-            columns: ["program_id"]
-            isOneToOne: false
-            referencedRelation: "programs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "enrollments_program_id_fkey"
-            columns: ["program_id"]
-            isOneToOne: false
-            referencedRelation: "programs_with_belt_info"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "enrollments_student_id_fkey"
-            columns: ["student_id"]
-            isOneToOne: false
-            referencedRelation: "students"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "programs_required_waiver_id_fkey"
-            columns: ["required_waiver_id"]
-            isOneToOne: false
-            referencedRelation: "waivers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "students_family_id_fkey"
-            columns: ["family_id"]
-            isOneToOne: false
-            referencedRelation: "families"
             referencedColumns: ["id"]
           },
         ]
@@ -3096,6 +3062,16 @@ export type Database = {
       belt_rank_ordinal: {
         Args: { rank: Database["public"]["Enums"]["belt_rank_enum"] }
         Returns: number
+      }
+      build_address_from_structured_fields: {
+        Args: {
+          p_country: string
+          p_locality: string
+          p_postal_code: string
+          p_region: string
+          p_street_address: string
+        }
+        Returns: string
       }
       check_class_eligibility: {
         Args: { class_id_param: string; student_id_param: string }
@@ -3266,6 +3242,10 @@ export type Database = {
         Args: { user_id: string }
         Returns: Database["public"]["Enums"]["profile_role"]
       }
+      has_student_signed_waiver: {
+        Args: { p_student_id: string; p_waiver_id: string }
+        Returns: boolean
+      }
       increment_discount_code_usage: {
         Args: { p_discount_code_id: string }
         Returns: undefined
@@ -3274,11 +3254,15 @@ export type Database = {
         Args: { p_conversation_id: string; p_user_id: string }
         Returns: undefined
       }
+      parse_address_to_structured_fields: {
+        Args: { p_address: string }
+        Returns: Record<string, unknown>
+      }
       recalc_invoice_totals: {
         Args: { p_invoice_id: string }
         Returns: undefined
       }
-      refresh_enrollment_waiver_status: {
+      refresh_enrollment_waiver_status_proc: {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
@@ -3415,11 +3399,19 @@ export type Database = {
         | "store_purchase"
         | "event_registration"
       profile_role: "user" | "instructor" | "admin"
+      registration_status: "open" | "closed" | "waitlisted"
       registration_status_enum:
         | "pending"
         | "confirmed"
         | "cancelled"
         | "waitlist"
+      seminar_type: "introductory" | "intermediate" | "advanced"
+      series_status:
+        | "tentative"
+        | "confirmed"
+        | "cancelled"
+        | "in_progress"
+        | "completed"
       t_shirt_size_enum:
         | "YXXS"
         | "YXS"
@@ -3690,11 +3682,20 @@ export const Constants = {
         "event_registration",
       ],
       profile_role: ["user", "instructor", "admin"],
+      registration_status: ["open", "closed", "waitlisted"],
       registration_status_enum: [
         "pending",
         "confirmed",
         "cancelled",
         "waitlist",
+      ],
+      seminar_type: ["introductory", "intermediate", "advanced"],
+      series_status: [
+        "tentative",
+        "confirmed",
+        "cancelled",
+        "in_progress",
+        "completed",
       ],
       t_shirt_size_enum: [
         "YXXS",

@@ -3,6 +3,8 @@ import {Link, useLoaderData} from "@remix-run/react";
 import {getSupabaseServerClient} from "~/utils/supabase.server";
 import { formatDate } from "~/utils/misc"; // Import formatDate utility
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
+import { Download } from "lucide-react";
+import { Button } from "~/components/ui/button";
 
 export async function loader({request}: LoaderFunctionArgs) {
     const {supabaseServer} = getSupabaseServerClient(request);
@@ -20,10 +22,10 @@ export async function loader({request}: LoaderFunctionArgs) {
         .select('*')
         .order('required', {ascending: false});
 
-    // Get waivers signed by the user with signature data
+    // Get waivers signed by the user with signature data and PDF path
     const {data: userSignedWaivers} = await supabaseServer
         .from('waiver_signatures')
-        .select('waiver_id, signed_at, signature_data')
+        .select('id, waiver_id, signed_at, signature_data, pdf_storage_path, student_ids')
         .eq('user_id', user.id);
 
     // Basic error logging if waivers fetch fails
@@ -46,8 +48,11 @@ export default function WaiversIndex() {
     const signedWaiverMap = new Map();
     userSignedWaivers.forEach(signature => {
         signedWaiverMap.set(signature.waiver_id, {
+            id: signature.id,
             signed_at: signature.signed_at,
-            signature_data: signature.signature_data
+            signature_data: signature.signature_data,
+            pdf_storage_path: signature.pdf_storage_path,
+            student_ids: signature.student_ids
         });
     });
 
@@ -109,11 +114,29 @@ export default function WaiversIndex() {
                                                 View
                                             </Link>
                                             {isSigned ? (
-                                                <div className="flex items-center space-x-2">
-                                                    <span className="text-green-600 dark:text-green-400 font-medium">✓ Signed</span>
-                                                    <span className="text-gray-500 dark:text-gray-400 text-sm">
-                                                        on {signedDate}
-                                                    </span>
+                                                <div className="flex items-center space-x-3">
+                                                    <div className="flex items-center space-x-2">
+                                                        <span className="text-green-600 dark:text-green-400 font-medium">✓ Signed</span>
+                                                        <span className="text-gray-500 dark:text-gray-400 text-sm">
+                                                            on {signedDate}
+                                                        </span>
+                                                    </div>
+                                                    {signatureInfo?.pdf_storage_path && (
+                                                        <Button
+                                                            asChild
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="flex items-center gap-2"
+                                                        >
+                                                            <a
+                                                                href={`/family/waivers/${signatureInfo.id}/download`}
+                                                                download
+                                                            >
+                                                                <Download className="h-4 w-4" />
+                                                                Download PDF
+                                                            </a>
+                                                        </Button>
+                                                    )}
                                                 </div>
                                             ) : (
                                                 <Link
@@ -124,12 +147,12 @@ export default function WaiversIndex() {
                                                 </Link>
                                             )}
                                         </div>
-                                        
+
                                         {isSigned && signatureInfo?.signature_data && (
                                             <div className="ml-4">
-                                                <img 
-                                                    src={signatureInfo.signature_data} 
-                                                    alt="Signature" 
+                                                <img
+                                                    src={signatureInfo.signature_data}
+                                                    alt="Signature"
                                                     className="h-12 w-auto border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800"
                                                 />
                                             </div>

@@ -1052,6 +1052,7 @@ ON CONFLICT (title) DO UPDATE SET content = EXCLUDED.content;
 
 
 -- Waiver Signatures table with enhanced structure
+-- Updated: 2025-01-19 - Added student_ids and pdf_storage_path for BC legal compliance
 CREATE TABLE IF NOT EXISTS waiver_signatures
 (
     id                uuid PRIMARY KEY                                           DEFAULT gen_random_uuid(),
@@ -1060,8 +1061,14 @@ CREATE TABLE IF NOT EXISTS waiver_signatures
     signed_at         timestamptz                                       NOT NULL DEFAULT now(),
     signature_data    text                                              NOT NULL,
     agreement_version text                                              NOT NULL, -- Add version tracking
-    CONSTRAINT unique_waiver_signature UNIQUE (waiver_id, user_id)                -- Prevent duplicate signatures
+    student_ids       uuid[]                                            NOT NULL DEFAULT '{}', -- Students covered by this signature (BC law compliance)
+    pdf_storage_path  text,                                                                    -- Path to generated PDF in storage
+    CONSTRAINT unique_waiver_signature UNIQUE (waiver_id, user_id)                            -- Prevent duplicate signatures
 );
+
+-- Add comments for the new columns
+COMMENT ON COLUMN waiver_signatures.student_ids IS 'Array of student IDs that this waiver signature covers. Required for legal clarity per BC contract law which requires specific identification of parties.';
+COMMENT ON COLUMN waiver_signatures.pdf_storage_path IS 'Path to the generated PDF in Supabase Storage (e.g., "waiver_john_doe_2025-01-19.pdf"). PDF contains full waiver text, student names, guardian signature, and timestamp as a self-contained legal document.';
 
 DO
 $$
@@ -1075,10 +1082,50 @@ END IF;
 IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_waiver_signatures_waiver_id') THEN
 CREATE INDEX idx_waiver_signatures_waiver_id ON waiver_signatures (waiver_id);
 END IF;
+
+-- Create GIN index for efficient querying by student ID
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_waiver_signatures_student_ids') THEN
+CREATE INDEX idx_waiver_signatures_student_ids ON waiver_signatures USING GIN (student_ids);
+END IF;
+
+-- Create index for PDF path lookups
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_waiver_signatures_pdf_path') THEN
+CREATE INDEX idx_waiver_signatures_pdf_path ON waiver_signatures(pdf_storage_path) WHERE pdf_storage_path IS NOT NULL;
+END IF;
 END;
 $$;
 
 -- Policy Agreements table removed in favor of enhanced waiver_signatures
+
+-- Helper function to check if a student has signed a specific waiver
+CREATE OR REPLACE FUNCTION has_student_signed_waiver(
+  p_student_id UUID,
+  p_waiver_id UUID
+)
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1
+    FROM waiver_signatures
+    WHERE waiver_id = p_waiver_id
+      AND p_student_id = ANY(student_ids)
+  );
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+COMMENT ON FUNCTION has_student_signed_waiver IS 'Check if a specific student has signed a specific waiver. Returns true if student_id is in any waiver_signature.student_ids array for the given waiver.';
+
+-- Grant execute permission to authenticated users
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.routine_privileges
+    WHERE routine_name = 'has_student_signed_waiver'
+      AND grantee = 'authenticated'
+  ) THEN
+    GRANT EXECUTE ON FUNCTION has_student_signed_waiver(UUID, UUID) TO authenticated;
+  END IF;
+END $$;
 
 -- Waiver Signature Materialized View Refresh Functions
 -- Fix for "must be owner of materialized view enrollment_waiver_status" error
@@ -1877,6 +1924,84 @@ GROUP BY family_id;
 GRANT SELECT ON public.family_one_on_one_balance TO authenticated;
 -- Or specific roles
 -- RLS for views often relies on the underlying table policies or can be defined on the view itself if needed.
+
+-- ============================================================================
+-- Enrollment Waiver Status Materialized View
+-- Updated: 2025-01-19 - Uses student_ids array for accurate per-student tracking
+-- ============================================================================
+
+DROP MATERIALIZED VIEW IF EXISTS enrollment_waiver_status CASCADE;
+
+CREATE MATERIALIZED VIEW enrollment_waiver_status AS
+SELECT
+  e.id AS enrollment_id,
+  e.student_id,
+  s.first_name || ' ' || s.last_name AS student_name,
+  e.program_id,
+  p.name AS program_name,
+  s.family_id,
+
+  -- Check both program_waivers (new system) and programs.required_waiver_id (legacy)
+  COALESCE(pw.waiver_id, p.required_waiver_id) AS required_waiver_id,
+  COALESCE(w_pw.title, w_legacy.title) AS required_waiver_name,
+
+  -- Student has signed if their ID is in the student_ids array of any signature
+  CASE
+    WHEN COALESCE(pw.waiver_id, p.required_waiver_id) IS NULL THEN true
+    WHEN EXISTS (
+      SELECT 1
+      FROM waiver_signatures ws
+      WHERE ws.waiver_id = COALESCE(pw.waiver_id, p.required_waiver_id)
+        AND e.student_id = ANY(ws.student_ids)
+        AND ws.user_id IN (
+          SELECT id FROM profiles WHERE family_id = s.family_id
+        )
+    ) THEN true
+    ELSE false
+  END AS waiver_signed,
+
+  ws_latest.user_id AS signed_by_user_id,
+  ws_latest.signed_at
+FROM enrollments e
+INNER JOIN students s ON e.student_id = s.id
+INNER JOIN programs p ON e.program_id = p.id
+LEFT JOIN program_waivers pw ON pw.program_id = p.id AND pw.is_required = true
+LEFT JOIN waivers w_pw ON pw.waiver_id = w_pw.id
+LEFT JOIN waivers w_legacy ON p.required_waiver_id = w_legacy.id
+LEFT JOIN LATERAL (
+  SELECT ws.user_id, ws.signed_at
+  FROM waiver_signatures ws
+  WHERE ws.waiver_id = COALESCE(pw.waiver_id, p.required_waiver_id)
+    AND e.student_id = ANY(ws.student_ids)
+    AND ws.user_id IN (
+      SELECT id FROM profiles WHERE family_id = s.family_id
+    )
+  ORDER BY ws.signed_at DESC
+  LIMIT 1
+) ws_latest ON true
+WHERE e.status IN ('active', 'trial', 'pending_waivers');
+
+-- Create indexes on the materialized view
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_enrollment_waiver_status_enrollment') THEN
+    CREATE UNIQUE INDEX idx_enrollment_waiver_status_enrollment ON enrollment_waiver_status(enrollment_id);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_enrollment_waiver_status_student') THEN
+    CREATE INDEX idx_enrollment_waiver_status_student ON enrollment_waiver_status(student_id);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_enrollment_waiver_status_family') THEN
+    CREATE INDEX idx_enrollment_waiver_status_family ON enrollment_waiver_status(family_id);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_enrollment_waiver_status_unsigned') THEN
+    CREATE INDEX idx_enrollment_waiver_status_unsigned ON enrollment_waiver_status(waiver_signed) WHERE waiver_signed = false;
+  END IF;
+END $$;
+
+COMMENT ON MATERIALIZED VIEW enrollment_waiver_status IS 'Tracks waiver signature status for each active enrollment, using student_ids array for accurate per-student tracking';
+
+-- Grant SELECT permission
+GRANT SELECT ON enrollment_waiver_status TO authenticated;
 
 -- Remove the RENAME statement as the enum is now created with the correct value
 
@@ -6370,3 +6495,176 @@ GRANT EXECUTE ON FUNCTION public.restore_discount_on_payment_failure() TO servic
 
 COMMENT ON FUNCTION public.restore_discount_on_payment_failure IS 'Automatically restores discount code usage when a payment transitions from pending to failed. Allows users to retry payment with the same discount.';
 COMMENT ON TRIGGER trigger_restore_discount_on_payment_failure ON public.payments IS 'Fires after a payment status changes to failed, restoring the associated discount code for reuse.';
+
+-- ============================================================================
+-- STORAGE BUCKETS AND POLICIES
+-- ============================================================================
+-- Storage buckets for file uploads with RLS policies
+-- Note: In hosted Supabase, buckets must be created via dashboard first
+-- Updated: 2025-01-19 - Added waivers bucket for PDF storage
+
+-- ============================================================================
+-- Waivers Bucket Configuration
+-- ============================================================================
+-- IMPORTANT: For hosted Supabase, create this bucket via Dashboard:
+--   Dashboard → Storage → New bucket
+--   Name: waivers
+--   Public: OFF (private)
+--   File size limit: 5242880 (5MB)
+--   Allowed MIME types: application/pdf
+--
+-- For local Supabase, this INSERT will work:
+
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'waivers',
+  'waivers',
+  false, -- Not public - requires authentication
+  5242880, -- 5MB limit per file (waivers should be small)
+  ARRAY['application/pdf']::text[] -- Only allow PDF files
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- ============================================================================
+-- RLS Policies for Waivers Bucket
+-- ============================================================================
+-- Apply these policies AFTER creating the bucket
+
+-- Policy 1: Authenticated users can upload waivers
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'storage'
+      AND tablename = 'objects'
+      AND policyname = 'Authenticated users can upload waivers'
+  ) THEN
+    CREATE POLICY "Authenticated users can upload waivers"
+    ON storage.objects FOR INSERT
+    TO authenticated
+    WITH CHECK (
+      bucket_id = 'waivers'
+      AND auth.uid() IS NOT NULL
+    );
+  END IF;
+END $$;
+
+-- Policy 2: Users can read their own family's waivers
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'storage'
+      AND tablename = 'objects'
+      AND policyname = 'Users can read family waivers'
+  ) THEN
+    CREATE POLICY "Users can read family waivers"
+    ON storage.objects FOR SELECT
+    TO authenticated
+    USING (
+      bucket_id = 'waivers'
+      AND (
+        -- User can read if they signed the waiver
+        auth.uid() IN (
+          SELECT ws.user_id
+          FROM waiver_signatures ws
+          WHERE ws.pdf_storage_path = name
+        )
+        OR
+        -- User can read if waiver is for their family
+        auth.uid() IN (
+          SELECT p.id
+          FROM profiles p
+          INNER JOIN waiver_signatures ws ON ws.user_id IN (
+            SELECT p2.id
+            FROM profiles p2
+            WHERE p2.family_id = p.family_id
+          )
+          WHERE ws.pdf_storage_path = name
+        )
+      )
+    );
+  END IF;
+END $$;
+
+-- Policy 3: Admins can read all waivers
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'storage'
+      AND tablename = 'objects'
+      AND policyname = 'Admins can read all waivers'
+  ) THEN
+    CREATE POLICY "Admins can read all waivers"
+    ON storage.objects FOR SELECT
+    TO authenticated
+    USING (
+      bucket_id = 'waivers'
+      AND EXISTS (
+        SELECT 1
+        FROM profiles
+        WHERE id = auth.uid()
+          AND role = 'admin'
+      )
+    );
+  END IF;
+END $$;
+
+-- Policy 4: Admins can delete waivers
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'storage'
+      AND tablename = 'objects'
+      AND policyname = 'Admins can delete waivers'
+  ) THEN
+    CREATE POLICY "Admins can delete waivers"
+    ON storage.objects FOR DELETE
+    TO authenticated
+    USING (
+      bucket_id = 'waivers'
+      AND EXISTS (
+        SELECT 1
+        FROM profiles
+        WHERE id = auth.uid()
+          AND role = 'admin'
+      )
+    );
+  END IF;
+END $$;
+
+-- Policy 5: Users can update/replace their own family's waivers
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'storage'
+      AND tablename = 'objects'
+      AND policyname = 'Users can update family waivers'
+  ) THEN
+    CREATE POLICY "Users can update family waivers"
+    ON storage.objects FOR UPDATE
+    TO authenticated
+    USING (
+      bucket_id = 'waivers'
+      AND auth.uid() IN (
+        SELECT ws.user_id
+        FROM waiver_signatures ws
+        WHERE ws.pdf_storage_path = name
+      )
+    );
+  END IF;
+END $$;
+
+-- Grant permissions for storage access
+DO $$
+BEGIN
+  -- Check if permissions need to be granted
+  GRANT ALL ON storage.buckets TO authenticated;
+  GRANT ALL ON storage.objects TO authenticated;
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE NOTICE 'Storage permissions may already be granted or schema does not exist yet';
+END $$;

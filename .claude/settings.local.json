@@ -33,7 +33,8 @@
       "Bash(curl -s http://localhost:5178/sitemap.xml)",
       "Bash(curl -s http://localhost:5176/sitemap.xml)",
       "Bash(curl -s http://localhost:5176/robots.txt)",
-      "Bash(npx shadcn@latest add sonner)"
+      "Bash(npx shadcn@latest add sonner)",
+      "WebFetch(domain:dialalaw.peopleslawschool.ca)"
     ],
     "deny": [],
     "ask": []

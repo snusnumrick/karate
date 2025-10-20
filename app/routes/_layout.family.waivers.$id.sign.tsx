@@ -2,13 +2,78 @@ import React, {useRef, useState} from 'react';
 import {type ActionFunctionArgs, json, type LoaderFunctionArgs, redirect} from "@remix-run/node";
 import {Form, useActionData, useLoaderData, useSubmit} from "@remix-run/react";
 import {getSupabaseServerClient, getSupabaseAdminClient} from "~/utils/supabase.server";
+import type {SupabaseClient} from "@supabase/supabase-js";
 import {Button} from "~/components/ui/button";
 import {Checkbox} from "~/components/ui/checkbox";
 import {Label} from "~/components/ui/label";
-import {Alert, AlertDescription} from "~/components/ui/alert";
+import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { csrf } from "~/utils/csrf.server";
 import { AuthenticityTokenInput } from "remix-utils/csrf/react";
+import { Users } from 'lucide-react';
+import { generateWaiverPDF, generateWaiverFilename } from '~/utils/waiver-pdf-generator.server';
+import { uploadWaiverPDF } from '~/utils/waiver-storage.server';
+
+/**
+ * Determine which students need to sign this waiver
+ *
+ * For registration waivers: all family students
+ * For program waivers: students enrolled in programs requiring this waiver
+ */
+async function determineStudentsForWaiver(
+    familyId: string,
+    waiverId: string,
+    supabase: SupabaseClient
+) {
+    // Check if it's a registration waiver or trial waiver
+    const {data: waiver} = await supabase
+        .from('waivers')
+        .select('required_for_registration, required_for_trial')
+        .eq('id', waiverId)
+        .single();
+
+    if (waiver?.required_for_registration || waiver?.required_for_trial) {
+        // Registration/trial waiver applies to all students in the family
+        const {data: students} = await supabase
+            .from('students')
+            .select('id, first_name, last_name')
+            .eq('family_id', familyId)
+            .order('first_name');
+        return students || [];
+    }
+
+    // Program-specific waiver: find students enrolled in programs requiring it
+    const {data: enrollments} = await supabase
+        .from('enrollments')
+        .select(`
+            student:students!inner(
+                id,
+                first_name,
+                last_name
+            ),
+            program:programs!inner(
+                id,
+                name,
+                program_waivers!inner(
+                    waiver_id
+                )
+            )
+        `)
+        .eq('program.program_waivers.waiver_id', waiverId)
+        .eq('student.family_id', familyId)
+        .in('status', ['active', 'trial', 'pending_waivers']);
+
+    // Deduplicate students (a student might be enrolled in multiple programs)
+    const uniqueStudents = new Map();
+    enrollments?.forEach(e => {
+        const student = Array.isArray(e.student) ? e.student[0] : e.student;
+        if (student && !uniqueStudents.has(student.id)) {
+            uniqueStudents.set(student.id, student);
+        }
+    });
+
+    return Array.from(uniqueStudents.values());
+}
 
 export async function loader({request, params}: LoaderFunctionArgs) {
     const waiverId = params.id!;
@@ -73,6 +138,18 @@ export async function loader({request, params}: LoaderFunctionArgs) {
         return redirect('/family/waivers');
     }
 
+    // Determine which students need this waiver
+    const studentsNeedingWaiver = await determineStudentsForWaiver(
+        profile.family_id,
+        waiverId,
+        supabaseServer
+    );
+
+    if (!studentsNeedingWaiver || studentsNeedingWaiver.length === 0) {
+        console.warn(`No students found for waiver ${waiverId} and family ${profile.family_id}`);
+        // Still allow signing, but log the warning
+    }
+
     // Get redirectTo parameter from URL
     const url = new URL(request.url);
     const redirectTo = url.searchParams.get('redirectTo');
@@ -82,6 +159,7 @@ export async function loader({request, params}: LoaderFunctionArgs) {
         userId: user.id,
         firstName: guardian.first_name,
         lastName: guardian.last_name,
+        studentsNeedingWaiver,
         redirectTo
     });
 }
@@ -101,6 +179,7 @@ export async function action({request, params}: ActionFunctionArgs) {
     const formData = await request.formData();
     const signature = formData.get('signature') as string;
     const agreement = formData.get('agreement') === 'on';
+    const studentIdsJson = formData.get('studentIds') as string;
     const redirectTo = formData.get('redirectTo') as string;
 
     if (!signature || !agreement) {
@@ -112,21 +191,120 @@ export async function action({request, params}: ActionFunctionArgs) {
         });
     }
 
-    // Save the signature using admin client to bypass RLS and materialized view permissions
+    // Parse student IDs
+    let studentIds: string[] = [];
+    try {
+        if (studentIdsJson) {
+            studentIds = JSON.parse(studentIdsJson);
+        }
+    } catch (e) {
+        console.error('Error parsing student IDs:', e);
+        return json({success: false, error: 'Invalid student data'});
+    }
+
+    if (studentIds.length === 0) {
+        console.warn('No student IDs provided - waiver will not be linked to specific students');
+    }
+
+    // Fetch data needed for PDF generation
     const supabaseAdmin = getSupabaseAdminClient();
-    const {error} = await supabaseAdmin
-        .from('waiver_signatures')
-        .insert({
-            waiver_id: waiverId,
-            user_id: user.id,
-            signature_data: signature,
-            signed_at: new Date().toISOString(),
-            agreement_version: waiverId, // Use waiverId as the version identifier
+
+    const {data: waiver} = await supabaseAdmin
+        .from('waivers')
+        .select('id, title, content')
+        .eq('id', waiverId)
+        .single();
+
+    const {data: profile} = await supabaseAdmin
+        .from('profiles')
+        .select('family_id')
+        .eq('id', user.id)
+        .single();
+
+    if (!profile?.family_id) {
+        console.error('No family_id found for user:', user.id);
+        return json({success: false, error: 'Family information not found'});
+    }
+
+    const {data: guardian} = await supabaseAdmin
+        .from('guardians')
+        .select('first_name, last_name')
+        .eq('family_id', profile.family_id)
+        .limit(1)
+        .single();
+
+    const {data: students} = await supabaseAdmin
+        .from('students')
+        .select('id, first_name, last_name')
+        .in('id', studentIds);
+
+    if (!waiver || !guardian || !students) {
+        console.error('Missing data for PDF generation:', {waiver: !!waiver, guardian: !!guardian, students: !!students});
+        return json({success: false, error: 'Failed to retrieve waiver data'});
+    }
+
+    try {
+        // Generate unique signature ID
+        const signatureId = crypto.randomUUID();
+        const signedAt = new Date().toISOString();
+
+        // Generate PDF
+        const pdfBuffer = await generateWaiverPDF({
+            waiver: {
+                id: waiver.id,
+                title: waiver.title,
+                content: waiver.content,
+            },
+            signature: {
+                id: signatureId,
+                signedAt: signedAt,
+                signatureImage: signature,
+            },
+            guardian: {
+                firstName: guardian.first_name,
+                lastName: guardian.last_name,
+            },
+            students: students.map(s => ({
+                id: s.id,
+                firstName: s.first_name,
+                lastName: s.last_name,
+            })),
         });
 
-    if (error) {
-        console.error('Error saving signature:', error);
-        return json({success: false, error: 'Failed to save signature'});
+        // Upload PDF to storage
+        const filename = generateWaiverFilename(
+            waiverId,
+            students.map(s => `${s.first_name}_${s.last_name}`)
+        );
+        const pdfPath = await uploadWaiverPDF(pdfBuffer, filename);
+
+        // Save signature with student IDs and PDF path
+        const {error} = await supabaseAdmin
+            .from('waiver_signatures')
+            .insert({
+                id: signatureId,
+                waiver_id: waiverId,
+                user_id: user.id,
+                student_ids: studentIds,
+                signature_data: signature,
+                signed_at: signedAt,
+                agreement_version: waiverId,
+                pdf_storage_path: pdfPath,
+            });
+
+        if (error) {
+            console.error('Error saving signature:', error);
+            return json({success: false, error: 'Failed to save signature'});
+        }
+
+        console.log(`[waiver-sign] Signature saved successfully: ${signatureId}, PDF: ${pdfPath}`);
+
+    } catch (error) {
+        console.error('Error generating/saving waiver PDF:', error);
+        return json({
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to generate waiver PDF'
+        });
     }
 
     // Check for redirectTo parameter from form data
@@ -138,11 +316,21 @@ export async function action({request, params}: ActionFunctionArgs) {
 }
 
 export default function SignWaiver() {
-    const {waiver, firstName, lastName, redirectTo} = useLoaderData<typeof loader>();
+    const {waiver, firstName, lastName, studentsNeedingWaiver, redirectTo} = useLoaderData<typeof loader>();
     const actionData = useActionData<typeof action>();
     const submit = useSubmit();
 
     const fullName = `${firstName} ${lastName}`;
+
+    // Format student names for display
+    const studentNames = studentsNeedingWaiver?.map(s => `${s.first_name} ${s.last_name}`) || [];
+    const studentNamesText = studentNames.length === 1
+        ? studentNames[0]
+        : studentNames.length === 2
+        ? `${studentNames[0]} and ${studentNames[1]}`
+        : studentNames.length > 2
+        ? `${studentNames.slice(0, -1).join(', ')}, and ${studentNames[studentNames.length - 1]}`
+        : 'your students';
 
     const [signatureData, setSignatureData] = useState('');
     const [isAgreed, setIsAgreed] = useState(false);
@@ -329,7 +517,27 @@ export default function SignWaiver() {
                         {waiver.title}
                     </p>
                 </div>
-                
+
+                {/* Student Information Alert */}
+                {studentsNeedingWaiver && studentsNeedingWaiver.length > 0 && (
+                    <Alert className="mb-6 bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-900">
+                        <Users className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        <AlertTitle className="text-blue-900 dark:text-blue-100">
+                            Students Covered by This Waiver
+                        </AlertTitle>
+                        <AlertDescription className="text-blue-800 dark:text-blue-200">
+                            This waiver will be signed on behalf of:
+                            <ul className="mt-2 list-disc list-inside space-y-1">
+                                {studentsNeedingWaiver.map(student => (
+                                    <li key={student.id} className="font-medium">
+                                        {student.first_name} {student.last_name}
+                                    </li>
+                                ))}
+                            </ul>
+                        </AlertDescription>
+                    </Alert>
+                )}
+
                 <div className="form-container-styles p-8 backdrop-blur-lg">
                     <div className="mb-8 p-6 border rounded bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600">
                         <div className="prose dark:prose-invert max-w-none whitespace-pre-wrap">
@@ -362,6 +570,11 @@ export default function SignWaiver() {
                             </div>
 
                             <input type="hidden" name="signature" value={signatureData}/>
+                            <input
+                                type="hidden"
+                                name="studentIds"
+                                value={JSON.stringify(studentsNeedingWaiver?.map(s => s.id) || [])}
+                            />
                             {redirectTo && <input type="hidden" name="redirectTo" value={redirectTo}/>}
 
                             <button
@@ -386,8 +599,14 @@ export default function SignWaiver() {
                                 <Label
                                     htmlFor="agreement"
                                     id="agreement-description"
+                                    className="cursor-pointer"
                                 >
-                                    <span className="dark:text-gray-300">I, {fullName}, have read and agree to the terms outlined in this document.</span>
+                                    <span className="dark:text-gray-300">
+                                        I, {fullName},
+                                        {studentsNeedingWaiver && studentsNeedingWaiver.length > 0 && (
+                                            <> on behalf of <span className="font-semibold">{studentNamesText}</span>,</>
+                                        )} have read and agree to the terms outlined in this document.
+                                    </span>
                                 </Label>
                             </div>
                         </div>
