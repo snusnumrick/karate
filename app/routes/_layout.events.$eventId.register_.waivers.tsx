@@ -19,12 +19,43 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     throw new Response("Event ID is required", { status: 400 });
   }
 
+  const url = new URL(request.url);
+  const studentIdsParam = url.searchParams.get('studentIds');
+
+  if (!studentIdsParam) {
+    // No student IDs provided, redirect back to student selection
+    throw redirect(`/events/${eventId}/register/students`);
+  }
+
+  const studentIds = studentIdsParam.split(',');
+
   const { supabaseServer } = getSupabaseServerClient(request);
   const { data: { user } } = await supabaseServer.auth.getUser();
 
   if (!user) {
     const currentUrl = new URL(request.url);
-    throw redirect(`/login?redirectTo=${encodeURIComponent(currentUrl.pathname)}`);
+    throw redirect(`/login?redirectTo=${encodeURIComponent(currentUrl.pathname + currentUrl.search)}`);
+  }
+
+  // Verify user's family owns these students
+  const { data: profile } = await supabaseServer
+    .from('profiles')
+    .select('family_id')
+    .eq('id', user.id)
+    .single();
+
+  if (!profile?.family_id) {
+    throw new Response('Family profile not found', { status: 404 });
+  }
+
+  const { data: students } = await supabaseServer
+    .from('students')
+    .select('id')
+    .eq('family_id', profile.family_id)
+    .in('id', studentIds);
+
+  if (!students || students.length !== studentIds.length) {
+    throw new Response('Invalid student IDs', { status: 400 });
   }
 
   // Get event details
@@ -66,24 +97,25 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     const signedWaiverIds = signatures?.map(s => s.waiver_id) || [];
     const missingWaivers = requiredWaivers.filter(w => !signedWaiverIds.includes(w.id));
 
-    // If all waivers are signed, redirect to registration
+    // If all waivers are signed, redirect to registration with studentIds
     if (missingWaivers.length === 0) {
-      throw redirect(`/events/${eventId}/register`);
+      throw redirect(`/events/${eventId}/register?studentIds=${studentIdsParam}`);
     }
 
     return json({
       eventId,
       eventTitle: event.title,
-      missingWaivers
+      missingWaivers,
+      studentIds: studentIdsParam
     });
   }
 
-  // No required waivers, redirect to registration
-  throw redirect(`/events/${eventId}/register`);
+  // No required waivers, redirect to registration with studentIds
+  throw redirect(`/events/${eventId}/register?studentIds=${studentIdsParam}`);
 }
 
 export default function EventRegistrationWaivers() {
-  const { eventId, eventTitle, missingWaivers } = useLoaderData<typeof loader>();
+  const { eventId, eventTitle, missingWaivers, studentIds } = useLoaderData<typeof loader>();
 
   // Always show the first missing waiver (loader filters out signed ones)
   const currentWaiver = missingWaivers[0];
@@ -137,7 +169,7 @@ export default function EventRegistrationWaivers() {
             <div className="flex justify-center">
               <Button asChild size="lg">
                 <Link
-                  to={`/family/waivers/${currentWaiver.id}/sign?redirectTo=${encodeURIComponent(`/events/${eventId}/register/waivers`)}`}
+                  to={`/family/waivers/${currentWaiver.id}/sign?eventId=${eventId}&studentIds=${studentIds}&redirectTo=${encodeURIComponent(`/events/${eventId}/register/waivers?studentIds=${studentIds}`)}`}
                 >
                   Sign {currentWaiver.title}
                 </Link>
@@ -145,7 +177,9 @@ export default function EventRegistrationWaivers() {
             </div>
 
             <div className="text-center text-sm text-gray-600 dark:text-gray-400">
-              After signing, you&apos;ll return here to continue.
+              {totalWaivers === 1
+                ? "After signing, you'll continue registration."
+                : "After signing, you'll return here to continue."}
             </div>
           </CardContent>
         </Card>

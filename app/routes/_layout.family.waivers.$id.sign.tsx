@@ -13,12 +13,15 @@ import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 import { Users } from 'lucide-react';
 import { generateWaiverPDF, generateWaiverFilename } from '~/utils/waiver-pdf-generator.server';
 import { uploadWaiverPDF } from '~/utils/waiver-storage.server';
+import { sendEmail } from '~/utils/email.server';
+import { siteConfig } from '~/config/site';
 
 /**
  * Determine which students need to sign this waiver
  *
  * For registration waivers: all family students
  * For program waivers: students enrolled in programs requiring this waiver
+ * For event waivers: all family students (for event registration)
  */
 async function determineStudentsForWaiver(
     familyId: string,
@@ -34,6 +37,23 @@ async function determineStudentsForWaiver(
 
     if (waiver?.required_for_registration || waiver?.required_for_trial) {
         // Registration/trial waiver applies to all students in the family
+        const {data: students} = await supabase
+            .from('students')
+            .select('id, first_name, last_name')
+            .eq('family_id', familyId)
+            .order('first_name');
+        return students || [];
+    }
+
+    // Check if it's an event waiver
+    const {data: eventWaivers} = await supabase
+        .from('event_waivers')
+        .select('event_id')
+        .eq('waiver_id', waiverId);
+
+    if (eventWaivers && eventWaivers.length > 0) {
+        // Event waiver applies to all students in the family
+        // (user will select specific students during event registration)
         const {data: students} = await supabase
             .from('students')
             .select('id, first_name, last_name')
@@ -78,6 +98,11 @@ async function determineStudentsForWaiver(
 export async function loader({request, params}: LoaderFunctionArgs) {
     const waiverId = params.id!;
     const {supabaseServer} = getSupabaseServerClient(request);
+
+    // Get URL parameters for event registration flow
+    const url = new URL(request.url);
+    const eventId = url.searchParams.get('eventId');
+    const studentIdsParam = url.searchParams.get('studentIds');
 
     // Get the current user
     const {data: {user}} = await supabaseServer.auth.getUser();
@@ -139,19 +164,41 @@ export async function loader({request, params}: LoaderFunctionArgs) {
     }
 
     // Determine which students need this waiver
-    const studentsNeedingWaiver = await determineStudentsForWaiver(
-        profile.family_id,
-        waiverId,
-        supabaseServer
-    );
+    let studentsNeedingWaiver;
+
+    if (eventId && studentIdsParam) {
+        // Event waiver with specific students provided
+        const studentIds = studentIdsParam.split(',');
+
+        // Validate all students belong to the family
+        const {data: students} = await supabaseServer
+            .from('students')
+            .select('id, first_name, last_name')
+            .eq('family_id', profile.family_id)
+            .in('id', studentIds)
+            .order('first_name');
+
+        if (!students || students.length !== studentIds.length) {
+            console.error('Invalid student IDs or students do not belong to family');
+            throw new Response("Invalid student selection.", {status: 400});
+        }
+
+        studentsNeedingWaiver = students;
+    } else {
+        // Standard waiver flow (registration, trial, or program-specific)
+        studentsNeedingWaiver = await determineStudentsForWaiver(
+            profile.family_id,
+            waiverId,
+            supabaseServer
+        );
+    }
 
     if (!studentsNeedingWaiver || studentsNeedingWaiver.length === 0) {
         console.warn(`No students found for waiver ${waiverId} and family ${profile.family_id}`);
         // Still allow signing, but log the warning
     }
 
-    // Get redirectTo parameter from URL
-    const url = new URL(request.url);
+    // Get redirectTo parameter from URL (url already declared above)
     const redirectTo = url.searchParams.get('redirectTo');
 
     return json({
@@ -298,6 +345,48 @@ export async function action({request, params}: ActionFunctionArgs) {
         }
 
         console.log(`[waiver-sign] Signature saved successfully: ${signatureId}, PDF: ${pdfPath}`);
+
+        // Send email with PDF attachment
+        try {
+            const {data: family} = await supabaseAdmin
+                .from('families')
+                .select('email, name')
+                .eq('id', profile.family_id)
+                .single();
+
+            if (family?.email) {
+                const studentNames = students.map(s => `${s.first_name} ${s.last_name}`).join(', ');
+                const guardianName = `${guardian.first_name} ${guardian.last_name}`;
+
+                await sendEmail({
+                    to: family.email,
+                    subject: `Waiver Signed: ${waiver.title}`,
+                    html: `
+                        <h2>Waiver Confirmation</h2>
+                        <p>Dear ${family.name},</p>
+                        <p>This confirms that <strong>${guardianName}</strong> has signed the following waiver on behalf of <strong>${studentNames}</strong>:</p>
+                        <p><strong>Waiver:</strong> ${waiver.title}</p>
+                        <p><strong>Date Signed:</strong> ${new Date(signedAt).toLocaleDateString()}</p>
+                        <p>A copy of the signed waiver is attached to this email for your records.</p>
+                        <p>You can also download it anytime from your <a href="${siteConfig.url}/family/waivers">Family Portal</a>.</p>
+                        <br>
+                        <p>Thank you,<br>${siteConfig.name}</p>
+                    `,
+                    attachments: [{
+                        filename: filename,
+                        content: pdfBuffer,
+                        contentType: 'application/pdf',
+                    }],
+                });
+
+                console.log(`[waiver-sign] Email sent to ${family.email} with PDF attachment`);
+            } else {
+                console.log('[waiver-sign] No family email found, skipping email notification');
+            }
+        } catch (emailError) {
+            // Don't fail the request if email fails - just log it
+            console.error('[waiver-sign] Failed to send email notification:', emailError);
+        }
 
     } catch (error) {
         console.error('Error generating/saving waiver PDF:', error);

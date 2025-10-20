@@ -53,6 +53,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `api.*` - API endpoints for webhooks and external integrations
 - File-based routing follows Remix conventions with nested layouts
 
+### Event Registration Flow
+Event registration with required waivers follows a three-step process:
+1. **Student Selection** (`_layout.events.$eventId.register_.students.tsx`)
+   - Family selects which students to register
+   - Validates students belong to family
+   - Passes studentIds via URL query parameter
+2. **Waiver Signing** (`_layout.events.$eventId.register_.waivers.tsx`)
+   - Displays required waivers for the event
+   - Links to signing page with studentIds parameter
+   - Validates all students are covered before proceeding
+3. **Registration** (`_layout.events.$eventId_.register.tsx`)
+   - Validates waiver coverage for all selected students
+   - Completes registration with payment (if applicable)
+   - Redirects to confirmation page
+
 ### Component Patterns
 - Components use Shadcn/UI patterns with `cn()` utility for class merging
 - Form components integrate with `react-hook-form` and Zod validation
@@ -100,6 +115,25 @@ Currency is automatically configured from `app/config/site.ts` → `localization
 - `STRIPE_PUBLISHABLE_KEY` - Stripe publishable key
 - `STRIPE_SECRET_KEY` - Stripe secret key
 - `STRIPE_WEBHOOK_SECRET` - Webhook endpoint secret
+
+### Waiver System
+**Database Requirements:**
+- Supabase Storage bucket named `waivers` (created via dashboard, not migration)
+- RLS policies for waiver PDF access control
+- Migrations 029 and 030 applied (student_ids, pdf_storage_path columns)
+
+**Features:**
+- PDF generation with @react-pdf/renderer
+- Automatic email delivery of signed waivers via Resend
+- Student coverage tracking for legal compliance
+- Event registration flow: Student Selection → Waiver → Registration
+- Admin signature tracking with student coverage details
+
+**Storage Setup:**
+1. Create `waivers` bucket in Supabase Dashboard (Storage section)
+2. Set bucket to private (public: false)
+3. Apply RLS policies from migration 030
+4. Verify access by testing waiver signing
 
 ### Testing Notes
 - Playwright tests available for E2E testing

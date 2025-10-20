@@ -50,10 +50,14 @@ export default function WaiversAdminPage() {
             <AppBreadcrumb items={breadcrumbPatterns.adminWaivers()} className="mb-6" />
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Manage Waivers</h1>
-                <Button asChild>
-                    {/* Link to a future add waiver page */}
-                    <Link to="/admin/waivers/new">Add New Waiver</Link>
-                </Button>
+                <div className="flex gap-2">
+                    <Button variant="outline" asChild>
+                        <Link to="/admin/waivers/signatures">View Signatures</Link>
+                    </Button>
+                    <Button asChild>
+                        <Link to="/admin/waivers/new">Add New Waiver</Link>
+                    </Button>
+                </div>
             </div>
 
             {waivers.length === 0 ? (

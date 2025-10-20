@@ -13,6 +13,7 @@ import { formatDate } from '~/utils/misc';
 import { calculateTaxesForPayment } from '~/services/tax-rates.server';
 import { multiplyMoney, type Money, addMoney, isPositive, toCents, ZERO_MONEY, formatMoney, serializeMoney, deserializeMoney, type MoneyJSON } from '~/utils/money';
 import { moneyFromRow } from '~/utils/database-money';
+import { sendEmail } from '~/utils/email.server';
 
 // Extended Event type for registration with additional properties
 type EventWithRegistrationInfo = EventWithEventType & {
@@ -87,11 +88,56 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
 
     // Create student records for guest users or use existing for authenticated users
     const studentIds = [];
-    
+    const emergencyContacts: Map<string, string> = new Map(); // studentId -> emergency contact JSON
+
     for (const student of students) {
       if (student.existingStudentId || student.id) {
-        // Use existing student
-        studentIds.push(student.existingStudentId || student.id);
+        // Use existing student - update medical info and emergency contact if needed
+        const studentId = student.existingStudentId || student.id;
+        studentIds.push(studentId);
+
+        // Prepare emergency contact data for event_registrations
+        const emergencyContactData = JSON.stringify({
+          name: student.emergencyContactName,
+          phone: student.emergencyContactPhone,
+          relation: student.emergencyContactRelation
+        });
+        emergencyContacts.set(studentId, emergencyContactData);
+
+        // Update medical info (allergies, medications) in students table
+        const studentUpdates: Partial<Database['public']['Tables']['students']['Update']> = {};
+
+        if (student.allergies) {
+          studentUpdates.allergies = student.allergies;
+        }
+
+        if (student.medicalConditions) {
+          studentUpdates.medications = student.medicalConditions;
+        }
+
+        // If student has no cell_phone, save emergency contact phone
+        const { data: existingStudent } = await supabaseServer
+          .from('students')
+          .select('cell_phone')
+          .eq('id', studentId)
+          .single();
+
+        if (existingStudent && !existingStudent.cell_phone && student.emergencyContactPhone) {
+          studentUpdates.cell_phone = student.emergencyContactPhone;
+        }
+
+        // Apply updates if we have any
+        if (Object.keys(studentUpdates).length > 0) {
+          const { error: updateError } = await supabaseServer
+            .from('students')
+            .update(studentUpdates)
+            .eq('id', studentId);
+
+          if (updateError) {
+            console.error('Error updating student medical info:', updateError);
+            // Don't fail the registration, just log the error
+          }
+        }
       } else {
         // Create new student
         const studentData: StudentInsert = {
@@ -120,6 +166,47 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
         }
 
         studentIds.push(newStudent.id);
+
+        // Prepare emergency contact data for event_registrations
+        const emergencyContactData = JSON.stringify({
+          name: student.emergencyContactName,
+          phone: student.emergencyContactPhone,
+          relation: student.emergencyContactRelation
+        });
+        emergencyContacts.set(newStudent.id, emergencyContactData);
+      }
+    }
+
+    // Validate waiver signatures if event has required waivers
+    const { data: requiredWaivers } = await supabaseServer
+      .from('event_waivers')
+      .select('waiver_id')
+      .eq('event_id', eventId)
+      .eq('is_required', true);
+
+    if (requiredWaivers && requiredWaivers.length > 0) {
+      // Check that all required waivers are signed and cover all students being registered
+      const waiverIds = requiredWaivers.map(w => w.waiver_id);
+
+      const { data: signatures } = await supabaseServer
+        .from('waiver_signatures')
+        .select('waiver_id, student_ids')
+        .eq('user_id', user.id)
+        .in('waiver_id', waiverIds);
+
+      if (!signatures || signatures.length !== waiverIds.length) {
+        console.error('Not all required waivers are signed');
+        return redirect(`/events/${eventId}/register/students?error=waivers_not_signed`);
+      }
+
+      // Verify all students being registered are covered by at least one waiver
+      const allStudentsCovered = studentIds.every(studentId =>
+        signatures.some(sig => sig.student_ids && sig.student_ids.includes(studentId))
+      );
+
+      if (!allStudentsCovered) {
+        console.error('Not all students are covered by waivers');
+        return redirect(`/events/${eventId}/register/students?error=waiver_mismatch`);
       }
     }
 
@@ -132,7 +219,7 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
 
     if (existingRegistrations && existingRegistrations.length > 0) {
       const alreadyRegisteredIds = existingRegistrations.map(reg => reg.student_id);
-      return json({ 
+      return json({
         error: 'One or more students are already registered for this event',
         alreadyRegistered: alreadyRegisteredIds
       }, { status: 400 });
@@ -150,12 +237,13 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
       : ZERO_MONEY;
     const paymentRequired = isPositive(registrationFee);
 
-    // Create event registrations
+    // Create event registrations with emergency contact data
     const registrations = studentIds.map(studentId => ({
       event_id: eventId,
       student_id: studentId,
-       family_id: familyId || '',
-       registration_status: paymentRequired ? 'pending' as Database['public']['Enums']['registration_status_enum'] : 'confirmed' as Database['public']['Enums']['registration_status_enum'],
+      family_id: familyId || '',
+      registration_status: paymentRequired ? 'pending' as Database['public']['Enums']['registration_status_enum'] : 'confirmed' as Database['public']['Enums']['registration_status_enum'],
+      emergency_contact: emergencyContacts.get(studentId) || null,
     }));
 
     const { data: createdRegistrations_db, error: registrationError } = await supabaseServer
@@ -169,6 +257,88 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
     }
 
     const registrationId = createdRegistrations_db?.[0]?.id;
+
+    // Send confirmation email
+    try {
+      // Get event details
+      const { data: event } = await supabaseAdmin
+        .from('events')
+        .select('title, description, start_date, end_date, location')
+        .eq('id', eventId)
+        .single();
+
+      // Get student details
+      const { data: registeredStudents } = await supabaseAdmin
+        .from('students')
+        .select('first_name, last_name')
+        .in('id', studentIds);
+
+      // Get family details
+      const { data: family } = await supabaseAdmin
+        .from('families')
+        .select('name, email')
+        .eq('id', familyId)
+        .single();
+
+      if (family?.email && event && registeredStudents) {
+        const studentNames = registeredStudents.map(s => `${s.first_name} ${s.last_name}`).join(', ');
+        const eventDate = event.start_date ? formatDate(event.start_date, { formatString: 'EEEE, MMMM d, yyyy' }) : 'TBA';
+        const eventTime = event.start_date ? formatDate(event.start_date, { formatString: 'h:mm a' }) : '';
+
+        await sendEmail({
+          to: family.email,
+          subject: `Event Registration Confirmation - ${event.title}`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2 style="color: #166534;">Registration Confirmed!</h2>
+
+              <p>Dear ${family.name},</p>
+
+              <p>Thank you for registering for <strong>${event.title}</strong>. Your registration has been confirmed.</p>
+
+              <div style="background-color: #f0fdf4; border-left: 4px solid #166534; padding: 16px; margin: 20px 0;">
+                <h3 style="margin-top: 0; color: #166534;">Event Details</h3>
+                <p style="margin: 8px 0;"><strong>Event:</strong> ${event.title}</p>
+                <p style="margin: 8px 0;"><strong>Date:</strong> ${eventDate}${eventTime ? ` at ${eventTime}` : ''}</p>
+                ${event.location ? `<p style="margin: 8px 0;"><strong>Location:</strong> ${event.location}</p>` : ''}
+                ${event.description ? `<p style="margin: 8px 0;"><strong>Description:</strong> ${event.description}</p>` : ''}
+              </div>
+
+              <div style="background-color: #eff6ff; border-left: 4px solid #2563eb; padding: 16px; margin: 20px 0;">
+                <h3 style="margin-top: 0; color: #1e40af;">Registration Information</h3>
+                <p style="margin: 8px 0;"><strong>Students Registered:</strong> ${studentNames}</p>
+                <p style="margin: 8px 0;"><strong>Registration ID:</strong> ${registrationId}</p>
+                ${paymentRequired ? `<p style="margin: 8px 0;"><strong>Registration Fee:</strong> ${formatMoney(registrationFee)} per student</p>` : ''}
+                ${paymentRequired ? `<p style="margin: 8px 0; color: #d97706;"><strong>Payment Status:</strong> Pending - Please complete payment to confirm your registration</p>` : '<p style="margin: 8px 0; color: #16a34a;"><strong>Status:</strong> Confirmed</p>'}
+              </div>
+
+              ${paymentRequired ? `
+                <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; margin: 20px 0;">
+                  <p style="margin: 0;"><strong>⚠️ Action Required:</strong> Please complete your payment to finalize your registration.</p>
+                </div>
+              ` : ''}
+
+              <p>If you have any questions or need to make changes to your registration, please don't hesitate to contact us.</p>
+
+              <p>We look forward to seeing you at ${event.title}!</p>
+
+              <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;" />
+
+              <p style="font-size: 12px; color: #6b7280;">
+                ${siteConfig.name}<br>
+                ${siteConfig.contact.email}<br>
+                ${siteConfig.contact.phone}
+              </p>
+            </div>
+          `
+        });
+
+        console.log(`[event-registration] Confirmation email sent to ${family.email}`);
+      }
+    } catch (emailError) {
+      // Don't fail registration if email fails
+      console.error('[event-registration] Failed to send confirmation email:', emailError);
+    }
 
     if (paymentRequired) {
       // Create payment record for paid events using admin client
@@ -398,37 +568,55 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     throw new Response("Event not found", { status: 404 });
   }
 
-  // Get required waivers for this event
+  // Check if event has required waivers
   const { data: eventWaivers } = await supabaseServer
     .from('event_waivers')
-    .select(`
-      waiver_id,
-      is_required,
-      waivers (
-        id,
-        title,
-        content
-      )
-    `)
+    .select('waiver_id')
     .eq('event_id', eventId)
     .eq('is_required', true);
 
-  const requiredWaivers = eventWaivers?.map(ew => ew.waivers).filter(Boolean) || [];
+  const hasRequiredWaivers = (eventWaivers?.length || 0) > 0;
 
-  // Check if user has signed all required waivers BEFORE allowing registration access
-  if (requiredWaivers.length > 0) {
+  // Get studentIds from URL (if coming from waiver flow)
+  const url = new URL(request.url);
+  const studentIdsParam = url.searchParams.get('studentIds');
+
+  // If waivers are required and no studentIds in URL, redirect to student selection page first
+  // The student selection page will then redirect to waivers, then back to registration with studentIds
+  if (hasRequiredWaivers && !studentIdsParam) {
+    throw redirect(`/events/${eventId}/register/students`);
+  }
+
+  // If studentIds provided, validate waiver coverage
+  if (hasRequiredWaivers && studentIdsParam) {
+    const studentIds = studentIdsParam.split(',');
+
+    // Get user profile
+    const { data: profile } = await supabaseServer
+      .from('profiles')
+      .select('family_id')
+      .eq('id', user.id)
+      .single();
+
+    if (!profile?.family_id) {
+      throw new Response('Family profile not found', { status: 404 });
+    }
+
+    // Check if all students are covered by waivers
     const { data: signatures } = await supabaseServer
       .from('waiver_signatures')
-      .select('waiver_id')
+      .select('student_ids, waiver_id')
       .eq('user_id', user.id)
-      .in('waiver_id', requiredWaivers.map(w => w.id));
+      .in('waiver_id', eventWaivers?.map(ew => ew.waiver_id) || []);
 
-    const signedWaiverIds = signatures?.map(s => s.waiver_id) || [];
-    const missingWaivers = requiredWaivers.filter(w => !signedWaiverIds.includes(w.id));
+    // Validate all selected students are covered by required waivers
+    const allStudentsCovered = studentIds.every(studentId =>
+      signatures?.some(sig => sig.student_ids && sig.student_ids.includes(studentId))
+    );
 
-    // If any waivers are missing, redirect to the waivers page which handles all missing waivers
-    if (missingWaivers.length > 0) {
-      throw redirect(`/events/${eventId}/register/waivers`);
+    if (!allStudentsCovered) {
+      // Redirect back to student selection with error
+      throw redirect(`/events/${eventId}/register/students?error=waivers_not_signed`);
     }
   }
 
@@ -526,17 +714,21 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   const addStudentUrl = `/family/add-student?redirectTo=${encodeURIComponent(redirectTo)}`;
   const requiresStudentProfile = !hasExistingStudents;
 
+  // Get preselected student IDs from URL (from waiver flow)
+  const preSelectedStudentIds = studentIdsParam ? studentIdsParam.split(',') : undefined;
+
   return json({
     event: serializedEvent,
     isAuthenticated,
     familyData,
     requiresStudentProfile,
-    addStudentUrl
+    addStudentUrl,
+    preSelectedStudentIds
   });
 }
 
 export default function EventRegistration() {
-  const { event: serializedEvent, isAuthenticated, familyData, requiresStudentProfile, addStudentUrl } = useLoaderData<typeof loader>();
+  const { event: serializedEvent, isAuthenticated, familyData, requiresStudentProfile, addStudentUrl, preSelectedStudentIds } = useLoaderData<typeof loader>();
   const event: EventWithRegistrationInfo = {
     ...serializedEvent,
     registration_fee: deserializeMoney(serializedEvent.registration_fee),
@@ -652,6 +844,7 @@ export default function EventRegistration() {
                   isAuthenticated={isAuthenticated}
                   familyData={familyData}
                   onSuccess={handleRegistrationSuccess}
+                  preSelectedStudentIds={preSelectedStudentIds}
                 />
 
                 {/* External Registration Link - Only show if no internal registration */}

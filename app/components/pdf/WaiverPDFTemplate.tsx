@@ -299,14 +299,20 @@ export function WaiverPDFTemplate({
               <Text style={styles.infoLabel}>
                 {students.length === 1 ? 'Student:' : 'Students:'}
               </Text>
-              <View style={styles.studentList}>
-                {students.map((student) => (
-                  <Text key={student.id} style={styles.studentItem}>
-                    <Text style={styles.studentBullet}>•</Text>
-                    {student.firstName} {student.lastName}
-                  </Text>
-                ))}
-              </View>
+              {students.length === 1 ? (
+                <Text style={styles.infoValue}>
+                  {students[0].firstName} {students[0].lastName}
+                </Text>
+              ) : (
+                <View style={styles.studentList}>
+                  {students.map((student) => (
+                    <Text key={student.id} style={styles.studentItem}>
+                      <Text style={styles.studentBullet}>•</Text>
+                      {student.firstName} {student.lastName}
+                    </Text>
+                  ))}
+                </View>
+              )}
             </View>
 
             {program && (
@@ -359,7 +365,7 @@ export function WaiverPDFTemplate({
         {/* Legal Notice for BC */}
         <View style={styles.legalNotice}>
           <Text>
-            LEGAL NOTICE (British Columbia): Under BC law, waivers signed by parents/guardians on behalf of minors (persons under 19 years of age) may not be enforceable. This document serves as evidence of informed consent and acknowledgment of risks. The school maintains liability insurance as primary protection.
+            LEGAL NOTICE: This waiver documents your acknowledgment of the inherent risks of martial arts training and your informed consent for your child&apos;s participation. Under BC law (Infants Act), while parents cannot waive a minor&apos;s right to pursue legal remedies for injuries, this agreement establishes evidence of informed consent and risk acknowledgment. Our primary protection is comprehensive liability insurance and rigorous safety protocols.
           </Text>
         </View>
 

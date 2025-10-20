@@ -141,6 +141,14 @@ This provides optimal performance through targeted indexing while maintaining fl
 - `push_subscriptions` - Device subscription management for push notifications
 - `user_notification_preferences` - User-specific notification settings
 
+#### Waiver System
+- `waivers` - Waiver definitions and content
+- `waiver_signatures` - Guardian signatures with student coverage tracking
+  - `student_ids`: UUID array tracking which students are covered
+  - `pdf_storage_path`: Path to signed PDF in Supabase Storage
+- `event_waivers` - Links events to required waivers
+- `enrollment_waiver_status` - Materialized view for enrollment compliance
+
 ## System Components
 
 ### Multi-Class System
@@ -177,6 +185,17 @@ Comprehensive program and class management featuring:
 - **Real-time Messaging**: Supabase real-time for instant message delivery
 - **Push Notifications**: Browser-based notifications with customizable preferences
 - **Email Integration**: Automated email notifications via Resend
+
+### Waiver System
+Comprehensive waiver management with legal compliance for BC jurisdiction:
+- **Tiered Waivers**: Support for general registration and program-specific waivers
+- **Event Waivers**: Three-step event registration flow (Student Selection → Waiver → Registration)
+- **Student Coverage Tracking**: Explicit tracking of which students each signature covers
+- **PDF Generation**: Automatic PDF creation with student names and signature
+- **Secure Storage**: Private Supabase Storage bucket with RLS policies
+- **Email Delivery**: Automatic PDF delivery to families after signing
+- **Legal Compliance**: BC-specific waiver language and indemnity considerations
+- **Admin Visibility**: Comprehensive signature tracking with student coverage details
 
 ### User Onboarding Flows
 

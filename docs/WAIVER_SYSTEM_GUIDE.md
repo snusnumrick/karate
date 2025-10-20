@@ -23,6 +23,8 @@ The karate school management system now includes a tiered waiver system that sup
 - `signature_data`: Text, base64-encoded signature image
 - `signed_at`: Timestamp
 - `agreement_version`: String, tracks which version of the waiver was signed
+- `student_ids`: UUID array, specific students covered by this signature
+- `pdf_storage_path`: Text, path to signed PDF in Supabase Storage
 
 #### Programs Table Enhancement
 - `required_waiver_id`: Optional foreign key to waivers table
@@ -79,7 +81,7 @@ A materialized view that provides real-time status of waiver requirements for ea
    - A success message is displayed
    - A "View Waivers" button allows reviewing signed waivers
 
-#### Signing a Waiver
+#### Signing a Waiver (Program Enrollment)
 1. Click "Sign Required Waivers" or navigate to the waiver list
 2. Click "Sign Now" on an unsigned waiver
 3. Review the waiver content
@@ -87,6 +89,37 @@ A materialized view that provides real-time status of waiver requirements for ea
 5. Check the agreement checkbox
 6. Submit the signature
 7. Return to the dashboard
+
+#### Event Registration with Waivers
+For events that require waivers, families follow a three-step process:
+
+**Step 1: Student Selection**
+1. Navigate to the event details page
+2. Click "Register for Event"
+3. Select which students to register using checkboxes
+4. Review the registration fee calculation
+5. Click "Continue to Waiver" (or "Continue to Registration" if no waivers required)
+
+**Step 2: Waiver Signing** (if event requires waivers)
+1. Review all required waivers for the event
+2. For each waiver:
+   - See which students will be covered (only selected students)
+   - Review the waiver content
+   - Sign using mouse or touch input
+   - Check the agreement checkbox
+3. Submit all signatures
+4. System validates all selected students are covered
+
+**Step 3: Complete Registration**
+1. Review registration summary
+2. Complete payment (if applicable)
+3. Receive confirmation
+
+**Important Notes:**
+- Students must be selected BEFORE signing waivers to ensure legal accuracy
+- Waivers only cover the specific students selected for registration
+- PDF copies include the names of covered students
+- Families receive waiver PDFs via email after signing
 
 ### 3. Admin Experience
 
@@ -99,13 +132,16 @@ A materialized view that provides real-time status of waiver requirements for ea
    - The enrollment can still be created (trial/active status)
    - Admin is reminded to notify the family
 
-#### Viewing Pending Waivers
-1. Navigate to **Admin > Waivers > Missing Signatures**
-2. View a report of:
-   - All enrollments with unsigned waivers
-   - Student and family information
-   - Which waiver is pending
-   - Link to the enrollment details
+#### Viewing Waiver Signatures
+1. Navigate to **Admin > Waivers > View Signatures**
+2. View a comprehensive report of:
+   - All signed waivers with dates
+   - Family and student information
+   - Which students are covered by each waiver signature
+   - PDF download links for each signed waiver
+   - Filter by specific waiver type
+3. Click on family name to view family details
+4. Download PDF copies of signed waivers
 
 #### Monitoring Enrollment Status
 1. The enrollments list shows a badge for pending waivers
@@ -177,13 +213,17 @@ Located in `app/services/waivers.server.ts`, this function:
 #### Family Portal
 - `app/routes/_layout.family._index.tsx`: Dashboard with waiver status
 - `app/routes/_layout.family.waivers._index.tsx`: Waiver list
-- `app/routes/_layout.family.waivers.$id.sign.tsx`: Waiver signing page
+- `app/routes/_layout.family.waivers.$id.sign.tsx`: Waiver signing page with student coverage
+- `app/routes/_layout.events.$eventId.register_.students.tsx`: Student selection for event registration
+- `app/routes/_layout.events.$eventId.register_.waivers.tsx`: Event waiver signing flow
+- `app/routes/_layout.events.$eventId_.register.tsx`: Final registration step with validation
 
 #### Admin Interface
 - `app/routes/admin.programs.new.tsx`: Program creation with waiver selection
 - `app/routes/admin.programs.$id.edit.tsx`: Program editing with waiver management
 - `app/routes/admin.enrollments.new.tsx`: Enrollment with waiver validation
-- `app/routes/admin.waivers.missing.tsx`: Pending waivers report
+- `app/routes/admin.waivers._index.tsx`: Waiver management and navigation
+- `app/routes/admin.waivers.signatures.tsx`: View all signatures with student coverage details
 
 ## Best Practices
 
@@ -241,14 +281,29 @@ Located in `app/services/waivers.server.ts`, this function:
 - Check RLS policies allow families to read waivers
 - Ensure the family has students enrolled in programs requiring the waiver
 
+## Implemented Features
+
+### PDF Generation and Storage ✅
+- **Automatic PDF Creation**: PDFs are automatically generated when waivers are signed
+- **Student Coverage**: PDFs explicitly list all students covered by the signature
+- **Supabase Storage**: PDFs securely stored in private Supabase Storage bucket
+- **Access Control**: Row Level Security policies ensure only family members and admins can access PDFs
+- **Email Delivery**: Families automatically receive PDF copies via email after signing
+
+### Student Coverage Tracking ✅
+- **student_ids Array**: Database tracks exactly which students each signature covers
+- **Legal Accuracy**: Ensures contract law compliance by explicitly naming covered parties
+- **Admin Visibility**: Admin interface shows student coverage for all signatures
+- **Validation**: System validates all students are covered before completing event registration
+
 ## Future Enhancements
 
 ### Possible Improvements
 
-1. **Email Notifications**
-   - Send automatic reminders for unsigned waivers
-   - Notify families when new waivers are added
-   - Confirmation emails after signing
+1. **Email Notifications** ✅ PARTIALLY IMPLEMENTED
+   - ✅ PDF copies sent automatically after signing
+   - ⏳ Automatic reminders for unsigned waivers
+   - ⏳ Notify families when new waivers are added
 
 2. **Waiver Versioning**
    - Track changes to waiver content
@@ -260,12 +315,7 @@ Located in `app/services/waivers.server.ts`, this function:
    - Track which guardian signed which waiver
    - Joint signature support
 
-4. **PDF Generation**
-   - Generate PDF copies of signed waivers
-   - Allow families to download their signed waivers
-   - Store PDFs for legal compliance
-
-5. **Waiver Templates**
+4. **Waiver Templates**
    - Pre-built waiver templates for common scenarios
    - Industry-standard waiver language
    - Customizable template library

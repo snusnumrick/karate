@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useFetcher, useNavigate } from '@remix-run/react';
+import { useFetcher, useNavigate, Link } from '@remix-run/react';
 import { Button } from '~/components/ui/button';
 import { Input } from '~/components/ui/input';
 import { Label } from '~/components/ui/label';
@@ -76,6 +76,7 @@ interface EventRegistrationFormProps {
     }>;
   };
   onSuccess?: (registrationId: string) => void;
+  preSelectedStudentIds?: string[];
 }
 
 interface TaxInfo {
@@ -126,15 +127,31 @@ const emergencyContactRelations = [
   'Other'
 ];
 
+/**
+ * Event Registration Form Component
+ *
+ * Note: For events with required waivers, users are redirected through:
+ * 1. Student selection page (/events/{id}/register/students)
+ * 2. Waiver signing (/events/{id}/register/waivers)
+ * 3. Then to this registration page
+ *
+ * This form is used for:
+ * - Events WITHOUT required waivers (direct registration)
+ * - Final registration step after waivers are signed
+ */
 export function EventRegistrationForm({
   event,
   isAuthenticated,
   familyData,
-  onSuccess
+  onSuccess,
+  preSelectedStudentIds
 }: EventRegistrationFormProps) {
   const fetcher = useFetcher<ActionResponse>();
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState<'registration' | 'payment' | 'success'>('registration');
+
+  // Detect if coming from waiver flow (students pre-selected and waivers signed)
+  const isWaiverFlow = !!preSelectedStudentIds && preSelectedStudentIds.length > 0;
   const [formData, setFormData] = useState<RegistrationFormData>({
     students: [{
       firstName: '',
@@ -156,7 +173,9 @@ export function EventRegistrationForm({
     marketingOptIn: false,
     specialRequests: ''
   });
-  const [selectedExistingStudents, setSelectedExistingStudents] = useState<Set<string>>(new Set());
+  const [selectedExistingStudents, setSelectedExistingStudents] = useState<Set<string>>(
+    new Set(preSelectedStudentIds || [])
+  );
   const [paymentData, setPaymentData] = useState<{
     registrationId: string;
     paymentId: string;
@@ -167,6 +186,33 @@ export function EventRegistrationForm({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [registrationResult, setRegistrationResult] = useState<{ familyId: string; studentIds: string[] } | null>(null);
   const [processedResponseId, setProcessedResponseId] = useState<string | null>(null);
+
+  // Pre-populate form with preselected students (from waiver flow)
+  useEffect(() => {
+    if (preSelectedStudentIds && familyData) {
+      const preselectedStudentsData = preSelectedStudentIds
+        .map(id => familyData.students.find(s => s.id === id))
+        .filter(Boolean)
+        .map(student => ({
+          id: student!.id,
+          firstName: student!.firstName,
+          lastName: student!.lastName,
+          dateOfBirth: student!.dateOfBirth,
+          beltRank: student!.beltRank || '',
+          emergencyContactName: '',
+          emergencyContactPhone: '',
+          emergencyContactRelation: '',
+          isExistingStudent: true
+        }));
+
+      if (preselectedStudentsData.length > 0) {
+        setFormData(prev => ({
+          ...prev,
+          students: preselectedStudentsData
+        }));
+      }
+    }
+  }, [preSelectedStudentIds, familyData]);
 
   // Handle form submission response
   useEffect(() => {
@@ -567,8 +613,8 @@ export function EventRegistrationForm({
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Existing Students Selection (for authenticated users) */}
-        {isAuthenticated && familyData?.students && familyData.students.length > 0 && (
+        {/* Existing Students Selection (for authenticated users) - Hidden in waiver flow */}
+        {!isWaiverFlow && isAuthenticated && familyData?.students && familyData.students.length > 0 && (
           <Card className="form-container-styles">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -684,15 +730,34 @@ export function EventRegistrationForm({
           <CardHeader>
             <CardTitle>Student Information</CardTitle>
             <CardDescription>
-              Provide details for each student you want to register.
+              {isWaiverFlow
+                ? 'Complete registration details for your pre-selected students. Student identities are locked as waivers have been signed.'
+                : 'Provide details for each student you want to register.'}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            {/* Waiver Flow Notice */}
+            {isWaiverFlow && (
+              <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-900/20">
+                <AlertCircle className="h-4 w-4 text-blue-600" />
+                <AlertDescription className="text-blue-900 dark:text-blue-100">
+                  <strong>Students Pre-Selected:</strong> You selected and signed waivers for these students.
+                  Student names and birth dates are locked. You can edit emergency contact and medical information below.
+                  {' '}
+                  <Link
+                    to={`/events/${event.id}/register/students`}
+                    className="underline hover:no-underline font-medium"
+                  >
+                    Change student selection
+                  </Link>
+                </AlertDescription>
+              </Alert>
+            )}
             {formData.students.map((student, index) => (
               <div key={index} className="space-y-4 p-4 border rounded-lg">
                 <div className="flex justify-between items-center">
                   <h3 className="font-medium">Student {index + 1}</h3>
-                  {formData.students.length > 1 && (
+                  {!isWaiverFlow && formData.students.length > 1 && (
                     <Button
                       type="button"
                       variant="outline"
@@ -706,26 +771,32 @@ export function EventRegistrationForm({
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor={`student-${index}-firstName`}>First Name *</Label>
+                    <Label htmlFor={`student-${index}-firstName`}>
+                      First Name *
+                      {isWaiverFlow && <span className="text-xs text-gray-500 ml-2">(Locked)</span>}
+                    </Label>
                     <Input
                       id={`student-${index}-firstName`}
                       value={student.firstName}
                       onChange={(e) => updateStudent(index, 'firstName', e.target.value)}
                       className={`input-custom-styles ${errors[`student-${index}-firstName`] ? 'border-red-500' : ''}`}
-                      disabled={student.isExistingStudent}
+                      disabled={student.isExistingStudent || isWaiverFlow}
                     />
                     {errors[`student-${index}-firstName`] && (
                       <p className="text-sm text-red-500 mt-1">{errors[`student-${index}-firstName`]}</p>
                     )}
                   </div>
                   <div>
-                    <Label htmlFor={`student-${index}-lastName`}>Last Name *</Label>
+                    <Label htmlFor={`student-${index}-lastName`}>
+                      Last Name *
+                      {isWaiverFlow && <span className="text-xs text-gray-500 ml-2">(Locked)</span>}
+                    </Label>
                     <Input
                       id={`student-${index}-lastName`}
                       value={student.lastName}
                       onChange={(e) => updateStudent(index, 'lastName', e.target.value)}
                       className={`input-custom-styles ${errors[`student-${index}-lastName`] ? 'border-red-500' : ''}`}
-                      disabled={student.isExistingStudent}
+                      disabled={student.isExistingStudent || isWaiverFlow}
                     />
                     {errors[`student-${index}-lastName`] && (
                       <p className="text-sm text-red-500 mt-1">{errors[`student-${index}-lastName`]}</p>
@@ -735,25 +806,31 @@ export function EventRegistrationForm({
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor={`student-${index}-dateOfBirth`}>Date of Birth *</Label>
+                    <Label htmlFor={`student-${index}-dateOfBirth`}>
+                      Date of Birth *
+                      {isWaiverFlow && <span className="text-xs text-gray-500 ml-2">(Locked)</span>}
+                    </Label>
                     <Input
                       id={`student-${index}-dateOfBirth`}
                       type="date"
                       value={student.dateOfBirth}
                       onChange={(e) => updateStudent(index, 'dateOfBirth', e.target.value)}
                       className={`input-custom-styles ${errors[`student-${index}-dateOfBirth`] ? 'border-red-500' : ''}`}
-                      disabled={student.isExistingStudent}
+                      disabled={student.isExistingStudent || isWaiverFlow}
                     />
                     {errors[`student-${index}-dateOfBirth`] && (
                       <p className="text-sm text-red-500 mt-1">{errors[`student-${index}-dateOfBirth`]}</p>
                     )}
                   </div>
                   <div>
-                    <Label htmlFor={`student-${index}-beltRank`}>Current Belt Rank</Label>
+                    <Label htmlFor={`student-${index}-beltRank`}>
+                      Current Belt Rank
+                      {isWaiverFlow && <span className="text-xs text-gray-500 ml-2">(Locked)</span>}
+                    </Label>
                     <Select
                       value={student.beltRank}
                       onValueChange={(value) => updateStudent(index, 'beltRank', value)}
-                      disabled={student.isExistingStudent}
+                      disabled={student.isExistingStudent || isWaiverFlow}
                     >
                       <SelectTrigger className="input-custom-styles">
                         <SelectValue />
@@ -849,15 +926,17 @@ export function EventRegistrationForm({
                 </div>
               </div>
             ))}
-            
-            <Button
-              type="button"
-              variant="outline"
-              onClick={addStudent}
-              className="w-full"
-            >
-              Add Another Student
-            </Button>
+
+            {!isWaiverFlow && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={addStudent}
+                className="w-full"
+              >
+                Add Another Student
+              </Button>
+            )}
           </CardContent>
         </Card>
 
