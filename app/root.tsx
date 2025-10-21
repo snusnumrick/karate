@@ -175,12 +175,12 @@ export function Layout({children}: { children: React.ReactNode }) {
         </ThemeProvider>
         </AuthenticityTokenProvider>
         <ClientGTM nonce={safeNonce} />
-        <script
+{/*        <script
             src="https://umami-two-lilac.vercel.app/script.js"
             data-website-id="44b178ff-15e3-40b3-a9e5-de32256e4405"
             nonce={safeNonce}
             suppressHydrationWarning
-        />
+        />*/}
         <ScrollRestoration nonce={safeNonce}/>
         <Scripts nonce={safeNonce} />
         </NonceProvider>

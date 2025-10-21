@@ -195,6 +195,7 @@ export default function LoginPage() {
                         {linkPrefix}
                         {linkHref && linkLabel ? (
                             <Link to={linkHref}
+                                  data-testid="register-link"
                                   className="font-medium text-green-600 hover:text-green-500 dark:text-green-400 dark:hover:text-green-300">
                                 {linkLabel}
                             </Link>
@@ -233,19 +234,24 @@ export default function LoginPage() {
                                         {actionData.error}
                                         {/* Show Resend option only for the specific error and if email is available */}
                                         {isUnconfirmedEmailError && actionData.email && (
-                                            <fetcher.Form method="post" action="/api/resend-confirmation"
-                                                          className="mt-2">
-                                                <AuthenticityTokenInput />
-                                                <input type="hidden" name="email" value={actionData.email}/>
+                                            <div className="mt-2">
                                                 <Button
-                                                    type="submit"
+                                                    type="button"
                                                     variant="link"
                                                     className="p-0 h-auto text-red-300 hover:text-red-200 dark:text-red-300 dark:hover:text-red-200 underline"
                                                     disabled={fetcher.state !== 'idle'}
+                                                    onClick={() => {
+                                                        const formData = new FormData();
+                                                        formData.append('email', actionData.email || '');
+                                                        fetcher.submit(formData, {
+                                                            method: 'post',
+                                                            action: '/api/resend-confirmation'
+                                                        });
+                                                    }}
                                                 >
                                                     {fetcher.state === 'submitting' ? 'Sending...' : 'Resend Confirmation Email'}
                                                 </Button>
-                                            </fetcher.Form>
+                                            </div>
                                         )}
                                     </AlertDescription>
                                 </Alert>
@@ -276,6 +282,7 @@ export default function LoginPage() {
                                     required
                                     placeholder="Enter your email"
                                     disabled={isSubmitting}
+                                    data-testid="email-input"
                                     className="input-custom-styles"
                                     tabIndex={1}
                                 />
@@ -291,6 +298,7 @@ export default function LoginPage() {
                                     required
                                     placeholder="Enter your password"
                                     disabled={isSubmitting}
+                                    data-testid="password-input"
                                     className="input-custom-styles"
                                     tabIndex={2}
                                 />
@@ -304,6 +312,7 @@ export default function LoginPage() {
 
                                     <div className="text-sm">
                                         <Link to="/forgot-password"
+                                           data-testid="forgot-password-link"
                                            className="font-medium text-green-600 hover:text-green-500 dark:text-green-400 dark:hover:text-green-300">
                                             Forgot your password?
                                         </Link>
@@ -312,6 +321,7 @@ export default function LoginPage() {
 
                                 <Button
                                     type="submit"
+                                    data-testid="login-submit-button"
                                     className="w-full bg-green-600 hover:bg-green-700 text-white dark:bg-green-700 dark:hover:bg-green-800 disabled:opacity-50"
                                     disabled={isSubmitting} // Disable button when submitting
                                     tabIndex={4}

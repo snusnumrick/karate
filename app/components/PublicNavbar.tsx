@@ -50,7 +50,7 @@ export default function PublicNavbar({ user, isAdmin, userRole, isInstructor }: 
                             <NavLink to="/classes">Programs</NavLink>
                             <NavLink to="/about">About</NavLink>
                             {!user && (
-                                <NavLink to="/register">Register</NavLink>
+                                <NavLink to="/register" data-testid="nav-register-link">Register</NavLink>
                             )}
                             <NavLink to="/contact">Contact</NavLink>
                             <NavLink to="/pwa">PWA</NavLink>
@@ -106,6 +106,7 @@ export default function PublicNavbar({ user, isAdmin, userRole, isInstructor }: 
                                 ) : (
                                     <Link
                                         to="/login"
+                                        data-testid="login-link"
                                         className="hidden lg:inline-block bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium"
                                     >
                                         Login
@@ -138,7 +139,7 @@ export default function PublicNavbar({ user, isAdmin, userRole, isInstructor }: 
                                             <MobileNavLink to="/about" onClick={() => setIsOpen(false)}>
                                                 About
                                             </MobileNavLink>
-                                            <MobileNavLink to="/register" onClick={() => setIsOpen(false)}>
+                                            <MobileNavLink to="/register" onClick={() => setIsOpen(false)} data-testid="mobile-register-link">
                                                 Register
                                             </MobileNavLink>
                                             <MobileNavLink to="/contact" onClick={() => setIsOpen(false)}>
@@ -179,7 +180,7 @@ export default function PublicNavbar({ user, isAdmin, userRole, isInstructor }: 
                                                     </Form>
                                                 </>
                                             ) : (
-                                                <MobileNavLink to="/login" onClick={() => setIsOpen(false)}>
+                                                <MobileNavLink to="/login" onClick={() => setIsOpen(false)} data-testid="mobile-login-link">
                                                     Login
                                                 </MobileNavLink>
                                             )}
@@ -195,10 +196,11 @@ export default function PublicNavbar({ user, isAdmin, userRole, isInstructor }: 
     );
 }
 
-function NavLink({to, children}: { to: string; children: React.ReactNode }) {
+function NavLink({to, children, 'data-testid': dataTestId}: { to: string; children: React.ReactNode; 'data-testid'?: string }) {
     return (
         <Link
             to={to}
+            data-testid={dataTestId}
             className="text-gray-500 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400 px-3 py-2 text-sm font-medium"
         >
             {children}
@@ -206,15 +208,17 @@ function NavLink({to, children}: { to: string; children: React.ReactNode }) {
     );
 }
 
-function MobileNavLink({to, children, onClick}: {
+function MobileNavLink({to, children, onClick, 'data-testid': dataTestId}: {
     to: string;
     children: React.ReactNode;
     onClick: () => void;
+    'data-testid'?: string;
 }) {
     return (
         <Link
             to={to}
             onClick={onClick}
+            data-testid={dataTestId}
             className="py-3 text-lg font-medium hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors
                text-gray-900 dark:text-gray-100 hover:text-green-600 dark:hover:text-green-400"
         >

@@ -420,6 +420,7 @@ export default function AdminDashboard() {
                     <h2 className="text-lg font-medium text-gray-500 dark:text-gray-400">Total Students</h2>
                     <p className="text-3xl font-bold text-gray-800 dark:text-gray-100">{data.studentCount}</p>
                     <Link to="/admin/students"
+                          data-testid="admin-students-link"
                           className="text-green-600 dark:text-green-400 text-sm hover:underline mt-2 inline-block">
                         View all students →
                     </Link>
@@ -540,6 +541,7 @@ export default function AdminDashboard() {
                         Published events
                     </div>
                     <Link to="/admin/events"
+                          data-testid="admin-events-link"
                           className="text-indigo-600 dark:text-indigo-400 text-sm hover:underline mt-2 inline-block">
                         Manage events →
                     </Link>
@@ -556,24 +558,28 @@ export default function AdminDashboard() {
                     <div className="space-y-3">
                         <Link
                             to="/admin/families/new"
+                            data-testid="admin-new-family-link"
                             className="block p-3 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors"
                         >
                             Register New Family
                         </Link>
                         <Link
                             to="/admin/programs/new"
+                            data-testid="admin-new-program-link"
                             className="block p-3 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors"
                         >
                             Create New Program
                         </Link>
                         <Link
                             to="/admin/classes/new"
+                            data-testid="admin-new-class-link"
                             className="block p-3 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors"
                         >
                             Create New Class
                         </Link>
                         <Link
                             to="/admin/attendance/record"
+                            data-testid="admin-record-attendance-link"
                             className="block p-3 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors"
                         >
                             Record Today&apos;s Attendance

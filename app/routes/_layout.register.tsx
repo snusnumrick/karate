@@ -317,6 +317,7 @@ export default function RegisterPage() {
                             <div className="flex flex-col items-start space-y-2 mb-6 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
                                 <h2 className="text-2xl font-bold text-green-600 dark:text-green-400">Registration Form</h2>
                                 <Link to={redirectTo ? `/login?redirectTo=${encodeURIComponent(redirectTo)}` : '/login'}
+                                      data-testid="login-link"
                                       className="text-sm text-green-600 dark:text-green-400 hover:underline hover:text-green-700 dark:hover:text-green-300 sm:text-base">
                                     Already a customer? Click here to login.
                                 </Link>
@@ -358,6 +359,7 @@ export default function RegisterPage() {
                                             id="contact1FirstName"
                                             name="contact1FirstName"
                                             required
+                                            data-testid="first-name-input"
                                             className={`input-custom-styles ${errors?.contact1FirstName ? 'border-red-500' : ''}`}
                                             tabIndex={1}
                                         />
@@ -375,6 +377,7 @@ export default function RegisterPage() {
                                             id="contact1LastName"
                                             name="contact1LastName"
                                             required
+                                            data-testid="last-name-input"
                                             className={`input-custom-styles ${errors?.contact1LastName ? 'border-red-500' : ''}`}
                                             tabIndex={2}
                                         />
@@ -395,6 +398,7 @@ export default function RegisterPage() {
                                         name="contact1Email"
                                         required
                                         autoComplete="username"
+                                        data-testid="email-input"
                                         className={`input-custom-styles ${errors?.contact1Email ? 'border-red-500' : ''}`}
                                         tabIndex={3}
                                     />
@@ -418,6 +422,7 @@ export default function RegisterPage() {
                                         autoComplete="new-password"
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
+                                        data-testid="password-input"
                                         className={`input-custom-styles ${errors?.portalPassword ? 'border-red-500' : ''}`}
                                         tabIndex={4}
                                     />
@@ -440,6 +445,7 @@ export default function RegisterPage() {
                                             name="contact1CellPhone"
                                             required
                                             autoComplete="mobile tel"
+                                            data-testid="phone-input"
                                             className={`input-custom-styles ${errors?.contact1CellPhone ? 'border-red-500' : ''}`}
                                             tabIndex={5}
                                         />
@@ -457,6 +463,7 @@ export default function RegisterPage() {
                                             id="postalCode"
                                             name="postalCode"
                                             required
+                                            data-testid="postal-code-input"
                                             className={`input-custom-styles ${errors?.postalCode ? 'border-red-500' : ''}`}
                                             tabIndex={6}
                                         />
@@ -713,6 +720,7 @@ export default function RegisterPage() {
                             <div className="mt-8">
                                 <Button
                                     type="submit"
+                                    data-testid="register-submit-button"
                                     className="w-full font-bold py-3 px-6 bg-green-600 text-white hover:bg-green-700"
                                     tabIndex={21}
                                 >

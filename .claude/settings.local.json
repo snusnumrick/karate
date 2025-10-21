@@ -37,7 +37,16 @@
       "WebFetch(domain:dialalaw.peopleslawschool.ca)",
       "Read(///**)",
       "Bash(awk '{print $NF}')",
-      "Bash(./generate-supabase-template.sh:*)"
+      "Bash(./generate-supabase-template.sh:*)",
+      "mcp__TestSprite__testsprite_bootstrap_tests",
+      "mcp__TestSprite__testsprite_generate_code_summary",
+      "Bash(mkdir:*)",
+      "mcp__TestSprite__testsprite_generate_standardized_prd",
+      "mcp__TestSprite__testsprite_generate_frontend_test_plan",
+      "mcp__TestSprite__testsprite_generate_code_and_execute",
+      "Read(//Users/antont/.npm/_npx/8ddf6bea01b2519d/node_modules/@testsprite/testsprite-mcp/dist/assets/**)",
+      "mcp__TestSprite__testsprite_rerun_tests",
+      "Bash(wait)"
     ],
     "deny": [],
     "ask": []

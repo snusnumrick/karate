@@ -18,7 +18,11 @@
     "test:unit": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "coverage": "vitest run --coverage"
+    "coverage": "vitest run --coverage",
+    "docs:generate": "node scripts/generate-feature-catalog.js",
+    "docs:generate:ai": "node scripts/generate-feature-catalog-ai.js",
+    "docs:merge": "node scripts/merge-feature-catalogs.js",
+    "docs:all": "npm run docs:generate && npm run docs:merge"
   },
   "dependencies": {
     "@dinero.js/currencies": "^2.0.0-alpha.1",
