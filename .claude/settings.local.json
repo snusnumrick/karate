@@ -36,7 +36,8 @@
       "Bash(npx shadcn@latest add sonner)",
       "WebFetch(domain:dialalaw.peopleslawschool.ca)",
       "Read(///**)",
-      "Bash(awk '{print $NF}')"
+      "Bash(awk '{print $NF}')",
+      "Bash(./generate-supabase-template.sh:*)"
     ],
     "deny": [],
     "ask": []

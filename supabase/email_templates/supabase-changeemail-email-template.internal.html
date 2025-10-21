@@ -145,12 +145,10 @@ Supabase variables (keep as-is):
             text-decoration: underline;
         }
         .contact-info {
-            background: rgba(255, 255, 255, 0.1);
             padding: 24px;
             border-radius: 8px;
             margin: 24px 0;
             text-align: center;
-            border: 1px solid rgba(255, 255, 255, 0.2);
         }
         .contact-info h3 {
             color: #ffffff;
@@ -233,8 +231,8 @@ Supabase variables (keep as-is):
             <div class="contact-info">
                 <strong>{{SITE_NAME}}</strong>
                 <div style="margin: 12px 0; line-height: 1.6;">
-                    Email: <a href="mailto:info@greenegin.ca" style="color: #ffffff; text-decoration: none;">info@greenegin.ca</a><br>
-                    Phone: <a href="tel:+1234567890" style="color: #ffffff; text-decoration: none;">(123) 456-7890</a><br>
+                    Email: <a href="mailto:{{CONTACT_EMAIL}}" style="color: #ffffff; text-decoration: none;">{{CONTACT_EMAIL}}</a><br>
+                    Phone: <a href="tel:{{CONTACT_PHONE}}" style="color: #ffffff; text-decoration: none;">{{CONTACT_PHONE}}</a><br>
                     Website: <a href="{{SITE_URL}}" style="color: #ffffff; text-decoration: none;">{{SITE_URL}}</a>
                 </div>
             </div>
