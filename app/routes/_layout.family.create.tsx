@@ -106,24 +106,27 @@ export async function action({request}: ActionFunctionArgs) {
     }
 
     try {
+        // Note: Parameter order changed in migration 031 - required params first, then optional
         const rpcParams = {
+            // Required parameters
             p_user_id: user.id,
             p_family_name: formData.get('familyName') as string,
-            p_address: formData.get('address') as string,
-            p_city: formData.get('city') as string,
-            p_province: formData.get('province') as string,
             p_postal_code: formData.get('postalCode') as string,
             p_primary_phone: formData.get('primaryPhone') as string,
             p_user_email: user.email ?? '',
-            p_referral_source: (formData.get('referralSource') as string) || '',
-            p_referral_name: (formData.get('referralName') as string) || '',
-            p_emergency_contact: (formData.get('emergencyContact') as string) || '',
-            p_health_info: (formData.get('healthInfo') as string) || '',
+            // Optional parameters (must be null, not empty string, to pass DB constraints)
+            p_address: (formData.get('address') as string) || null,
+            p_city: (formData.get('city') as string) || null,
+            p_province: (formData.get('province') as string) || null,
+            p_referral_source: (formData.get('referralSource') as string) || null,
+            p_referral_name: (formData.get('referralName') as string) || null,
+            p_emergency_contact: (formData.get('emergencyContact') as string) || null,
+            p_health_info: (formData.get('healthInfo') as string) || null,
             p_contact1_first_name: formData.get('contact1FirstName') as string,
             p_contact1_last_name: formData.get('contact1LastName') as string,
             p_contact1_type: formData.get('contact1Type') as string,
-            p_contact1_home_phone: (formData.get('contact1HomePhone') as string) || '',
-            p_contact1_work_phone: (formData.get('contact1WorkPhone') as string) || '',
+            p_contact1_home_phone: (formData.get('contact1HomePhone') as string) || null,
+            p_contact1_work_phone: (formData.get('contact1WorkPhone') as string) || null,
             p_contact1_cell_phone: formData.get('contact1CellPhone') as string,
         };
 

@@ -82,20 +82,17 @@ export async function action({request}: ActionFunctionArgs)
     }
 
     // Fetch user profile to check role
-    // Ensure you have a 'profiles' table with 'id' (UUID matching auth.users.id) and 'role' columns.
+    // Use maybeSingle() to handle potential duplicate profiles gracefully
     const {data: profile, error: profileError} = await supabaseServer
         .from('profiles') // Make sure 'profiles' is the correct table name
         .select('role')
         .eq('id', authData.user.id)
-        .single();
-    // console.log("Profile fetch result:", profile, "Error:", profileError?.message);
+        .maybeSingle();
 
-    // Handle cases where profile might not exist yet or error fetching
-    if (profileError && profileError.code !== 'PGRST116') { // PGRST116: Row not found
+    // Handle database errors (but not missing profiles)
+    if (profileError) {
         console.error("Profile fetch error:", profileError?.message);
-        // Optional: Log out the user if profile is mandatory?
-        // await supabaseServer.auth.signOut();
-        return json({error: "Could not retrieve user profile."}, {status: 500, headers});
+        // Log the error but allow login to proceed - they might need to complete setup
     }
 
     // Determine redirect target

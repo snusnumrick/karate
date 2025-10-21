@@ -10,6 +10,13 @@ ALTER TABLE public.families
 
 -- 2. Update the complete_new_user_registration RPC function to accept NULL values
 -- Note: Required parameters must come before optional ones in PostgreSQL
+-- First, drop the old function signature to avoid function overload ambiguity
+DROP FUNCTION IF EXISTS public.complete_new_user_registration(
+    uuid, text, text, text, text, character varying(10), character varying(20), text,
+    text, text, text, text, text, text, text, character varying(20), character varying(20), character varying(20)
+);
+
+-- Create the new function with updated parameter order (required params first)
 CREATE OR REPLACE FUNCTION public.complete_new_user_registration(
     p_user_id uuid,
     p_family_name text,

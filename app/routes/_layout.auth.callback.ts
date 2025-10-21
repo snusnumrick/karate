@@ -18,11 +18,17 @@ export async function loader({request}: LoaderFunctionArgs) {
             // Check user role for appropriate redirect (similar to login)
             const {data: {user}} = await supabaseServer.auth.getUser();
             if (user) {
-                const {data: profile} = await supabaseServer
+                // Use maybeSingle() to handle potential duplicate profiles gracefully
+                const {data: profile, error: profileError} = await supabaseServer
                     .from('profiles')
                     .select('role')
                     .eq('id', user.id)
-                    .single();
+                    .maybeSingle();
+
+                if (profileError) {
+                    console.error("Error fetching profile during auth callback:", profileError.message);
+                    // Continue with login even if profile fetch fails
+                }
 
                 if (profile?.role === 'admin') {
                     return redirect("/admin", {headers});
@@ -33,9 +39,16 @@ export async function loader({request}: LoaderFunctionArgs) {
             // Default redirect for non-admins or if profile fetch fails
             return redirect(next, {headers});
         } else {
-            console.error("Auth Callback Error:", error.message);
-            // Handle error, maybe redirect to a specific error page or login with an error message
-            return redirect("/login?error=auth_callback_failed", {headers});
+            console.error("Auth Callback Error:", error.message, error);
+
+            // PKCE flow error - code verifier missing (common when opening link in different browser)
+            if (error.message.includes('code verifier') || error.message.includes('invalid request')) {
+                console.warn("PKCE flow issue detected - redirecting to login with helpful message");
+                return redirect("/login?error=email_confirmed&message=" + encodeURIComponent("Your email has been confirmed! Please log in with your email and password."), {headers});
+            }
+
+            // Other auth errors
+            return redirect("/login?error=auth_callback_failed&message=" + encodeURIComponent("Email confirmation failed. Please try logging in or contact support."), {headers});
         }
     }
 

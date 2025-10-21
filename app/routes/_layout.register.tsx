@@ -214,19 +214,19 @@ export async function action({request}: ActionFunctionArgs) {
             p_postal_code: postalCode,
             p_primary_phone: primaryPhone || contact1CellPhone,
             p_user_email: contact1Email,
-            // Optional parameters (can be empty string or null after migration)
-            p_address: address || '',
-            p_city: city || '',
-            p_province: province || '',
-            p_referral_source: referralSource || '',
-            p_referral_name: formData.get('referralName') as string || '',
-            p_emergency_contact: formData.get('emergencyContact') as string || '',
-            p_health_info: formData.get('healthNumber') as string || '',
+            // Optional parameters (must be null, not empty string, to pass DB constraints)
+            p_address: address || null,
+            p_city: city || null,
+            p_province: province || null,
+            p_referral_source: referralSource || null,
+            p_referral_name: (formData.get('referralName') as string) || null,
+            p_emergency_contact: (formData.get('emergencyContact') as string) || null,
+            p_health_info: (formData.get('healthNumber') as string) || null,
             p_contact1_first_name: contact1FirstName,
             p_contact1_last_name: contact1LastName,
             p_contact1_type: contact1Type || 'Guardian',
-            p_contact1_home_phone: formData.get('contact1HomePhone') as string || '',
-            p_contact1_work_phone: formData.get('contact1WorkPhone') as string || '',
+            p_contact1_home_phone: (formData.get('contact1HomePhone') as string) || null,
+            p_contact1_work_phone: (formData.get('contact1WorkPhone') as string) || null,
             p_contact1_cell_phone: contact1CellPhone
         };
 

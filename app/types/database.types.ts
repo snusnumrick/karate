@@ -3099,8 +3099,8 @@ export type Database = {
       }
       complete_new_user_registration: {
         Args: {
-          p_address: string
-          p_city: string
+          p_address?: string
+          p_city?: string
           p_contact1_cell_phone?: string
           p_contact1_first_name?: string
           p_contact1_home_phone?: string
@@ -3112,7 +3112,7 @@ export type Database = {
           p_health_info?: string
           p_postal_code: string
           p_primary_phone: string
-          p_province: string
+          p_province?: string
           p_referral_name?: string
           p_referral_source?: string
           p_user_email: string

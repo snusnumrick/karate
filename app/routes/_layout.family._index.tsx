@@ -109,18 +109,27 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
     }
 
     // 1. Get the user's profile to find their family_id
+    // Use maybeSingle() to handle potential duplicate profiles gracefully
     const {data: profileData, error: profileError} = await supabaseServer
         .from('profiles')
         .select('family_id') // Only fetch family_id, as names are not on this table
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
-    if (profileError || !profileData) {
+    if (profileError) {
         console.error("Error fetching profile:", profileError?.message);
-        // If profile doesn't exist, maybe redirect to a setup page or show an error
+        // If there's an actual database error (not just duplicate rows)
         return json({
-            error: "Failed to load user profile.",
+            error: "Failed to load user profile. Please contact support if this persists.",
         }, {status: 500, headers});
+    }
+
+    if (!profileData) {
+        console.warn("No profile found for user:", user.id);
+        // Profile doesn't exist - redirect to setup page
+        return json({
+            error: "User profile not found. Please complete your registration.",
+        }, {status: 404, headers});
     }
 
     if (!profileData.family_id) {

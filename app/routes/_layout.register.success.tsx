@@ -1,7 +1,7 @@
 import {Link, useLoaderData} from "@remix-run/react";
 import {json, type LoaderFunctionArgs} from "@remix-run/node";
 import {Button} from "~/components/ui/button";
-import {Users, Shield, Calendar, CheckCircle, Ticket} from 'lucide-react';
+import {Users, Shield, Calendar, CheckCircle, Ticket, Mail} from 'lucide-react';
 import {EventService} from "~/services/event.server";
 
 type LoaderData = {
@@ -71,27 +71,42 @@ export default function RegistrationSuccessPage() {
                     <div className="mb-8">
                         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Next Steps:</h2>
                         <div className="space-y-3">
-                            {/* Step 1: Login */}
+                            {/* Step 1: Account Created */}
                             <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50">
                                 <div className="flex-shrink-0 mt-0.5">
                                     <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400"/>
                                 </div>
                                 <div className="flex-1">
                                     <p className="font-medium text-gray-900 dark:text-gray-100">Account Created</p>
-                                    <p className="text-sm text-gray-600 dark:text-gray-400">Your family account is ready to use</p>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400">Your family account has been set up</p>
                                 </div>
                             </div>
 
-                            {/* Step 2: Add Students - highlighted for event flow */}
-                            <div className={`flex items-start gap-3 p-4 rounded-lg ${event ? 'bg-green-50 dark:bg-green-900/20 border-2 border-green-500' : 'bg-gray-50 dark:bg-gray-700/50 p-3'}`}>
+                            {/* Step 2: Email Confirmation - HIGHLIGHTED AS NEXT ACTION */}
+                            <div className="flex items-start gap-3 p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-500">
                                 <div className="flex-shrink-0 mt-0.5">
-                                    <Users className={`h-5 w-5 ${event ? 'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-400'}`}/>
+                                    <Mail className="h-5 w-5 text-blue-600 dark:text-blue-400"/>
                                 </div>
                                 <div className="flex-1">
-                                    <p className={`font-semibold ${event ? 'text-green-900 dark:text-green-100' : 'text-gray-900 dark:text-gray-100'}`}>
+                                    <p className="font-semibold text-blue-900 dark:text-blue-100">
+                                        Check Your Email
+                                    </p>
+                                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                                        We've sent you a confirmation email. Click the link to verify your email address before logging in.
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Step 3: Add Students */}
+                            <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50">
+                                <div className="flex-shrink-0 mt-0.5">
+                                    <Users className="h-5 w-5 text-gray-600 dark:text-gray-400"/>
+                                </div>
+                                <div className="flex-1">
+                                    <p className="font-medium text-gray-900 dark:text-gray-100">
                                         Add Your Student(s)
                                     </p>
-                                    <p className={`text-sm ${event ? 'text-green-700 dark:text-green-300' : 'text-gray-600 dark:text-gray-400'}`}>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400">
                                         {event
                                             ? `Add the students who will participate in ${event.title}`
                                             : 'After logging in, add your student(s) to get started with class enrollment'
@@ -147,18 +162,23 @@ export default function RegistrationSuccessPage() {
 
                     {/* CTA Button */}
                     <div className="text-center">
-                        <Button asChild className="bg-green-600 text-white hover:bg-green-700 w-full sm:w-auto px-8">
+                        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 mb-4">
+                            <p className="text-sm text-amber-800 dark:text-amber-200 font-medium">
+                                ⚠️ Important: You must confirm your email before you can log in
+                            </p>
+                        </div>
+                        <Button asChild className="bg-blue-600 text-white hover:bg-blue-700 w-full sm:w-auto px-8">
                             <Link to={event
                                 ? `/login?redirectTo=${encodeURIComponent(`/family/add-student?returnTo=${encodeURIComponent(redirectTo || '')}`)}`
                                 : '/login'
                             }>
-                                {event ? 'Continue - Add Student' : 'Continue to Login'}
+                                I've Confirmed My Email - Continue to Login
                             </Link>
                         </Button>
                         <p className="text-sm text-gray-500 dark:text-gray-400 mt-4">
                             {event
-                                ? `After adding a student, you'll continue to ${event.title} registration`
-                                : "You'll be able to add students right after logging in"
+                                ? `After logging in and adding a student, you'll continue to ${event.title} registration`
+                                : "After logging in, you'll be able to add students and enroll in classes"
                             }
                         </p>
                     </div>
