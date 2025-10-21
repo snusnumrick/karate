@@ -92,7 +92,7 @@ export default function RegistrationSuccessPage() {
                                         Check Your Email
                                     </p>
                                     <p className="text-sm text-blue-700 dark:text-blue-300">
-                                        We've sent you a confirmation email. Click the link to verify your email address before logging in.
+                                        We&apos;ve sent you a confirmation email. Click the link to verify your email address before logging in.
                                     </p>
                                 </div>
                             </div>
@@ -172,7 +172,7 @@ export default function RegistrationSuccessPage() {
                                 ? `/login?redirectTo=${encodeURIComponent(`/family/add-student?returnTo=${encodeURIComponent(redirectTo || '')}`)}`
                                 : '/login'
                             }>
-                                I've Confirmed My Email - Continue to Login
+                                I&apos;ve Confirmed My Email - Continue to Login
                             </Link>
                         </Button>
                         <p className="text-sm text-gray-500 dark:text-gray-400 mt-4">
