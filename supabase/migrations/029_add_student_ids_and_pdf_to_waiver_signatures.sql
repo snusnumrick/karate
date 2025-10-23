@@ -4,6 +4,67 @@
 -- Related: docs/WAIVER_LEGAL_COMPLIANCE_IMPLEMENTATION.md
 
 -- ============================================================================
+-- PART 0: Create program_waivers table (if not exists)
+-- ============================================================================
+
+-- Program waivers junction table (for program-specific waiver requirements)
+CREATE TABLE IF NOT EXISTS program_waivers (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    program_id uuid REFERENCES programs(id) ON DELETE CASCADE NOT NULL,
+    waiver_id uuid REFERENCES waivers(id) ON DELETE CASCADE NOT NULL,
+    is_required boolean DEFAULT true,
+    required_for_trial boolean DEFAULT false,
+    required_for_full_enrollment boolean DEFAULT true,
+    created_at timestamptz DEFAULT now(),
+    updated_at timestamptz DEFAULT now(),
+
+    UNIQUE(program_id, waiver_id)
+);
+
+-- Create indexes for performance
+CREATE INDEX IF NOT EXISTS idx_program_waivers_program_id ON program_waivers(program_id);
+CREATE INDEX IF NOT EXISTS idx_program_waivers_waiver_id ON program_waivers(waiver_id);
+
+COMMENT ON TABLE program_waivers IS 'Junction table linking programs to required waivers. Used alongside programs.required_waiver_id for flexible waiver requirements.';
+
+-- Enable RLS
+ALTER TABLE program_waivers ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for program_waivers
+DO $$
+BEGIN
+  -- Allow authenticated users to view program waivers
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE tablename = 'program_waivers'
+    AND policyname = 'Program waivers are viewable by authenticated users'
+  ) THEN
+    CREATE POLICY "Program waivers are viewable by authenticated users"
+      ON program_waivers
+      FOR SELECT TO authenticated
+      USING (true);
+  END IF;
+
+  -- Allow admins to manage program waivers
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE tablename = 'program_waivers'
+    AND policyname = 'Admin can manage program waivers'
+  ) THEN
+    CREATE POLICY "Admin can manage program waivers"
+      ON program_waivers
+      FOR ALL
+      USING (
+        EXISTS (
+          SELECT 1 FROM profiles
+          WHERE profiles.id = auth.uid()
+          AND profiles.role = 'admin'
+        )
+      );
+  END IF;
+END $$;
+
+-- ============================================================================
 -- PART 1: Add student_ids column (array of UUIDs)
 -- ============================================================================
 
@@ -165,6 +226,7 @@ GRANT SELECT ON enrollment_waiver_status TO authenticated;
 DO $$
 BEGIN
   RAISE NOTICE '✅ Migration 029 completed successfully';
+  RAISE NOTICE '   - Created program_waivers junction table with RLS policies';
   RAISE NOTICE '   - Added student_ids column to waiver_signatures';
   RAISE NOTICE '   - Added pdf_storage_path column to waiver_signatures';
   RAISE NOTICE '   - Created GIN index on student_ids for fast queries';
