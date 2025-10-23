@@ -4,7 +4,24 @@
 -- Related: docs/WAIVER_LEGAL_COMPLIANCE_IMPLEMENTATION.md
 
 -- ============================================================================
--- PART 0: Create program_waivers table (if not exists)
+-- PART 0: Add pending_waivers to enrollment_status enum
+-- ============================================================================
+
+-- Add 'pending_waivers' to enrollment_status enum if it doesn't exist
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_enum
+    WHERE enumlabel = 'pending_waivers'
+    AND enumtypid = 'enrollment_status'::regtype
+  ) THEN
+    ALTER TYPE enrollment_status ADD VALUE 'pending_waivers';
+    RAISE NOTICE 'Added pending_waivers to enrollment_status enum';
+  END IF;
+END $$;
+
+-- ============================================================================
+-- PART 0b: Create program_waivers table (if not exists)
 -- ============================================================================
 
 -- Program waivers junction table (for program-specific waiver requirements)
@@ -226,6 +243,7 @@ GRANT SELECT ON enrollment_waiver_status TO authenticated;
 DO $$
 BEGIN
   RAISE NOTICE '✅ Migration 029 completed successfully';
+  RAISE NOTICE '   - Added pending_waivers to enrollment_status enum';
   RAISE NOTICE '   - Created program_waivers junction table with RLS policies';
   RAISE NOTICE '   - Added student_ids column to waiver_signatures';
   RAISE NOTICE '   - Added pdf_storage_path column to waiver_signatures';
