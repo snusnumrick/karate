@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { json, type LoaderFunctionArgs, type ActionFunctionArgs } from "@remix-run/node";
 import { useLoaderData, Link, useSearchParams, useFetcher, useRouteError } from "@remix-run/react";
 import { csrf } from "~/utils/csrf.server";
-import { Building2, FileText, Trash2, Search, Plus, Users, Landmark, Briefcase, HelpCircle, CheckCircle, AlertCircle } from "lucide-react";
+import { Building2, FileText, Trash2, Search, Plus, Users, Landmark, Briefcase, HelpCircle, CheckCircle, AlertCircle, Pencil } from "lucide-react";
 import { getInvoiceEntitiesWithStats, deleteInvoiceEntity } from "~/services/invoice-entity.server";
 import type { EntityType, InvoiceEntityWithStats } from "~/types/invoice";
 import { formatMoney, isPositive, addMoney, ZERO_MONEY, fromCents, toMoney } from "~/utils/money";
@@ -467,6 +467,11 @@ export default function InvoiceEntitiesIndexPage() {
                         <Button variant="outline" size="sm" asChild tabIndex={0} title="Create new invoice for this entity">
                           <Link to={`/admin/invoices/new?entity_id=${entity.id}`}>
                             <FileText className="w-4 h-4" />
+                          </Link>
+                        </Button>
+                        <Button variant="outline" size="sm" asChild tabIndex={0} title="Edit entity details">
+                          <Link to={`/admin/invoice-entities/${entity.id}/edit`}>
+                            <Pencil className="w-4 h-4" />
                           </Link>
                         </Button>
                         {canDeleteEntity(entity as InvoiceEntityWithStats) ? (
