@@ -22,7 +22,9 @@
     "docs:generate": "node scripts/generate-feature-catalog.js",
     "docs:generate:ai": "node scripts/generate-feature-catalog-ai.js",
     "docs:merge": "node scripts/merge-feature-catalogs.js",
-    "docs:all": "npm run docs:generate && npm run docs:merge"
+    "docs:all": "npm run docs:generate && npm run docs:merge",
+    "tests:generate": "node scripts/generate-e2e-tests.js",
+    "tests:generate:full": "npm run docs:all && npm run tests:generate"
   },
   "dependencies": {
     "@dinero.js/currencies": "^2.0.0-alpha.1",
