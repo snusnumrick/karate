@@ -22,7 +22,8 @@ import {
     AlertDialogTitle,
 } from "~/components/ui/alert-dialog"; // Added AlertDialog components
 import type { Tables, TablesUpdate } from "~/types/database.types";
-import { ArrowLeft, Trash2 } from "lucide-react"; // Added Trash2 icon
+import { Trash2 } from "lucide-react"; // Added Trash2 icon
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 
 // Define constants at module scope
@@ -381,9 +382,7 @@ export default function EditProductPage() {
 
     return (
         <div className="space-y-6 max-w-2xl mx-auto">
-             <Link to="/admin/store/products" className="inline-flex items-center text-sm text-blue-600 hover:underline">
-                <ArrowLeft className="mr-1 h-4 w-4" /> Back to Products
-            </Link>
+            <AppBreadcrumb items={breadcrumbPatterns.adminStoreProductEdit(product.name, product.id)} className="mb-6" />
             <h1 className="text-2xl font-bold">Edit Product: {product.name}</h1>
 
             {actionData?.error && !actionData.fieldErrors && (
