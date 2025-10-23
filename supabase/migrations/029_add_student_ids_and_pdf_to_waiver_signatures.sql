@@ -207,7 +207,9 @@ LEFT JOIN LATERAL (
   ORDER BY ws.signed_at DESC
   LIMIT 1
 ) ws_latest ON true
-WHERE e.status IN ('active', 'trial', 'pending_waivers');
+WHERE e.status IN ('active', 'trial');
+-- NOTE: 'pending_waivers' status is added to the enum above but cannot be used
+-- in the same transaction due to PostgreSQL limitations. A future REFRESH will pick it up.
 
 -- Create indexes on the materialized view
 CREATE UNIQUE INDEX IF NOT EXISTS idx_enrollment_waiver_status_enrollment
