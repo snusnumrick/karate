@@ -1,6 +1,7 @@
 import type { InvoiceEntity, CreateInvoiceData, TaxRate } from "~/types/invoice";
 
 import { useInvoiceCalculations } from "~/hooks/use-invoice-calculations";
+import { siteConfig } from "~/config/site";
 import { formatDate } from "~/utils/misc";
 import { formatEntityAddress, getPaymentTermsLabel } from "~/utils/entity-helpers";
 import { getItemTypeLabel, formatServicePeriod, calculateLineItemSubtotal, calculateLineItemDiscount, getLineItemTaxBreakdown } from "~/utils/line-item-helpers";
@@ -24,6 +25,18 @@ export function InvoicePreview({ invoiceData, entity, invoiceNumber, taxRatesByI
     invoiceData.line_items,
     taxRatesByItemType
   );
+  const companyName = siteConfig.legal.businessName || siteConfig.name;
+  const fallbackAddressLines = [
+    siteConfig.location.address,
+    [siteConfig.location.locality, siteConfig.location.region].filter(Boolean).join(", "),
+    siteConfig.location.postalCode,
+    siteConfig.location.country,
+  ].filter((part) => part && part.toString().trim().length > 0);
+  const companyAddressLines = siteConfig.legal.address
+    ? siteConfig.legal.address.split(",").map((part) => part.trim()).filter((part) => part.length > 0)
+    : fallbackAddressLines;
+  const companyPhone = siteConfig.contact.phone;
+  const companyEmail = siteConfig.contact.paymentsEmail || siteConfig.contact.email;
 
 
 
@@ -64,11 +77,12 @@ export function InvoicePreview({ invoiceData, entity, invoiceNumber, taxRatesByI
                 From
               </h3>
               <div className="text-sm text-gray-600">
-                <p className="font-medium">Karate School</p>
-                <p>123 Main Street</p>
-                <p>City, State 12345</p>
-                <p>Phone: (555) 123-4567</p>
-                <p>Email: info@karateschool.com</p>
+                <p className="font-medium">{companyName}</p>
+                {companyAddressLines.map((line, index) => (
+                  <p key={`company-address-${index}`}>{line}</p>
+                ))}
+                {companyPhone && <p>Phone: {companyPhone}</p>}
+                {companyEmail && <p>Email: {companyEmail}</p>}
               </div>
             </div>
             
