@@ -7,3 +7,4 @@ _scratch/
 **/*.test.*
 **/__tests__/
 db-tools/
+e2e/generated/

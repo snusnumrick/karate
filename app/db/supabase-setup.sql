@@ -3769,7 +3769,7 @@ DO
 $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'enrollment_status') THEN
-        CREATE TYPE enrollment_status AS ENUM ('active', 'inactive', 'completed', 'dropped', 'waitlist', 'trial');
+        CREATE TYPE enrollment_status AS ENUM ('active', 'inactive', 'completed', 'dropped', 'waitlist', 'trial', 'pending_waivers');
     ELSE
         -- Add 'waitlist' to existing enum if it doesn't exist
         IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = 'waitlist' AND enumtypid = 'enrollment_status'::regtype) THEN
@@ -3778,6 +3778,10 @@ BEGIN
         -- Add 'trial' to existing enum if it doesn't exist
         IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = 'trial' AND enumtypid = 'enrollment_status'::regtype) THEN
             ALTER TYPE enrollment_status ADD VALUE 'trial';
+        END IF;
+        -- Add 'pending_waivers' to existing enum if it doesn't exist
+        IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = 'pending_waivers' AND enumtypid = 'enrollment_status'::regtype) THEN
+            ALTER TYPE enrollment_status ADD VALUE 'pending_waivers';
         END IF;
     END IF;
 END $$;
@@ -5921,6 +5925,28 @@ BEGIN
                 EXISTS (
                     SELECT 1 FROM profiles 
                     WHERE profiles.id = auth.uid() 
+                    AND profiles.role = 'admin'::profile_role
+                )
+            );
+    END IF;
+END
+$$;
+
+-- Program waivers policies
+DO
+$$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Program waivers are viewable by authenticated users' AND tablename = 'program_waivers') THEN
+        CREATE POLICY "Program waivers are viewable by authenticated users" ON program_waivers
+            FOR SELECT TO authenticated USING (true);
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Admin can manage program waivers' AND tablename = 'program_waivers') THEN
+        CREATE POLICY "Admin can manage program waivers" ON program_waivers
+            FOR ALL USING (
+                EXISTS (
+                    SELECT 1 FROM profiles
+                    WHERE profiles.id = auth.uid()
                     AND profiles.role = 'admin'::profile_role
                 )
             );

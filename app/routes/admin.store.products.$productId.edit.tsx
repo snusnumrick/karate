@@ -69,22 +69,26 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 // Action function to handle form submission
 export async function action({ request, params }: ActionFunctionArgs): Promise<TypedResponse<ActionData | never>> {
     const productId = params.productId;
+    console.log(`[ProductEdit/Action] Request received for product ${productId}`);
+
     if (!productId) {
+        console.error('[ProductEdit/Action] Product ID is missing');
         return json({ error: "Product ID is missing." }, { status: 400 });
     }
     // Admin check happens in the parent _admin layout loader
     const { response } = getSupabaseServerClient(request);
     const headers = response.headers;
-    
+
     try {
         await csrf.validate(request);
     } catch (error) {
-        console.error('CSRF validation failed:', error);
+        console.error('[ProductEdit/Action] CSRF validation failed:', error);
         return json({ error: 'Security validation failed. Please try again.' }, { status: 403, headers });
     }
-    
+
     const formData = await request.formData();
     const intent = formData.get('intent') as string; // Get intent first
+    console.log(`[ProductEdit/Action] Intent: ${intent}`);
 
     // --- Handle Delete Intent ---
     if (intent === 'delete') {
@@ -185,6 +189,10 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
         const imageFile = formData.get('image') as File | null;
         const removeImage = formData.get('remove_image') === 'true';
 
+        console.log(`[ProductEdit] Edit intent for product ${productId}`);
+        console.log(`[ProductEdit] Image file present: ${imageFile ? 'Yes' : 'No'}, Size: ${imageFile?.size || 0} bytes`);
+        console.log(`[ProductEdit] Remove image flag: ${removeImage}`);
+
         // --- Validation ---
         const fieldErrors: { [key: string]: string } = {};
         if (!name) fieldErrors.name = "Product name is required.";
@@ -193,21 +201,29 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
         let newImageUrl: string | null | undefined = undefined; // undefined means no change, null means remove
 
         if (removeImage) {
+            console.log(`[ProductEdit] Image removal requested`);
             newImageUrl = null; // Signal to remove the image URL
         } else if (imageFile && imageFile.size > 0) {
+            console.log(`[ProductEdit] Validating image file: ${imageFile.name}, Type: ${imageFile.type}, Size: ${imageFile.size}`);
             if (imageFile.size > MAX_FILE_SIZE) {
+                console.warn(`[ProductEdit] Image file too large: ${imageFile.size} bytes (max: ${MAX_FILE_SIZE})`);
                 fieldErrors.image = "Image file size must be less than 5MB.";
             }
             if (!ALLOWED_IMAGE_TYPES.includes(imageFile.type)) {
+                console.warn(`[ProductEdit] Invalid image type: ${imageFile.type}`);
                 fieldErrors.image = "Invalid image file type. Allowed types: JPG, PNG, WEBP, GIF.";
             }
         }
 
         if (Object.keys(fieldErrors).length > 0) {
+            console.warn(`[ProductEdit] Validation failed:`, fieldErrors);
             return json({ error: "Please fix the errors below.", fieldErrors }, { status: 400, headers });
         }
 
+        console.log(`[ProductEdit] Validation passed successfully`);
+
         // --- Fetch Current Product Data (for image deletion) ---
+        console.log(`[ProductEdit] Fetching current product data for ${productId}`);
         const supabaseAdmin = getSupabaseAdminClient();
         const { data: currentProduct, error: fetchError } = await supabaseAdmin
             .from('products')
@@ -216,19 +232,24 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
             .single();
 
         if (fetchError) {
-            console.error(`Error fetching current product data for ${productId}:`, fetchError.message);
+            console.error(`[ProductEdit] Error fetching current product data for ${productId}:`, fetchError.message);
             return json({ error: "Failed to retrieve current product data before update." }, { status: 500, headers });
         }
         const currentImageUrl = currentProduct?.image_url;
+        console.log(`[ProductEdit] Current image URL: ${currentImageUrl || 'None'}`);
 
         // --- Upload New Image / Handle Removal ---
         const storageBucket = 'product-images';
         let oldImagePathToDelete: string | null = null;
 
+        console.log(`[ProductEdit] Storage bucket: ${storageBucket}`);
+
         if (removeImage) {
+            console.log(`[ProductEdit] Processing image removal`);
             newImageUrl = null;
             if (currentImageUrl) {
                 oldImagePathToDelete = currentImageUrl.substring(currentImageUrl.lastIndexOf('/') + 1);
+                console.log(`[ProductEdit] Old image marked for deletion: ${oldImagePathToDelete}`);
             }
         } else if (imageFile && imageFile.size > 0) {
             // Upload new image
@@ -236,25 +257,34 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
             const uniqueFileName = `${crypto.randomUUID()}.${fileExt}`;
             const filePath = `${uniqueFileName}`;
 
+            console.log(`[ProductEdit] Attempting to upload image to bucket '${storageBucket}'`);
+            console.log(`[ProductEdit] File path: ${filePath}, Original name: ${imageFile.name}`);
+
             const { error: uploadError } = await supabaseAdmin.storage
                 .from(storageBucket)
                 .upload(filePath, imageFile, { cacheControl: '3600', upsert: false });
 
             if (uploadError) {
-                console.error("Error uploading new product image:", uploadError.message);
+                console.error(`[ProductEdit] Error uploading new product image:`, uploadError);
+                console.error(`[ProductEdit] Upload error details - Message: ${uploadError.message}`);
                 return json({ error: `Failed to upload new image: ${uploadError.message}` }, { status: 500, headers });
             }
 
+            console.log(`[ProductEdit] Image uploaded successfully to ${filePath}`);
+
             const { data: urlData } = supabaseAdmin.storage.from(storageBucket).getPublicUrl(filePath);
             if (!urlData?.publicUrl) {
-                console.error("Failed to get public URL for new image:", filePath);
+                console.error(`[ProductEdit] Failed to get public URL for new image: ${filePath}`);
                 return json({ error: "Image uploaded, but failed to get its public URL." }, { status: 500, headers });
             }
+
+            console.log(`[ProductEdit] Public URL generated: ${urlData.publicUrl}`);
             newImageUrl = urlData.publicUrl;
 
             // Mark old image for deletion if it exists
             if (currentImageUrl) {
                 oldImagePathToDelete = currentImageUrl.substring(currentImageUrl.lastIndexOf('/') + 1);
+                console.log(`[ProductEdit] Old image marked for deletion after new upload: ${oldImagePathToDelete}`);
             }
         }
         // If newImageUrl remains undefined, the image_url field won't be updated.
@@ -269,7 +299,10 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
         // Only include image_url in update if it changed (new upload or removal)
         if (newImageUrl !== undefined) {
             updateData.image_url = newImageUrl;
+            console.log(`[ProductEdit] Image URL will be updated to: ${newImageUrl || 'NULL (removed)'}`);
         }
+
+        console.log(`[ProductEdit] Updating product ${productId} in database`);
 
         const { error: updateError } = await supabaseAdmin // Use admin client
             .from('products')
@@ -277,10 +310,11 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
             .eq('id', productId);
 
         if (updateError) {
-            console.error(`Error updating product ${productId}:`, updateError.message);
+            console.error(`[ProductEdit] Error updating product ${productId}:`, updateError);
             // Attempt to delete newly uploaded image if DB update fails
             if (newImageUrl && newImageUrl !== currentImageUrl) { // Check if it's a new URL
                 const pathToDelete = newImageUrl.substring(newImageUrl.lastIndexOf('/') + 1);
+                console.log(`[ProductEdit] DB update failed, rolling back image upload: ${pathToDelete}`);
                 await supabaseAdmin.storage.from(storageBucket).remove([pathToDelete]);
             }
             if (updateError.code === '23505') {
@@ -289,19 +323,24 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<T
             return json({ error: `Failed to update product: ${updateError.message}` }, { status: 500, headers });
         }
 
+        console.log(`[ProductEdit] Product ${productId} updated successfully in database`);
+
         // --- Delete Old Image from Storage (after successful DB update) ---
         if (oldImagePathToDelete) {
-            // console.log(`Attempting to delete old image: ${oldImagePathToDelete}`);
+            console.log(`[ProductEdit] Attempting to delete old image: ${oldImagePathToDelete}`);
             const { error: deleteError } = await supabaseAdmin.storage
                 .from(storageBucket)
                 .remove([oldImagePathToDelete]);
             if (deleteError) {
                 // Log error but don't fail the request, DB update was successful
-                console.error(`Failed to delete old product image ${oldImagePathToDelete}:`, deleteError.message);
+                console.error(`[ProductEdit] Failed to delete old product image ${oldImagePathToDelete}:`, deleteError.message);
+            } else {
+                console.log(`[ProductEdit] Old image deleted successfully: ${oldImagePathToDelete}`);
             }
         }
 
         // Return success message
+        console.log(`[ProductEdit] Product edit completed successfully for product ${productId}`);
         return json({ success: true, message: "Product updated successfully." }, { headers });
     }
     // --- End Handle Edit Intent ---
@@ -360,7 +399,7 @@ export default function EditProductPage() {
                 </Alert>
             )}
 
-            <Form method="post" className="space-y-4 bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+            <Form method="post" encType="multipart/form-data" className="space-y-4 bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
                 <AuthenticityTokenInput />
                 {/* Hidden input for edit intent */}
                 <input type="hidden" name="intent" value="edit" />
