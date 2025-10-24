@@ -51,7 +51,8 @@
       "Bash(do if grep -q \"TABLE waivers\" \"$file\")",
       "Bash(fi)",
       "Bash(done)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(npx eslint:*)"
     ],
     "deny": [],
     "ask": []

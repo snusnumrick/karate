@@ -105,7 +105,7 @@ export function OptionalInfoSection({
 
         <div>
           <Label htmlFor="contact1HomePhone">
-            Home Phone (optional)
+            Home Phone
           </Label>
           <Input
             id="contact1HomePhone"

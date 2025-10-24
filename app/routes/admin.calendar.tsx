@@ -1,6 +1,6 @@
-import { json, type LoaderFunctionArgs } from "@remix-run/node";
-import { Link, useLoaderData, useSearchParams, useNavigate } from "@remix-run/react";
-import { useState } from "react";
+import { json, type LoaderFunctionArgs, type ActionFunctionArgs } from "@remix-run/node";
+import { Link, useFetcher, useLoaderData, useSearchParams, useNavigate } from "@remix-run/react";
+import { useEffect, useState } from "react";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek } from "date-fns";
 import { parseLocalDate, birthdaysToCalendarEvents, expandMultiDayEvents } from "~/components/calendar/utils";
 import { formatDate, getTodayLocalDateString } from "~/utils/misc";
@@ -14,6 +14,8 @@ import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { Calendar } from "~/components/calendar/Calendar";
 import type { CalendarEvent } from "~/components/calendar/types";
 import { Clock, AlertTriangle, CheckCircle, XCircle, BookOpen, User, Filter, Plus } from "lucide-react";
+import { csrf } from "~/utils/csrf.server";
+import { updateClassSession } from "~/services/class.server";
 
 
 // Enhanced admin calendar event interface
@@ -82,6 +84,7 @@ type LoaderData = {
         last_name: string;
         birth_date: string | null;
     }>;
+    csrfToken: string;
 };
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -92,7 +95,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
     const supabaseAdmin = getSupabaseAdminClient();
 
     const { supabaseServer, response } = getSupabaseServerClient(request);
-    const headers = response.headers;
+    const headers = new Headers(response.headers);
+    const [csrfToken, csrfCookieHeader] = await csrf.commitToken(request);
+    if (csrfCookieHeader) {
+        headers.append('Set-Cookie', csrfCookieHeader);
+    }
 
     const url = new URL(request.url);
     const monthParam = url.searchParams.get('month');
@@ -415,7 +422,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
                 instructor: instructorFilter || undefined,
                 status: statusFilter || undefined
             },
-            stats
+            stats,
+            csrfToken
         }, { headers });
 
     } catch (error) {
@@ -426,13 +434,53 @@ export async function loader({ request }: LoaderFunctionArgs) {
             programs: [],
             instructors: [],
             filters: {},
-            stats: { totalSessions: 0, completedSessions: 0, totalEnrollments: 0, averageCapacity: 0 }
+            stats: { totalSessions: 0, completedSessions: 0, totalEnrollments: 0, averageCapacity: 0 },
+            csrfToken
         }, { headers });
     }
 }
 
+type ActionResponse =
+    | { success: true; sessionId: string; status: 'scheduled' | 'completed' | 'cancelled' }
+    | { success: false; error: string };
+
+export async function action({ request }: ActionFunctionArgs) {
+    await requireAdminUser(request);
+
+    try {
+        await csrf.validate(request);
+    } catch (error) {
+        console.error('CSRF validation failed:', error);
+        return json<ActionResponse>({ success: false, error: 'Security validation failed. Please refresh and try again.' }, { status: 403 });
+    }
+
+    const formData = await request.formData();
+    const intent = formData.get('intent');
+
+    if (intent === 'complete_session') {
+        const sessionId = formData.get('sessionId');
+
+        if (!sessionId || typeof sessionId !== 'string') {
+            return json<ActionResponse>({ success: false, error: 'Session ID is required.' }, { status: 400 });
+        }
+
+        try {
+            const updated = await updateClassSession(sessionId, { status: 'completed' });
+            return json<ActionResponse>({ success: true, sessionId: updated.id, status: updated.status });
+        } catch (error) {
+            console.error('Failed to complete session from admin calendar:', error);
+            return json<ActionResponse>({ success: false, error: 'Failed to complete session. Please try again.' }, { status: 500 });
+        }
+    }
+
+    return json<ActionResponse>({ success: false, error: 'Invalid action.' }, { status: 400 });
+}
+
 export default function AdminCalendar() {
-    const { events, students, programs, instructors, filters } = useLoaderData<LoaderData>();
+    const { events: initialEvents, students, programs, instructors, filters, csrfToken } = useLoaderData<LoaderData>();
+    const [events, setEvents] = useState(initialEvents);
+    const fetcher = useFetcher<ActionResponse>();
+    const [actionError, setActionError] = useState<string | null>(null);
     const [searchParams, setSearchParams] = useSearchParams();
     const [selectedEvent, setSelectedEvent] = useState<AdminCalendarEvent | null>(null);
     const navigate = useNavigate();
@@ -440,6 +488,64 @@ export default function AdminCalendar() {
         const month = searchParams.get('month');
         return month ? parseLocalDate(month + '-01') : new Date();
     });
+    const isCompletingSession = fetcher.state === 'submitting';
+
+    useEffect(() => {
+        setEvents(initialEvents);
+    }, [initialEvents]);
+
+    useEffect(() => {
+        const data = fetcher.data;
+        if (!data) {
+            return;
+        }
+
+        if (data.success) {
+            setEvents(prev =>
+                prev.map(event =>
+                    event.id === data.sessionId
+                        ? {
+                            ...event,
+                            status: data.status,
+                            adminActions: {
+                                ...event.adminActions,
+                                canRecordAttendance: data.status === 'completed'
+                            }
+                        }
+                        : event
+                )
+            );
+            setSelectedEvent(prev =>
+                prev && prev.id === data.sessionId
+                    ? {
+                        ...prev,
+                        status: data.status,
+                        adminActions: {
+                            ...prev.adminActions,
+                            canRecordAttendance: data.status === 'completed'
+                        }
+                    }
+                    : prev
+            );
+            setActionError(null);
+        } else if ('error' in data && data.error) {
+            setActionError(data.error);
+        }
+    }, [fetcher.data]);
+
+    useEffect(() => {
+        if (!selectedEvent) {
+            setActionError(null);
+        }
+    }, [selectedEvent]);
+
+    const handleCompleteSession = (sessionId?: string) => {
+        if (!sessionId) return;
+        fetcher.submit(
+            { intent: 'complete_session', sessionId, csrf: csrfToken },
+            { method: 'post' }
+        );
+    };
 
     // Generate birthday events on the client side to avoid timezone serialization issues
     // Filter students with non-null birth_date before passing to birthdaysToCalendarEvents
@@ -670,15 +776,25 @@ export default function AdminCalendar() {
 
                             <div>
                                 <h4 className="font-semibold mb-2">Quick Actions</h4>
-                                <div className="grid grid-cols-2 gap-2">
+                                <div className="flex flex-wrap gap-2">
                                     <Button asChild size="sm" variant="default">
                                         <Link to={`/admin/attendance/record?session=${selectedEvent.sessionId}&date=${selectedEvent.date}`}>
                                             {selectedEvent.attendanceRecorded ? '✓ View' : 'Record'} Attendance
                                         </Link>
                                     </Button>
+                                    {selectedEvent.status === 'scheduled' && (
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            disabled={isCompletingSession}
+                                            onClick={() => handleCompleteSession(selectedEvent.sessionId)}
+                                        >
+                                            {isCompletingSession ? 'Closing...' : 'Close Session'}
+                                        </Button>
+                                    )}
                                     <Button asChild size="sm" variant="outline">
                                         <Link to={"/admin/classes/" + selectedEvent.classId + "/sessions"}>
-                                            {selectedEvent.status === 'scheduled' ? 'Complete' : 'Manage'} Session
+                                            Manage Sessions
                                         </Link>
                                     </Button>
                                     <Button asChild size="sm" variant="outline">
@@ -688,6 +804,9 @@ export default function AdminCalendar() {
                                         <Link to={"/admin/sessions/" + selectedEvent.sessionId}>Full Details</Link>
                                     </Button>
                                 </div>
+                                {actionError && (
+                                    <p className="text-sm text-destructive mt-2">{actionError}</p>
+                                )}
                             </div>
                         </div>
                     )}

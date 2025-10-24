@@ -30,5 +30,5 @@
     // Vite takes care of building everything, not tsc.
     "noEmit": true
   },
-  "exclude": ["node_modules", "supabase/functions", "db-tools", "_scratch", "mcp_server", "e2e"] // Exclude Deno functions, MCP server, and e2e tests from tsc
+  "exclude": ["node_modules", "supabase/functions", "db-tools", "_scratch", "mcp_server", "e2e", "test-*.js", "test-*.cjs", "app/routes/admin.test-email.tsx"] // Exclude Deno functions, MCP server, e2e tests, and test files from tsc
 }

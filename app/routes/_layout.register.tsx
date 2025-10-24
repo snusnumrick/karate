@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {Form, isRouteErrorResponse, Link, Outlet, useActionData, useLoaderData, useLocation, useRouteError, useSearchParams} from "@remix-run/react";
 import type {ActionFunctionArgs, LoaderFunctionArgs} from "@remix-run/node";
 import {json, redirect} from "@remix-run/node";
@@ -83,7 +83,7 @@ export async function loader({request}: LoaderFunctionArgs) {
             start_date: event.start_date,
             location: event.location
           };
-          context.requiresFullAddress = false; // Events don't require full address
+          context.requiresFullAddress = true; // Events now require full address
         }
       } catch (error) {
         console.error('Failed to fetch event details:', error);
@@ -143,6 +143,9 @@ export async function action({request}: ActionFunctionArgs) {
         portalPassword,
         contact1CellPhone,
         postalCode,
+        address,
+        city,
+        province,
     };
 
     // Validate required fields
@@ -157,20 +160,6 @@ export async function action({request}: ActionFunctionArgs) {
         errors.portalPassword = 'Password must be at least 8 characters';
     }
 
-    // Conditional address validation: if any address field is provided, all must be provided
-    const hasAnyAddressField = !!(address || city || province);
-    if (hasAnyAddressField) {
-        if (!address || address.trim() === '') {
-            errors.address = 'Address is required if providing address details';
-        }
-        if (!city || city.trim() === '') {
-            errors.city = 'City is required if providing address details';
-        }
-        if (!province || province.trim() === '') {
-            errors.province = 'Province is required if providing address details';
-        }
-    }
-
     if (Object.keys(errors).length > 0) {
         return json({ errors, formData: Object.fromEntries(formData) }, { status: 400 });
     }
@@ -181,6 +170,7 @@ export async function action({request}: ActionFunctionArgs) {
         // Construct the redirect URL based on the request origin
         const url = new URL(request.url);
         const emailRedirectTo = `${url.origin}/auth/callback`;
+        console.log('Email redirect URL:', emailRedirectTo); // Debug log
 
         // Get marketing email preference from form
         const receiveMarketing = formData.has('marketingEmails');
@@ -275,6 +265,16 @@ export default function RegisterPage() {
     // State for password strength indicator
     const [password, setPassword] = useState('');
 
+    // Ref for first name field to enable auto-focus
+    const firstNameRef = useRef<HTMLInputElement>(null);
+
+    // Focus on first name field when component mounts
+    useEffect(() => {
+        if (isBaseRegisterRoute && firstNameRef.current) {
+            firstNameRef.current.focus();
+        }
+    }, [isBaseRegisterRoute]);
+
     return (
         <div className="min-h-screen page-background-styles py-12 text-foreground">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -344,6 +344,9 @@ export default function RegisterPage() {
 
                             {/* Core Account Section - Always Visible */}
                             <div className="space-y-6">
+                                <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">
+                                    Your Information
+                                </h2>
                                 {/* Guardian Name */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
@@ -355,6 +358,7 @@ export default function RegisterPage() {
                                             id="contact1FirstName"
                                             name="contact1FirstName"
                                             required
+                                            ref={firstNameRef}
                                             data-testid="first-name-input"
                                             className={`input-custom-styles ${errors?.contact1FirstName ? 'border-red-500' : ''}`}
                                             tabIndex={1}
@@ -383,120 +387,102 @@ export default function RegisterPage() {
                                     </div>
                                 </div>
 
-                                {/* Email */}
-                                <div>
-                                    <Label htmlFor="contact1Email" className="block text-sm font-medium mb-1">
-                                        Email<span className="text-red-500">*</span>
-                                    </Label>
-                                    <Input
-                                        type="email"
-                                        id="contact1Email"
-                                        name="contact1Email"
-                                        required
-                                        autoComplete="username"
-                                        data-testid="email-input"
-                                        className={`input-custom-styles ${errors?.contact1Email ? 'border-red-500' : ''}`}
-                                        tabIndex={3}
-                                    />
-                                    {errors?.contact1Email && (
-                                        <p className="text-red-500 text-sm mt-1">{errors.contact1Email}</p>
-                                    )}
-                                    <p className="text-xs text-muted-foreground mt-1">(Emails are kept confidential)</p>
-                                </div>
-
-                                {/* Password with Strength Indicator */}
-                                <div>
-                                    <Label htmlFor="portalPassword" className="block text-sm font-medium mb-1">
-                                        Password<span className="text-red-500">*</span>
-                                    </Label>
-                                    <Input
-                                        type="password"
-                                        id="portalPassword"
-                                        name="portalPassword"
-                                        required
-                                        minLength={8}
-                                        autoComplete="new-password"
-                                        value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
-                                        data-testid="password-input"
-                                        className={`input-custom-styles ${errors?.portalPassword ? 'border-red-500' : ''}`}
-                                        tabIndex={4}
-                                    />
-                                    {errors?.portalPassword && (
-                                        <p className="text-red-500 text-sm mt-1">{errors.portalPassword}</p>
-                                    )}
-                                    <p className="text-xs text-muted-foreground mt-1">Minimum 8 characters</p>
-                                    {!isEventContext && <PasswordStrengthIndicator password={password} />}
-                                </div>
-
-                                {/* Phone and Postal Code */}
+                                {/* Email and Password */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
-                                        <Label htmlFor="contact1CellPhone" className="block text-sm font-medium mb-1">
-                                            Phone Number<span className="text-red-500">*</span>
+                                        <Label htmlFor="contact1Email" className="block text-sm font-medium mb-1">
+                                            Email<span className="text-red-500">*</span>
                                         </Label>
                                         <Input
-                                            type="tel"
-                                            id="contact1CellPhone"
-                                            name="contact1CellPhone"
+                                            type="email"
+                                            id="contact1Email"
+                                            name="contact1Email"
                                             required
-                                            autoComplete="mobile tel"
-                                            data-testid="phone-input"
-                                            className={`input-custom-styles ${errors?.contact1CellPhone ? 'border-red-500' : ''}`}
-                                            tabIndex={5}
+                                            autoComplete="username"
+                                            data-testid="email-input"
+                                            className={`input-custom-styles ${errors?.contact1Email ? 'border-red-500' : ''}`}
+                                            tabIndex={3}
                                         />
-                                        {errors?.contact1CellPhone && (
-                                            <p className="text-red-500 text-sm mt-1">{errors.contact1CellPhone}</p>
+                                        {errors?.contact1Email && (
+                                            <p className="text-red-500 text-sm mt-1">{errors.contact1Email}</p>
                                         )}
+                                        <p className="text-xs text-muted-foreground mt-1">(Emails are kept confidential)</p>
                                     </div>
 
                                     <div>
-                                        <Label htmlFor="postalCode" className="text-sm font-medium mb-1">
-                                            Postal Code<span className="text-red-500">*</span>
+                                        <Label htmlFor="portalPassword" className="block text-sm font-medium mb-1">
+                                            Password<span className="text-red-500">*</span>
                                         </Label>
                                         <Input
-                                            type="text"
-                                            id="postalCode"
-                                            name="postalCode"
+                                            type="password"
+                                            id="portalPassword"
+                                            name="portalPassword"
                                             required
-                                            data-testid="postal-code-input"
-                                            className={`input-custom-styles ${errors?.postalCode ? 'border-red-500' : ''}`}
-                                            tabIndex={6}
+                                            minLength={8}
+                                            autoComplete="new-password"
+                                            value={password}
+                                            onChange={(e) => setPassword(e.target.value)}
+                                            data-testid="password-input"
+                                            className={`input-custom-styles ${errors?.portalPassword ? 'border-red-500' : ''}`}
+                                            tabIndex={4}
                                         />
-                                        {errors?.postalCode && (
-                                            <p className="text-red-500 text-sm mt-1">{errors.postalCode}</p>
+                                        {errors?.portalPassword && (
+                                            <p className="text-red-500 text-sm mt-1">{errors.portalPassword}</p>
                                         )}
+                                        <p className="text-xs text-muted-foreground mt-1">Minimum 8 characters</p>
                                     </div>
+                                </div>
+
+                                {/* Password Strength Indicator - Full Width */}
+                                {!isEventContext && <PasswordStrengthIndicator password={password} />}
+
+                                {/* Phone Number */}
+                                <div>
+                                    <Label htmlFor="contact1CellPhone" className="block text-sm font-medium mb-1">
+                                        Phone Number<span className="text-red-500">*</span>
+                                    </Label>
+                                    <Input
+                                        type="tel"
+                                        id="contact1CellPhone"
+                                        name="contact1CellPhone"
+                                        required
+                                        autoComplete="mobile tel"
+                                        data-testid="phone-input"
+                                        className={`input-custom-styles ${errors?.contact1CellPhone ? 'border-red-500' : ''}`}
+                                        tabIndex={5}
+                                    />
+                                    {errors?.contact1CellPhone && (
+                                        <p className="text-red-500 text-sm mt-1">{errors.contact1CellPhone}</p>
+                                    )}
                                 </div>
                             </div>
 
-                            {/* Collapsible Sections for General Registration Only */}
+                            {/* Hidden family name field - auto-populated from last name */}
+                            <input type="hidden" name="familyName" id="familyName" />
+
+                            {/* Address Details Section - Required for All Registrations */}
+                            <AddressSection
+                                fieldErrors={errors || undefined}
+                                isCollapsible={false}
+                                showPrimaryPhone={false}
+                                showPostalCode={true}
+                                startTabIndex={6}
+                                className="mt-6"
+                                sectionTitle="Address Information"
+                            />
+
+                            {/* Optional Information Section - Only for General Registration */}
                             {!isEventContext && (
-                                <>
-                                    {/* Hidden family name field - auto-populated from last name */}
-                                    <input type="hidden" name="familyName" id="familyName" />
-
-                                    {/* Address Details Section */}
-                                    <AddressSection
-                                        fieldErrors={errors || undefined}
-                                        isCollapsible={true}
-                                        showPrimaryPhone={true}
-                                        startTabIndex={7}
-                                        className="mt-6"
-                                    />
-
-                                    {/* Optional Information Section */}
-                                    <OptionalInfoSection
-                                        fieldErrors={errors || undefined}
-                                        isCollapsible={true}
-                                        showReferral={true}
-                                        showGuardianInfo={true}
-                                        showEmergencyContact={true}
-                                        showHealthInfo={true}
-                                        startTabIndex={11}
-                                        className="mt-6"
-                                    />
-                                </>
+                                <OptionalInfoSection
+                                    fieldErrors={errors || undefined}
+                                    isCollapsible={true}
+                                    showReferral={true}
+                                    showGuardianInfo={true}
+                                    showEmergencyContact={true}
+                                    showHealthInfo={true}
+                                    startTabIndex={11}
+                                    className="mt-6"
+                                />
                             )}
 
                             {/* Marketing Emails Checkbox */}

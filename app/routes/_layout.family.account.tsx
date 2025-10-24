@@ -561,7 +561,7 @@ export default function AccountSettingsPage() {
                                         render={({field}) => (
                                             <FormItem className="md:col-span-2">
                                                 <FormLabel>Personal Health Number / Info</FormLabel>
-                                                {/* Removed duplicated FormItem and FormLabel */}
+                                                 Removed duplicated FormItem and FormLabel
                                                 <FormControl><Textarea {...field}
                                                                        value={getDefaultValue(field.value)} className="input-custom-styles" tabIndex={9}/></FormControl>
                                                 <FormMessage className="dark:text-red-400"/>

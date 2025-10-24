@@ -16,16 +16,20 @@ type AddressSectionProps = {
   };
   isCollapsible?: boolean;
   showPrimaryPhone?: boolean;
+  showPostalCode?: boolean;
   startTabIndex?: number;
   className?: string;
+  sectionTitle?: string;
 };
 
 export function AddressSection({
   fieldErrors,
   isCollapsible = false,
   showPrimaryPhone = true,
+  showPostalCode = false,
   startTabIndex = 4,
-  className = ""
+  className = "",
+  sectionTitle = "Where Do They Live?"
 }: AddressSectionProps) {
   const content = (
     <>
@@ -53,7 +57,7 @@ export function AddressSection({
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className={`grid grid-cols-1 gap-4 ${showPostalCode ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
           <div>
             <Label htmlFor="city">
               City {!isCollapsible && <span className="text-red-500">*</span>}
@@ -91,6 +95,25 @@ export function AddressSection({
               <p className="text-red-500 text-sm mt-1">{fieldErrors.province}</p>
             )}
           </div>
+
+          {showPostalCode && (
+            <div>
+              <Label htmlFor="postalCode">
+                Postal Code {!isCollapsible && <span className="text-red-500">*</span>}
+              </Label>
+              <Input
+                id="postalCode"
+                name="postalCode"
+                autoComplete="postal-code"
+                className={`input-custom-styles ${fieldErrors?.postalCode ? 'border-red-500' : ''}`}
+                required={!isCollapsible}
+                tabIndex={startTabIndex + 3}
+              />
+              {fieldErrors?.postalCode && (
+                <p className="text-red-500 text-sm mt-1">{fieldErrors.postalCode}</p>
+              )}
+            </div>
+          )}
         </div>
 
         {showPrimaryPhone && (
@@ -104,7 +127,7 @@ export function AddressSection({
               type="tel"
               autoComplete="tel"
               className={`input-custom-styles ${fieldErrors?.primaryPhone ? 'border-red-500' : ''}`}
-              tabIndex={startTabIndex + 3}
+              tabIndex={startTabIndex + (showPostalCode ? 4 : 3)}
             />
             {fieldErrors?.primaryPhone && (
               <p className="text-red-500 text-sm mt-1">{fieldErrors.primaryPhone}</p>
@@ -140,11 +163,9 @@ export function AddressSection({
   return (
     <section className={className}>
       <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">
-        Where Do They Live?
+        {sectionTitle}
       </h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {content}
-      </div>
+      {content}
     </section>
   );
 }

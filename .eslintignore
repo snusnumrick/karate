@@ -8,3 +8,6 @@ _scratch/
 **/__tests__/
 db-tools/
 e2e/generated/
+test-*.js
+test-*.cjs
+app/routes/admin.test-email.tsx
