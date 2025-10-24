@@ -672,7 +672,7 @@ export default function AdminCalendar() {
                                 <h4 className="font-semibold mb-2">Quick Actions</h4>
                                 <div className="grid grid-cols-2 gap-2">
                                     <Button asChild size="sm" variant="default">
-                                        <Link to={"/admin/attendance/record?session=" + selectedEvent.sessionId}>
+                                        <Link to={`/admin/attendance/record?session=${selectedEvent.sessionId}&date=${selectedEvent.date}`}>
                                             {selectedEvent.attendanceRecorded ? '✓ View' : 'Record'} Attendance
                                         </Link>
                                     </Button>
