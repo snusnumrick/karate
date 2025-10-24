@@ -46,7 +46,11 @@
       "mcp__TestSprite__testsprite_generate_code_and_execute",
       "Read(//Users/antont/.npm/_npx/8ddf6bea01b2519d/node_modules/@testsprite/testsprite-mcp/dist/assets/**)",
       "mcp__TestSprite__testsprite_rerun_tests",
-      "Bash(wait)"
+      "Bash(wait)",
+      "Bash(for file in /Users/antont/WebstormProjects/karate/supabase/migrations/*.sql)",
+      "Bash(do if grep -q \"TABLE waivers\" \"$file\")",
+      "Bash(fi)",
+      "Bash(done)"
     ],
     "deny": [],
     "ask": []
