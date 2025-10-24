@@ -11,15 +11,11 @@ import {Button} from "~/components/ui/button";
 import {Input} from "~/components/ui/input";
 import {Label} from "~/components/ui/label";
 import {Checkbox} from "~/components/ui/checkbox";
-import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "~/components/ui/select";
-import { Textarea } from "~/components/ui/textarea";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "~/components/ui/accordion";
-import { Badge } from "~/components/ui/badge";
 import { siteConfig } from "~/config/site";
 import { safeRedirect } from "~/utils/redirect";
 import { PasswordStrengthIndicator } from "~/components/PasswordStrengthIndicator";
-import { MapPin, Info } from "lucide-react";
+import { AddressSection, OptionalInfoSection } from "~/components/family-registration";
 
 type ActionData = {
   errors?: {
@@ -476,220 +472,31 @@ export default function RegisterPage() {
 
                             {/* Collapsible Sections for General Registration Only */}
                             {!isEventContext && (
-                                <Accordion type="multiple" className="mt-6">
+                                <>
+                                    {/* Hidden family name field - auto-populated from last name */}
+                                    <input type="hidden" name="familyName" id="familyName" />
+
                                     {/* Address Details Section */}
-                                    <AccordionItem value="address">
-                                        <AccordionTrigger className="hover:no-underline">
-                                            <div className="flex items-center gap-2">
-                                                <MapPin className="h-5 w-5 text-green-600" />
-                                                <span className="font-semibold">Address Details</span>
-                                                <Badge variant="outline" className="text-xs">Optional - Add now or later</Badge>
-                                            </div>
-                                        </AccordionTrigger>
-                                        <AccordionContent>
-                                            <div className="space-y-4 pt-4">
-                                                <p className="text-sm text-muted-foreground mb-4">
-                                                    You can add this now or complete it later when enrolling in classes.
-                                                </p>
-
-                                                {/* Hidden family name field - auto-populated from last name */}
-                                                <input type="hidden" name="familyName" id="familyName" />
-
-                                                <div>
-                                                    <Label htmlFor="address" className="text-sm font-medium mb-1">
-                                                        Home Address
-                                                    </Label>
-                                                    <Input
-                                                        type="text"
-                                                        id="address"
-                                                        name="address"
-                                                        className={`input-custom-styles ${errors?.address ? 'border-red-500' : ''}`}
-                                                    />
-                                                    {errors?.address && (
-                                                        <p className="text-red-500 text-sm mt-1">{errors.address}</p>
-                                                    )}
-                                                </div>
-
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    <div>
-                                                        <Label htmlFor="city" className="text-sm font-medium mb-1">
-                                                            City
-                                                        </Label>
-                                                        <Input
-                                                            type="text"
-                                                            id="city"
-                                                            name="city"
-                                                            className={`input-custom-styles ${errors?.city ? 'border-red-500' : ''}`}
-                                                        />
-                                                        {errors?.city && (
-                                                            <p className="text-red-500 text-sm mt-1">{errors.city}</p>
-                                                        )}
-                                                    </div>
-
-                                                    <div>
-                                                        <Label htmlFor="province" className="text-sm font-medium mb-1">
-                                                            Province
-                                                        </Label>
-                                                        <Select name="province">
-                                                            <SelectTrigger id="province" className="input-custom-styles">
-                                                                <SelectValue placeholder="Select province" />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                {siteConfig.provinces.map((prov) => (
-                                                                    <SelectItem key={prov.value} value={prov.value}>
-                                                                        {prov.label}
-                                                                    </SelectItem>
-                                                                ))}
-                                                            </SelectContent>
-                                                        </Select>
-                                                        {errors?.province && (
-                                                            <p className="text-red-500 text-sm mt-1">{errors.province}</p>
-                                                        )}
-                                                    </div>
-                                                </div>
-
-                                                <div>
-                                                    <Label htmlFor="primaryPhone" className="text-sm font-medium mb-1">
-                                                        Primary/Home Phone
-                                                    </Label>
-                                                    <Input
-                                                        type="tel"
-                                                        id="primaryPhone"
-                                                        name="primaryPhone"
-                                                        autoComplete="tel"
-                                                        className={`input-custom-styles ${errors?.primaryPhone ? 'border-red-500' : ''}`}
-                                                    />
-                                                    {errors?.primaryPhone && (
-                                                        <p className="text-red-500 text-sm mt-1">{errors.primaryPhone}</p>
-                                                    )}
-                                                    <p className="text-xs text-muted-foreground mt-1">Optional - if different from cell phone</p>
-                                                </div>
-                                            </div>
-                                        </AccordionContent>
-                                    </AccordionItem>
+                                    <AddressSection
+                                        fieldErrors={errors || undefined}
+                                        isCollapsible={true}
+                                        showPrimaryPhone={true}
+                                        startTabIndex={7}
+                                        className="mt-6"
+                                    />
 
                                     {/* Optional Information Section */}
-                                    <AccordionItem value="optional">
-                                        <AccordionTrigger className="hover:no-underline">
-                                            <div className="flex items-center gap-2">
-                                                <Info className="h-5 w-5 text-blue-600" />
-                                                <span className="font-semibold">Optional Information</span>
-                                                <Badge variant="outline" className="text-xs">Help us serve you better</Badge>
-                                            </div>
-                                        </AccordionTrigger>
-                                        <AccordionContent>
-                                            <div className="space-y-6 pt-4">
-                                                <p className="text-sm text-muted-foreground mb-4">
-                                                    This information helps us personalize your experience but can be added later.
-                                                </p>
-
-                                                {/* Referral Information */}
-                                                <div>
-                                                    <h3 className="text-base font-medium mb-3">Referral Information</h3>
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                        <div>
-                                                            <Label htmlFor="referralSource" className="text-sm font-medium mb-1">
-                                                                How did you hear about us?
-                                                            </Label>
-                                                            <Select name="referralSource">
-                                                                <SelectTrigger id="referralSource" className="input-custom-styles">
-                                                                    <SelectValue placeholder="Select one" />
-                                                                </SelectTrigger>
-                                                                <SelectContent>
-                                                                    <SelectItem value="friend">Friend</SelectItem>
-                                                                    <SelectItem value="social">Social Media</SelectItem>
-                                                                    <SelectItem value="search">Search Engine</SelectItem>
-                                                                    <SelectItem value="flyer">Flyer</SelectItem>
-                                                                    <SelectItem value="event">Event</SelectItem>
-                                                                    <SelectItem value="other">Other</SelectItem>
-                                                                </SelectContent>
-                                                            </Select>
-                                                        </div>
-
-                                                        <div>
-                                                            <Label htmlFor="referralName" className="text-sm font-medium mb-1">
-                                                                Referral Name (if applicable)
-                                                            </Label>
-                                                            <Input
-                                                                type="text"
-                                                                id="referralName"
-                                                                name="referralName"
-                                                                className="input-custom-styles"
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                {/* Guardian Type */}
-                                                <div>
-                                                    <h3 className="text-base font-medium mb-3">Guardian Information</h3>
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                        <div>
-                                                            <Label htmlFor="contact1Type" className="text-sm font-medium mb-1">
-                                                                Relationship
-                                                            </Label>
-                                                            <Select name="contact1Type">
-                                                                <SelectTrigger id="contact1Type" className="input-custom-styles">
-                                                                    <SelectValue placeholder="Select relationship" />
-                                                                </SelectTrigger>
-                                                                <SelectContent>
-                                                                    <SelectItem value="Mother">Mother</SelectItem>
-                                                                    <SelectItem value="Father">Father</SelectItem>
-                                                                    <SelectItem value="Guardian">Guardian</SelectItem>
-                                                                    <SelectItem value="Other">Other</SelectItem>
-                                                                </SelectContent>
-                                                            </Select>
-                                                        </div>
-
-                                                        <div>
-                                                            <Label htmlFor="contact1HomePhone" className="text-sm font-medium mb-1">
-                                                                Home Phone (optional)
-                                                            </Label>
-                                                            <Input
-                                                                type="tel"
-                                                                id="contact1HomePhone"
-                                                                name="contact1HomePhone"
-                                                                autoComplete="home tel"
-                                                                className="input-custom-styles"
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                {/* Emergency Contact and Health Info */}
-                                                <div>
-                                                    <h3 className="text-base font-medium mb-3">Additional Details</h3>
-                                                    <div className="space-y-4">
-                                                        <div>
-                                                            <Label htmlFor="emergencyContact" className="text-sm font-medium mb-1">
-                                                                Emergency Contact Info
-                                                            </Label>
-                                                            <Textarea
-                                                                id="emergencyContact"
-                                                                name="emergencyContact"
-                                                                rows={3}
-                                                                className="input-custom-styles"
-                                                                placeholder="Name and phone number of emergency contact"
-                                                            />
-                                                        </div>
-
-                                                        <div>
-                                                            <Label htmlFor="healthNumber" className="text-sm font-medium mb-1">
-                                                                Personal Health Number
-                                                            </Label>
-                                                            <Input
-                                                                type="text"
-                                                                id="healthNumber"
-                                                                name="healthNumber"
-                                                                className="input-custom-styles"
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </AccordionContent>
-                                    </AccordionItem>
-                                </Accordion>
+                                    <OptionalInfoSection
+                                        fieldErrors={errors || undefined}
+                                        isCollapsible={true}
+                                        showReferral={true}
+                                        showGuardianInfo={true}
+                                        showEmergencyContact={true}
+                                        showHealthInfo={true}
+                                        startTabIndex={11}
+                                        className="mt-6"
+                                    />
+                                </>
                             )}
 
                             {/* Marketing Emails Checkbox */}

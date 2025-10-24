@@ -9,11 +9,15 @@ import {useRef, useEffect} from "react";
 import {isValid, parse} from 'date-fns'; // Import date-fns functions
 import {Input} from "~/components/ui/input";
 import {Label} from "~/components/ui/label";
-import {Textarea} from "~/components/ui/textarea"; // Import Textarea
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "~/components/ui/select";
 import { siteConfig } from "~/config/site"; // Import siteConfig
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
+import {
+    FamilyBasicsSection,
+    GuardianInfoSection,
+    OptionalInfoSection
+} from "~/components/family-registration";
 
 
 // Define potential action data structure
@@ -68,9 +72,11 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
     if (!guardian1FirstName) fieldErrors.guardian1FirstName = "Guardian 1 first name is required.";
     if (!guardian1LastName) fieldErrors.guardian1LastName = "Guardian 1 last name is required.";
     if (!guardian1Relationship) fieldErrors.guardian1Relationship = "Guardian 1 relationship is required.";
-    // Guardian 1 home phone is now optional
+    // Guardian 1 home phone is optional
     if (!guardian1CellPhone) fieldErrors.guardian1CellPhone = "Guardian 1 cell phone is required.";
     if (!guardian1Email) fieldErrors.guardian1Email = "Guardian 1 email is required.";
+
+    // Referral and emergency contact are now optional (no validation needed)
 
     // Validate email confirmation match
     if (guardian1Email && familyEmail && guardian1Email !== familyEmail) {
@@ -135,52 +141,92 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
 
         if (guardian1Error) throw new Error(`Failed to create guardian 1: ${guardian1Error.message}`);
 
-        // 3. Create Supabase Auth User for Guardian 1 (for portal access)
-        console.log(`[Admin Family Creation] Creating auth user for: ${guardian1Email}`);
+        // 3. Check if user already exists before creating auth user
+        console.log(`[Admin Family Creation] Checking if user exists for email: ${guardian1Email}`);
 
-        // Generate a random secure password (user will set their own via password reset)
-        const tempPassword = crypto.randomUUID() + crypto.randomUUID(); // Strong random password
+        const { data: { users }, error: listError } = await supabaseAdmin.auth.admin.listUsers();
 
-        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-            email: guardian1Email,
-            password: tempPassword,
-            email_confirm: false, // Will be confirmed when they set their password
-            user_metadata: {
-                first_name: guardian1FirstName,
-                last_name: guardian1LastName,
-                created_by_admin: true,
+        if (listError) {
+            console.error(`[Admin Family Creation] Failed to list users:`, listError.message);
+            throw new Error(`Failed to check existing users: ${listError.message}`);
+        }
+
+        const existingUser = users.find(u => u.email === guardian1Email);
+        let userId: string;
+
+        if (existingUser) {
+            console.log(`[Admin Family Creation] Found existing user ${existingUser.id} for email: ${guardian1Email}`);
+
+            // Check if this user already has a profile/family
+            const { data: existingProfile } = await supabaseAdmin
+                .from('profiles')
+                .select('id, family_id')
+                .eq('id', existingUser.id)
+                .maybeSingle();
+
+            if (existingProfile && existingProfile.family_id) {
+                console.error(`[Admin Family Creation] User ${existingUser.id} already has a family: ${existingProfile.family_id}`);
+                return json({
+                    error: `The email ${guardian1Email} is already registered and linked to a family. Please use a different email or contact support.`,
+                    fieldErrors: {
+                        guardian1Email: 'This email is already registered in the system'
+                    }
+                }, { status: 400 });
             }
-        });
 
-        if (authError) {
-            console.error(`[Admin Family Creation] Failed to create auth user for ${guardian1Email}:`, authError.message);
-            throw new Error(`Failed to create portal login for guardian: ${authError.message}`);
+            // User exists but has no family - we can reuse this user
+            console.log(`[Admin Family Creation] User ${existingUser.id} exists but has no family, reusing user account`);
+            userId = existingUser.id;
+        } else {
+            // User doesn't exist, create new auth user
+            console.log(`[Admin Family Creation] Creating new auth user for: ${guardian1Email}`);
+
+            // Generate a random secure password (user will set their own via password reset)
+            const tempPassword = crypto.randomUUID() + crypto.randomUUID(); // Strong random password
+
+            const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+                email: guardian1Email,
+                password: tempPassword,
+                email_confirm: false, // Will be confirmed when they set their password
+                user_metadata: {
+                    first_name: guardian1FirstName,
+                    last_name: guardian1LastName,
+                    created_by_admin: true,
+                }
+            });
+
+            if (authError) {
+                console.error(`[Admin Family Creation] Failed to create auth user for ${guardian1Email}:`, authError.message);
+                throw new Error(`Failed to create portal login for guardian: ${authError.message}`);
+            }
+
+            if (!authData.user) {
+                throw new Error('Auth user creation succeeded but no user object returned');
+            }
+
+            userId = authData.user.id;
+            console.log(`[Admin Family Creation] Successfully created auth user ${userId} for: ${guardian1Email}`);
         }
 
-        if (!authData.user) {
-            throw new Error('Auth user creation succeeded but no user object returned');
-        }
-
-        const userId = authData.user.id;
-        console.log(`[Admin Family Creation] Successfully created auth user ${userId} for: ${guardian1Email}`);
-
-        // 4. Create Profile Record (Link Auth User to Family)
-        console.log(`[Admin Family Creation] Creating profile record for User ID: ${userId}, Family ID: ${familyId}`);
+        // 4. Create or Update Profile Record (Link Auth User to Family)
+        console.log(`[Admin Family Creation] Creating/updating profile record for User ID: ${userId}, Family ID: ${familyId}`);
 
         const { error: profileError } = await supabaseAdmin
             .from('profiles')
-            .insert({
+            .upsert({
                 id: userId,
                 family_id: familyId,
                 email: guardian1Email,
                 role: 'user', // Default role for family portal access
+            }, {
+                onConflict: 'id'
             });
 
         if (profileError) {
-            console.error(`[Admin Family Creation] Failed to create profile for user ${userId}:`, profileError.message);
+            console.error(`[Admin Family Creation] Failed to create/update profile for user ${userId}:`, profileError.message);
             throw new Error(`Failed to link user to family: ${profileError.message}`);
         }
-        console.log(`[Admin Family Creation] Successfully created profile record for User ID: ${userId}`);
+        console.log(`[Admin Family Creation] Successfully created/updated profile record for User ID: ${userId}`);
 
         // 5. Send Password Reset Email (Acts as Welcome Email)
         console.log(`[Admin Family Creation] Sending password setup email to: ${guardian1Email}`);
@@ -365,76 +411,33 @@ export default function AdminNewFamilyPage() {
             <Form method="post" className="space-y-8 bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
                 <AuthenticityTokenInput />
 
-                {/* Referral Information Section */}
-                <section>
-                    <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">Referral Information</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <Label htmlFor="referralSource">How did they hear about us? <span className="text-red-500">*</span></Label>
-                            <Select name="referralSource" required>
-                                <SelectTrigger id="referralSource" className="input-custom-styles" tabIndex={1}>
-                                    <SelectValue placeholder="Select an option"/>
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="friend">Friend</SelectItem>
-                                    <SelectItem value="social">Social Media</SelectItem>
-                                    <SelectItem value="search">Search Engine</SelectItem>
-                                    <SelectItem value="flyer">Flyer</SelectItem>
-                                    <SelectItem value="event">Event</SelectItem>
-                                    <SelectItem value="other">Other</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            {actionData?.fieldErrors?.referralSource &&
-                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.referralSource}</p>}
-                        </div>
-                        <div>
-                            <Label htmlFor="referralName">Referral Name</Label>
-                            <Input id="referralName" name="referralName" className="input-custom-styles" tabIndex={2}/>
-                            {actionData?.fieldErrors?.referralName &&
-                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.referralName}</p>}
-                        </div>
-                    </div>
-                </section>
-
                 {/* Family Information Section */}
-                <section>
-                    <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">Family Information</h2>
-                    <div>
-                        <Label htmlFor="familyName">Family Last Name <span className="text-red-500">*</span></Label>
-                        <Input 
-                                id="familyName" 
-                                name="familyName" 
-                                autoComplete="family-name" 
-                                className="input-custom-styles"
-                                required 
-                                tabIndex={3}
-                                ref={familyNameRef}
-                            />
-                        {actionData?.fieldErrors?.familyName &&
-                            <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.familyName}</p>}
-                    </div>
-                </section>
+                <FamilyBasicsSection
+                    ref={familyNameRef}
+                    fieldErrors={actionData?.fieldErrors}
+                    tabIndex={1}
+                />
 
-                {/* Address Information Section */}
+                {/* Address Information Section - Now includes postal code and primary phone */}
                 <section>
                     <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">Where Do They Live?</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="md:col-span-2">
                             <Label htmlFor="address">Home Address <span className="text-red-500">*</span></Label>
-                            <Input id="address" name="address" autoComplete="street-address" className="input-custom-styles" required tabIndex={4}/>
+                            <Input id="address" name="address" autoComplete="street-address" className="input-custom-styles" required tabIndex={2}/>
                             {actionData?.fieldErrors?.address &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.address}</p>}
                         </div>
                         <div>
                             <Label htmlFor="city">City <span className="text-red-500">*</span></Label>
-                            <Input id="city" name="city" autoComplete="address-level2" className="input-custom-styles" required tabIndex={5}/>
+                            <Input id="city" name="city" autoComplete="address-level2" className="input-custom-styles" required tabIndex={3}/>
                             {actionData?.fieldErrors?.city &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.city}</p>}
                         </div>
                         <div>
                             <Label htmlFor="province">Province <span className="text-red-500">*</span></Label>
                             <Select name="province" required>
-                                <SelectTrigger id="province" className="input-custom-styles" tabIndex={6}>
+                                <SelectTrigger id="province" className="input-custom-styles" tabIndex={4}>
                                     <SelectValue placeholder="Select province"/>
                                 </SelectTrigger>
                                 <SelectContent>
@@ -450,106 +453,38 @@ export default function AdminNewFamilyPage() {
                         </div>
                         <div>
                             <Label htmlFor="postalCode">Postal Code <span className="text-red-500">*</span></Label>
-                            <Input id="postalCode" name="postalCode" autoComplete="postal-code" className="input-custom-styles" required tabIndex={7}/>
+                            <Input id="postalCode" name="postalCode" autoComplete="postal-code" className="input-custom-styles" required tabIndex={5}/>
                             {actionData?.fieldErrors?.postalCode &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.postalCode}</p>}
                         </div>
                         <div>
                             <Label htmlFor="primaryPhone">Primary Phone <span className="text-red-500">*</span></Label>
-                            <Input id="primaryPhone" name="primaryPhone" type="tel" autoComplete="tel" className="input-custom-styles" required tabIndex={8}/>
+                            <Input id="primaryPhone" name="primaryPhone" type="tel" autoComplete="tel" className="input-custom-styles" required tabIndex={6}/>
                             {actionData?.fieldErrors?.primaryPhone &&
                                 <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.primaryPhone}</p>}
                         </div>
                     </div>
                 </section>
 
-                {/* Additional Information Section */}
-                <section>
-                    <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">Additional Info</h2>
-                    <div className="space-y-6">
-                        <div>
-                            <Label htmlFor="emergencyContact">Emergency Contact Info <span className="text-red-500">*</span></Label>
-                            <Textarea id="emergencyContact" name="emergencyContact" className="input-custom-styles" required rows={3} tabIndex={9}/>
-                            {actionData?.fieldErrors?.emergencyContact &&
-                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.emergencyContact}</p>}
-                        </div>
-                        <div>
-                            <Label htmlFor="healthInfo">Personal Health Number</Label>
-                            <Textarea id="healthInfo" name="healthInfo" className="input-custom-styles" rows={3} tabIndex={10}/>
-                            {actionData?.fieldErrors?.healthInfo &&
-                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.healthInfo}</p>}
-                        </div>
-                    </div>
-                </section>
-
                 {/* Primary Guardian Section */}
-                <section>
-                    <h2 className="text-xl font-semibold text-foreground mb-4 pb-2 border-b border-border">Primary Guardian</h2>
-                    <p className="text-sm text-muted-foreground mb-4">This is the main contact for the family. You can add additional guardians later via the family portal.</p>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div>
-                            <Label htmlFor="guardian1FirstName">First Name <span className="text-red-500">*</span></Label>
-                            <Input id="guardian1FirstName" name="guardian1FirstName" autoComplete="given-name" className="input-custom-styles" required tabIndex={11}/>
-                            {actionData?.fieldErrors?.guardian1FirstName &&
-                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian1FirstName}</p>}
-                        </div>
-                        <div>
-                            <Label htmlFor="guardian1LastName">Last Name <span className="text-red-500">*</span></Label>
-                            <Input id="guardian1LastName" name="guardian1LastName" autoComplete="family-name" className="input-custom-styles" required tabIndex={12}/>
-                            {actionData?.fieldErrors?.guardian1LastName &&
-                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian1LastName}</p>}
-                        </div>
-                        <div>
-                            <Label htmlFor="guardian1Relationship">Type <span className="text-red-500">*</span></Label>
-                            <Select name="guardian1Relationship" required>
-                                <SelectTrigger id="guardian1Relationship" className="input-custom-styles" tabIndex={13}>
-                                    <SelectValue placeholder="Select relationship"/>
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Mother">Mother</SelectItem>
-                                    <SelectItem value="Father">Father</SelectItem>
-                                    <SelectItem value="Guardian">Guardian</SelectItem>
-                                    <SelectItem value="Other">Other</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            {actionData?.fieldErrors?.guardian1Relationship &&
-                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian1Relationship}</p>}
-                        </div>
-                    </div>
+                <GuardianInfoSection
+                    fieldErrors={actionData?.fieldErrors}
+                    showEmailConfirmation={true}
+                    showSubheadings={true}
+                    fieldPrefix="guardian1"
+                    startTabIndex={7}
+                />
 
-                    <h3 className="text-lg font-medium text-foreground mt-6 mb-3">How Can We Contact Them?</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <Label htmlFor="guardian1HomePhone">Home Phone</Label>
-                            <Input id="guardian1HomePhone" name="guardian1HomePhone" type="tel" autoComplete="home tel" className="input-custom-styles" tabIndex={14}/>
-                            {actionData?.fieldErrors?.guardian1HomePhone &&
-                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian1HomePhone}</p>}
-                        </div>
-                        <div>
-                            <Label htmlFor="guardian1CellPhone">Cell Phone <span className="text-red-500">*</span></Label>
-                            <Input id="guardian1CellPhone" name="guardian1CellPhone" type="tel" autoComplete="mobile tel" className="input-custom-styles" required tabIndex={15}/>
-                            {actionData?.fieldErrors?.guardian1CellPhone &&
-                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian1CellPhone}</p>}
-                        </div>
-                    </div>
-
-                    <h3 className="text-lg font-medium text-foreground mt-6 mb-3">Portal Access (Email is Login)</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <Label htmlFor="guardian1Email">Email <span className="text-red-500">*</span></Label>
-                            <Input id="guardian1Email" name="guardian1Email" type="email" autoComplete="email" className="input-custom-styles" required tabIndex={16}/>
-                            {actionData?.fieldErrors?.guardian1Email &&
-                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.guardian1Email}</p>}
-                            <p className="text-xs text-muted-foreground mt-1">(Emails are kept confidential)</p>
-                        </div>
-                        <div>
-                            <Label htmlFor="familyEmail">Confirm Email <span className="text-red-500">*</span></Label>
-                            <Input id="familyEmail" name="familyEmail" type="email" className="input-custom-styles" required tabIndex={17}/>
-                            {actionData?.fieldErrors?.familyEmail &&
-                                <p className="text-red-500 text-sm mt-1">{actionData.fieldErrors.familyEmail}</p>}
-                        </div>
-                    </div>
-                </section>
+                {/* Optional Information - Collapsible Accordions */}
+                <OptionalInfoSection
+                    fieldErrors={actionData?.fieldErrors}
+                    isCollapsible={true}
+                    showReferral={true}
+                    showGuardianInfo={false}
+                    showEmergencyContact={true}
+                    showHealthInfo={true}
+                    startTabIndex={13}
+                />
 
                 {/* Submit Button */}
                 <div className="flex justify-end gap-4 pt-4 border-t border-border">
