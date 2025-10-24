@@ -50,7 +50,8 @@
       "Bash(for file in /Users/antont/WebstormProjects/karate/supabase/migrations/*.sql)",
       "Bash(do if grep -q \"TABLE waivers\" \"$file\")",
       "Bash(fi)",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []
