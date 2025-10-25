@@ -6,7 +6,7 @@ import { Label } from "~/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { getSupabaseServerClient, getSupabaseAdminClient } from "~/utils/supabase.server";
-import { requireAdmin } from "~/utils/auth.server";
+import { requireAdminUser } from "~/utils/auth.server";
 import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 import { csrf } from "~/utils/csrf.server";
 
@@ -27,12 +27,12 @@ type ActionData = {
 };
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  await requireAdmin(request);
+  await requireAdminUser(request);
   return json({});
 }
 
 export async function action({ request }: ActionFunctionArgs) {
-  await requireAdmin(request);
+  await requireAdminUser(request);
 
   try {
     await csrf.validate(request);
