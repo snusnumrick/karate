@@ -182,7 +182,7 @@ console.log(JSON.stringify({
     siteName,
     primaryColor,
     siteUrl,
-    logoUrl: `${siteUrl}/logo-light.svg`,
+    logoUrl: `${siteUrl}/logo-light.png`,
     contactPhone,
     contactEmail
 }));
