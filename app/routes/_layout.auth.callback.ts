@@ -1,13 +1,16 @@
 import {type LoaderFunctionArgs, redirect} from "@vercel/remix";
 import {getSupabaseServerClient} from "~/utils/supabase.server";
+import {safeRedirect} from "~/utils/redirect";
 
 // This route handles the server-side exchange of the verification code
 // for a valid user session. Supabase redirects here after email confirmation.
 export async function loader({request}: LoaderFunctionArgs) {
     const url = new URL(request.url);
     const code = url.searchParams.get("code");
-    // Default redirect after login is now /family
-    const next = url.searchParams.get("next") || "/family";
+    // Get next parameter from URL (passed through from registration flow)
+    const nextParam = url.searchParams.get("next");
+    // Use safeRedirect to ensure we only redirect to internal paths
+    const next = safeRedirect(nextParam, "/family");
 
     if (code) {
         const {supabaseServer, response:{headers}} = getSupabaseServerClient(request);
@@ -44,11 +47,18 @@ export async function loader({request}: LoaderFunctionArgs) {
             // PKCE flow error - code verifier missing (common when opening link in different browser)
             if (error.message.includes('code verifier') || error.message.includes('invalid request')) {
                 console.warn("PKCE flow issue detected - redirecting to login with helpful message");
-                return redirect("/login?error=email_confirmed&message=" + encodeURIComponent("Your email has been confirmed! Please log in with your email and password."), {headers});
+                // Preserve the next parameter so user is redirected to their intended destination after login
+                const loginUrl = next !== "/family"
+                    ? `/login?redirectTo=${encodeURIComponent(next)}&error=email_confirmed&message=${encodeURIComponent("Your email has been confirmed! Please log in with your email and password.")}`
+                    : `/login?error=email_confirmed&message=${encodeURIComponent("Your email has been confirmed! Please log in with your email and password.")}`;
+                return redirect(loginUrl, {headers});
             }
 
             // Other auth errors
-            return redirect("/login?error=auth_callback_failed&message=" + encodeURIComponent("Email confirmation failed. Please try logging in or contact support."), {headers});
+            const loginUrl = next !== "/family"
+                ? `/login?redirectTo=${encodeURIComponent(next)}&error=auth_callback_failed&message=${encodeURIComponent("Email confirmation failed. Please try logging in or contact support.")}`
+                : `/login?error=auth_callback_failed&message=${encodeURIComponent("Email confirmation failed. Please try logging in or contact support.")}`;
+            return redirect(loginUrl, {headers});
         }
     }
 

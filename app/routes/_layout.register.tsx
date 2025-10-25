@@ -169,7 +169,17 @@ export async function action({request}: ActionFunctionArgs) {
         console.log('Creating auth user ...', contact1Email);
         // Construct the redirect URL based on the request origin
         const url = new URL(request.url);
-        const emailRedirectTo = `${url.origin}/auth/callback`;
+        // Include redirectTo in email confirmation callback to preserve registration context
+        let emailRedirectTo = `${url.origin}/auth/callback`;
+        if (redirectToParam) {
+            // For event registrations, redirect to add-student first, then to event
+            // This matches the flow shown on the success page
+            const isEventRegistration = redirectToParam.includes('/events/') && redirectToParam.includes('/register');
+            const finalRedirect = isEventRegistration
+                ? `/family/add-student?returnTo=${encodeURIComponent(redirectToParam)}`
+                : redirectToParam;
+            emailRedirectTo += `?next=${encodeURIComponent(finalRedirect)}`;
+        }
         console.log('Email redirect URL:', emailRedirectTo); // Debug log
 
         // Get marketing email preference from form
