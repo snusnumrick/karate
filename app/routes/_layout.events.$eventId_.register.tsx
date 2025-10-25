@@ -711,7 +711,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 
   const requestUrl = new URL(request.url);
   const redirectTo = `${requestUrl.pathname}${requestUrl.search}`;
-  const addStudentUrl = `/family/add-student?redirectTo=${encodeURIComponent(redirectTo)}`;
+  const addStudentUrl = `/family/add-student?returnTo=${encodeURIComponent(redirectTo)}`;
   const requiresStudentProfile = !hasExistingStudents;
 
   // Get preselected student IDs from URL (from waiver flow)

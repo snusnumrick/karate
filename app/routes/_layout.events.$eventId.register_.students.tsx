@@ -157,7 +157,7 @@ export default function EventStudentSelection() {
   const hasRegistrationFee = isPositive(event.registration_fee);
 
   const currentUrl = typeof window !== 'undefined' ? window.location.pathname : `/events/${event.id}/register/students`;
-  const addStudentUrl = `/family/add-student?redirectTo=${encodeURIComponent(currentUrl)}`;
+  const addStudentUrl = `/family/add-student?returnTo=${encodeURIComponent(currentUrl)}`;
 
   return (
     <div className="min-h-screen page-background-styles py-12">
