@@ -49,6 +49,11 @@ type LoaderData = {
     error?: string;
     // Add quantity if fetched
     quantity?: number | null;
+    // Add event data for event registrations
+    event?: {
+        id: string;
+        title: string;
+    } | null;
 };
 
 // Helper function to get user-friendly product description
@@ -170,8 +175,36 @@ export async function loader({ request, params }: LoaderFunctionArgs): Promise<T
     }
 
     // If payment was found (either way)
+    let event: { id: string; title: string } | null = null;
     if (payment) {
         console.log(`[Payment Success Loader] Found payment record ${payment.id} with status: ${payment.status}`);
+
+        // Fetch event data for event registration payments
+        if (payment.type === 'event_registration') {
+            const { data: eventRegistration, error: eventRegError } = await supabaseServer
+                .from('event_registrations')
+                .select('event_id, events ( id, title )')
+                .eq('payment_id', payment.id)
+                .limit(1)
+                .maybeSingle();
+
+            if (eventRegError) {
+                console.error(`[Payment Success Loader] Error fetching event for payment ${payment.id}:`, eventRegError);
+            } else if (eventRegistration && eventRegistration.events) {
+                // Handle the nested event data
+                const eventData = Array.isArray(eventRegistration.events)
+                    ? eventRegistration.events[0]
+                    : eventRegistration.events;
+
+                if (eventData) {
+                    event = {
+                        id: eventData.id,
+                        title: eventData.title
+                    };
+                    console.log(`[Payment Success Loader] Found event ${event.id} for event registration payment`);
+                }
+            }
+        }
 
         // Fetch quantity for individual sessions if applicable
         if (payment.type === 'individual_session') {
@@ -200,13 +233,13 @@ export async function loader({ request, params }: LoaderFunctionArgs): Promise<T
         }
     }
 
-    // Return the fetched payment data (including quantity if applicable)
-    return json({ payment: payment as PaymentSuccessData, quantity }, { headers: response.headers });
+    // Return the fetched payment data (including quantity and event if applicable)
+    return json({ payment: payment as PaymentSuccessData, quantity, event }, { headers: response.headers });
 }
 
 
 export default function PaymentSuccessPage() {
-    const { payment, error, quantity } = useLoaderData<LoaderData>();
+    const { payment, error, quantity, event } = useLoaderData<LoaderData>();
     const revalidator = useRevalidator();
     const [searchParams] = useSearchParams(); // Get search params
 
@@ -293,6 +326,10 @@ export default function PaymentSuccessPage() {
 
                         <div className="text-left space-y-2 mb-6 border-t border-b border-gray-200 dark:border-gray-700 py-4">
                             <p><span className="font-semibold">Payment ID:</span> {payment.id}</p>
+                            {/* Display Event Details for event registrations */}
+                            {payment.type === 'event_registration' && event && (
+                                <p><span className="font-semibold">Event:</span> {event.title}</p>
+                            )}
                             {/* Display Product Details */}
                             {payment.type === 'store_purchase' && payment.orders?.order_items ? (
                                 payment.orders.order_items.map(item => (
@@ -335,9 +372,16 @@ export default function PaymentSuccessPage() {
                                     <Button variant="outline">View Receipt</Button>
                                 </Link>
                              )}
-                            <Link to="/family">
-                                <Button>Return to Family Portal</Button>
-                            </Link>
+                             {/* Contextual button for event registration */}
+                             {payment.type === 'event_registration' && event ? (
+                                <Link to={`/events/${event.id}`}>
+                                    <Button>View Event Details</Button>
+                                </Link>
+                             ) : (
+                                <Link to="/family">
+                                    <Button>Return to Family Portal</Button>
+                                </Link>
+                             )}
                         </div>
                     </>
                 ) : (

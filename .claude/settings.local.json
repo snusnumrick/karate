@@ -52,7 +52,8 @@
       "Bash(fi)",
       "Bash(done)",
       "Bash(cat:*)",
-      "Bash(npx eslint:*)"
+      "Bash(npx eslint:*)",
+      "Bash(chmod:*)"
     ],
     "deny": [],
     "ask": []

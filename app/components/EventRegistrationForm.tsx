@@ -481,6 +481,8 @@ export function EventRegistrationForm({
     if (registrationResult) {
       onSuccess?.(paymentData?.registrationId || '');
     }
+    // Navigate to event details page to show confirmed registration
+    navigate(`/events/${event.id}`);
   };
 
   // Render success step
@@ -529,13 +531,13 @@ export function EventRegistrationForm({
             
             <div className="flex gap-3 pt-4">
               <Button onClick={handleFinalSuccess} className="flex-1">
-                Continue
+                View Event Details
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => navigate('/events')}
               >
-                View More Events
+                Browse More Events
               </Button>
             </div>
           </CardContent>

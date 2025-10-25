@@ -4,6 +4,7 @@ import tsconfigPaths from "vite-tsconfig-paths";
 import { deriveNonceForRequest } from "./app/utils/nonce.server";
 import { vercelPreset } from "@vercel/remix/vite";
 import type { Plugin } from "vite";
+import path from "path";
 
 import { setRemixDevLoadContext } from "@remix-run/dev/dist/vite/plugin";
 
@@ -67,6 +68,11 @@ export default defineConfig({
     // Always use nonce in development to prevent CSP violations
     cspNonce: process.env.NODE_ENV === 'development' ? 'dev-vite-nonce' : undefined,
   },
+  resolve: {
+    alias: {
+      "~": path.resolve(__dirname, "./app"),
+    },
+  },
   plugins: [
     remix({
       future: {
@@ -87,7 +93,6 @@ export default defineConfig({
       "@remix-run/react",
       "lucide-react",
       "@radix-ui/react-slot",
-      "@radix-ui/react-toast",
       "@radix-ui/react-dropdown-menu",
       "class-variance-authority",
       "clsx",
