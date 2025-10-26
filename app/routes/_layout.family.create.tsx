@@ -1,16 +1,17 @@
-import {Form, useActionData, useLoaderData} from "@remix-run/react";
+import {Form, useActionData, useLoaderData, useNavigation} from "@remix-run/react";
 import {json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs} from "@remix-run/node";
 import {AuthenticityTokenInput} from "remix-utils/csrf/react";
 import {csrf} from "~/utils/csrf.server";
 import {getSupabaseServerClient} from "~/utils/supabase.server";
 import {siteConfig} from "~/config/site";
-import {Button} from "~/components/ui/button";
 import {Input} from "~/components/ui/input";
 import {Label} from "~/components/ui/label";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "~/components/ui/select";
 import {Textarea} from "~/components/ui/textarea";
 import {Checkbox} from "~/components/ui/checkbox";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
+import {SubmitButtonWithLoading} from "~/components/SubmitButtonWithLoading";
+import {FormLoadingOverlay} from "~/components/FormLoadingOverlay";
 
 interface LoaderData {
     provinces: typeof siteConfig.provinces;
@@ -152,8 +153,12 @@ export async function action({request}: ActionFunctionArgs) {
 export default function FamilyCreatePage() {
     const {provinces} = useLoaderData<typeof loader>();
     const actionData = useActionData<ActionData>();
+    const navigation = useNavigation();
     const errors = actionData?.errors ?? {};
     const formError = actionData?.error ?? errors?._form;
+
+    // Detect form submission state
+    const isSubmitting = navigation.state === 'submitting';
 
     return (
         <div className="min-h-screen page-background-styles py-12">
@@ -298,10 +303,22 @@ export default function FamilyCreatePage() {
                     </div>
 
                     <div className="flex justify-end">
-                        <Button type="submit" size="lg">Create family</Button>
+                        <SubmitButtonWithLoading
+                            isSubmitting={isSubmitting}
+                            defaultText="Create family"
+                            loadingText="Setting up your family..."
+                            className="px-8"
+                        />
                     </div>
                 </Form>
             </div>
+
+            {/* Loading Overlay */}
+            <FormLoadingOverlay
+                isVisible={isSubmitting}
+                title="Setting up your family"
+                message="We're creating your family account and adding your information. This may take a few moments..."
+            />
         </div>
     );
 }

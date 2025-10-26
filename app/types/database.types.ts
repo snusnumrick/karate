@@ -1308,6 +1308,60 @@ export type Database = {
           },
         ]
       }
+      incomplete_event_registrations: {
+        Row: {
+          created_at: string
+          current_step: Database["public"]["Enums"]["registration_step"]
+          dismissed_at: string | null
+          event_id: string
+          expires_at: string
+          family_id: string
+          id: string
+          metadata: Json | null
+          selected_student_ids: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          current_step?: Database["public"]["Enums"]["registration_step"]
+          dismissed_at?: string | null
+          event_id: string
+          expires_at?: string
+          family_id: string
+          id?: string
+          metadata?: Json | null
+          selected_student_ids?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          current_step?: Database["public"]["Enums"]["registration_step"]
+          dismissed_at?: string | null
+          event_id?: string
+          expires_at?: string
+          family_id?: string
+          id?: string
+          metadata?: Json | null
+          selected_student_ids?: string[] | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "incomplete_event_registrations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "incomplete_event_registrations_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_entities: {
         Row: {
           address_line1: string | null
@@ -1530,6 +1584,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "enrollments"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_line_items_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "pending_waiver_enrollments"
+            referencedColumns: ["enrollment_id"]
           },
           {
             foreignKeyName: "invoice_line_items_invoice_id_fkey"
@@ -2926,6 +2987,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "programs_required_waiver_id_fkey"
+            columns: ["required_waiver_id"]
+            isOneToOne: false
+            referencedRelation: "waivers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "students_family_id_fkey"
             columns: ["family_id"]
             isOneToOne: false
@@ -2966,6 +3034,57 @@ export type Database = {
             columns: ["invoice_id"]
             isOneToOne: false
             referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pending_waiver_enrollments: {
+        Row: {
+          enrollment_id: string | null
+          family_email: string | null
+          family_id: string | null
+          family_name: string | null
+          program_id: string | null
+          program_name: string | null
+          required_waiver_id: string | null
+          required_waiver_name: string | null
+          student_id: string | null
+          student_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "enrollments_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "programs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrollments_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "programs_with_belt_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrollments_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "programs_required_waiver_id_fkey"
+            columns: ["required_waiver_id"]
+            isOneToOne: false
+            referencedRelation: "waivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "students_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
             referencedColumns: ["id"]
           },
         ]
@@ -3097,6 +3216,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      cleanup_expired_incomplete_registrations: {
+        Args: never
+        Returns: undefined
+      }
       complete_new_user_registration: {
         Args: {
           p_address?: string
@@ -3133,39 +3256,33 @@ export type Database = {
         }
         Returns: Json
       }
-      create_new_conversation: {
-        Args:
-          | {
+      create_new_conversation:
+        | {
+            Args: {
               p_content: string
               p_recipient_id: string
               p_sender_id: string
               p_subject: string
             }
-          | { p_content: string; p_sender_id: string; p_subject: string }
-        Returns: string
-      }
+            Returns: string
+          }
+        | {
+            Args: { p_content: string; p_sender_id: string; p_subject: string }
+            Returns: string
+          }
       decrement_variant_stock: {
         Args: { decrement_quantity: number; variant_id: string }
         Returns: undefined
       }
-      execute_admin_query: {
-        Args: { query_text: string }
-        Returns: Json
-      }
-      execute_explain_query: {
-        Args: { query_text: string }
-        Returns: Json
-      }
+      execute_admin_query: { Args: { query_text: string }; Returns: Json }
+      execute_explain_query: { Args: { query_text: string }; Returns: Json }
       generate_class_sessions: {
         Args: { p_class_id: string; p_end_date: string; p_start_date: string }
         Returns: number
       }
-      generate_invoice_number: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      generate_invoice_number: { Args: never; Returns: string }
       get_admin_conversation_summaries: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           id: string
           is_unread_by_admin: boolean
@@ -3204,12 +3321,9 @@ export type Database = {
           waiver_title: string
         }[]
       }
-      get_other_event_type_id: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      get_other_event_type_id: { Args: never; Returns: string }
       get_program_statistics: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           avg_sessions_per_week: number
           group_programs: number
@@ -3262,10 +3376,7 @@ export type Database = {
         Args: { p_invoice_id: string }
         Returns: undefined
       }
-      refresh_enrollment_waiver_status_proc: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      refresh_enrollment_waiver_status_proc: { Args: never; Returns: undefined }
       validate_discount_code: {
         Args: {
           p_applicable_to?: Database["public"]["Enums"]["payment_type_enum"]
@@ -3405,6 +3516,7 @@ export type Database = {
         | "confirmed"
         | "cancelled"
         | "waitlist"
+      registration_step: "student_selection" | "waiver_signing" | "payment"
       seminar_type: "introductory" | "intermediate" | "advanced"
       series_status:
         | "tentative"
@@ -3689,6 +3801,7 @@ export const Constants = {
         "cancelled",
         "waitlist",
       ],
+      registration_step: ["student_selection", "waiver_signing", "payment"],
       seminar_type: ["introductory", "intermediate", "advanced"],
       series_status: [
         "tentative",

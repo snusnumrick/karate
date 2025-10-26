@@ -12,6 +12,7 @@ import { formatDate } from '~/utils/misc';
 import { EventService } from '~/services/event.server';
 import { formatMoney, isPositive, multiplyMoney, serializeMoney, deserializeMoney } from '~/utils/money';
 import { moneyFromRow } from '~/utils/database-money';
+import { upsertIncompleteRegistration } from '~/services/incomplete-registration.server';
 
 export async function action({ request, params }: ActionFunctionArgs) {
   const { eventId } = params;
@@ -19,11 +20,32 @@ export async function action({ request, params }: ActionFunctionArgs) {
     throw new Response("Event ID is required", { status: 400 });
   }
 
+  const { supabaseServer } = getSupabaseServerClient(request);
   const formData = await request.formData();
   const selectedStudentIds = formData.getAll('studentIds') as string[];
 
   if (selectedStudentIds.length === 0) {
     return json({ error: 'Please select at least one student to register' }, { status: 400 });
+  }
+
+  // Get user's family_id to track incomplete registration
+  const { data: { user } } = await supabaseServer.auth.getUser();
+  if (user) {
+    const { data: profile } = await supabaseServer
+      .from('profiles')
+      .select('family_id')
+      .eq('id', user.id)
+      .single();
+
+    if (profile?.family_id) {
+      // Track incomplete registration - moving to waiver signing step
+      await upsertIncompleteRegistration(supabaseServer, {
+        familyId: profile.family_id,
+        eventId,
+        currentStep: 'waiver_signing',
+        selectedStudentIds,
+      });
+    }
   }
 
   // Redirect to waivers page with selected student IDs
@@ -102,6 +124,14 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     const signedWaiverIds = signatures?.map(s => s.waiver_id) || [];
     allWaiversSigned = waiverIds.every(id => signedWaiverIds.includes(id));
   }
+
+  // Track incomplete registration - user has started the registration flow
+  await upsertIncompleteRegistration(supabaseServer, {
+    familyId: profile.family_id,
+    eventId,
+    currentStep: 'student_selection',
+    selectedStudentIds: [],
+  });
 
   // Get error from query params (if redirected back due to error)
   const url = new URL(request.url);

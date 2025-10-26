@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import {Form, isRouteErrorResponse, Link, Outlet, useActionData, useLoaderData, useLocation, useRouteError, useSearchParams} from "@remix-run/react";
+import {Form, isRouteErrorResponse, Link, Outlet, useActionData, useLoaderData, useLocation, useNavigation, useRouteError, useSearchParams} from "@remix-run/react";
 import type {ActionFunctionArgs, LoaderFunctionArgs} from "@remix-run/node";
 import {json, redirect} from "@remix-run/node";
 import {EventService} from "~/services/event.server";
@@ -16,6 +16,8 @@ import { siteConfig } from "~/config/site";
 import { safeRedirect } from "~/utils/redirect";
 import { PasswordStrengthIndicator } from "~/components/PasswordStrengthIndicator";
 import { AddressSection, OptionalInfoSection } from "~/components/family-registration";
+import { SubmitButtonWithLoading } from "~/components/SubmitButtonWithLoading";
+import { FormLoadingOverlay } from "~/components/FormLoadingOverlay";
 
 type ActionData = {
   errors?: {
@@ -264,6 +266,7 @@ export default function RegisterPage() {
     const error = actionData && "error" in actionData ? actionData.error : null;
 
     const location = useLocation(); // Get the current location
+    const navigation = useNavigation(); // Get navigation state for loading detection
     const [searchParams] = useSearchParams();
     const redirectTo = searchParams.get('redirectTo') || loaderRedirectTo || undefined;
 
@@ -271,6 +274,9 @@ export default function RegisterPage() {
     const isBaseRegisterRoute = location.pathname === '/register';
 
     const isEventContext = context.type === 'event';
+
+    // Detect form submission state
+    const isSubmitting = navigation.state === 'submitting';
 
     // State for password strength indicator
     const [password, setPassword] = useState('');
@@ -521,14 +527,14 @@ export default function RegisterPage() {
 
                             {/* Final Submit Button */}
                             <div className="mt-8">
-                                <Button
-                                    type="submit"
-                                    data-testid="register-submit-button"
+                                <SubmitButtonWithLoading
+                                    isSubmitting={isSubmitting}
+                                    defaultText={isEventContext ? 'CREATE ACCOUNT & CONTINUE TO EVENT' : 'CREATE ACCOUNT & GET STARTED'}
+                                    loadingText="Creating your account..."
                                     className="w-full font-bold py-3 px-6 bg-green-600 text-white hover:bg-green-700"
+                                    testId="register-submit-button"
                                     tabIndex={21}
-                                >
-                                    {isEventContext ? 'CREATE ACCOUNT & CONTINUE TO EVENT' : 'CREATE ACCOUNT & GET STARTED'}
-                                </Button>
+                                />
                             </div>
 
                             {/* Display Action Error (if any) */}
@@ -547,6 +553,13 @@ export default function RegisterPage() {
                     <Outlet/>
                 )}
             </div>
+
+            {/* Loading Overlay */}
+            <FormLoadingOverlay
+                isVisible={isSubmitting}
+                title="Setting up your account"
+                message="We're creating your family account and sending you a confirmation email. This may take a few moments..."
+            />
         </div>
     );
 }

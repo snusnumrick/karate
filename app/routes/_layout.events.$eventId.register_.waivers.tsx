@@ -5,6 +5,7 @@ import { Button } from '~/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
 import { Alert, AlertDescription } from '~/components/ui/alert';
 import { FileText, AlertCircle } from 'lucide-react';
+import { upsertIncompleteRegistration } from '~/services/incomplete-registration.server';
 
 interface Waiver {
   id: string;
@@ -99,6 +100,14 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 
     // If all waivers are signed, redirect to registration with studentIds
     if (missingWaivers.length === 0) {
+      // Track incomplete registration - moving to payment step
+      await upsertIncompleteRegistration(supabaseServer, {
+        familyId: profile.family_id,
+        eventId,
+        currentStep: 'payment',
+        selectedStudentIds: studentIds,
+      });
+
       throw redirect(`/events/${eventId}/register?studentIds=${studentIdsParam}`);
     }
 

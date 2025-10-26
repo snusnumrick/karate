@@ -14,6 +14,7 @@ import { calculateTaxesForPayment } from '~/services/tax-rates.server';
 import { multiplyMoney, type Money, addMoney, isPositive, toCents, ZERO_MONEY, formatMoney, serializeMoney, deserializeMoney, type MoneyJSON } from '~/utils/money';
 import { moneyFromRow } from '~/utils/database-money';
 import { sendEmail } from '~/utils/email.server';
+import { deleteIncompleteRegistration } from '~/services/incomplete-registration.server';
 
 // Extended Event type for registration with additional properties
 type EventWithRegistrationInfo = EventWithEventType & {
@@ -426,7 +427,10 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
         return json({ error: 'Failed to link payment - no registrations found to update' }, { status: 500 });
       }
 
-      return json({ 
+      // Delete incomplete registration record (payment pending, user will complete on /pay page)
+      await deleteIncompleteRegistration(supabaseServer, familyId, eventId);
+
+      return json({
         success: true,
         paymentRequired: true,
         registrationId,
@@ -457,14 +461,17 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
         return json({ error: 'Failed to update registrations' }, { status: 500 });
       }
 
+      // Delete incomplete registration record (registration complete for free event)
+      await deleteIncompleteRegistration(supabaseServer, familyId, eventId);
+
       // Free event - registration is complete
-      return json({ 
+      return json({
         success: true,
         paymentRequired: false,
         registrationId,
         message: 'Registration completed successfully!',
         familyId,
-        studentIds 
+        studentIds
       });
     }
 

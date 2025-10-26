@@ -21,6 +21,7 @@ import { AuthenticityTokenProvider } from "remix-utils/csrf/react";
 import { csrf } from "~/utils/csrf.server";
 import { ClientOnly } from "~/components/client-only";
 import { ToasterWrapper } from "~/components/toaster-wrapper";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 
 import "./tailwind.css";
 
@@ -196,6 +197,7 @@ function App() {
             <ClientOnly>
                 {() => <ToasterWrapper />}
             </ClientOnly>
+            <SpeedInsights />
         </>
     );
 }

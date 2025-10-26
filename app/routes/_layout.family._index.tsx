@@ -1,6 +1,7 @@
-import {json, type LoaderFunctionArgs, redirect, TypedResponse} from "@remix-run/node"; // Import redirect
+import {json, type LoaderFunctionArgs, type ActionFunctionArgs, redirect, TypedResponse} from "@remix-run/node"; // Import redirect
 import {Link, useLoaderData} from "@remix-run/react";
 import {checkStudentEligibility, type EligibilityStatus, getSupabaseServerClient} from "~/utils/supabase.server"; // Import eligibility check
+import {getIncompleteRegistrations, dismissIncompleteRegistration, type IncompleteRegistrationWithEvent} from "~/services/incomplete-registration.server";
 import {
     AlertCircle,
     Award,
@@ -26,6 +27,7 @@ import {OfflineErrorBoundary} from "~/components/OfflineErrorBoundary";
 import {cacheAttendanceData, cacheFamilyData, cacheUpcomingClasses} from "~/utils/offline-cache";
 import {useClientReady} from "~/hooks/use-client-ready";
 import {FamilyLoadingScreen} from "~/components/LoadingScreen";
+import {IncompleteRegistrationBanner} from "~/components/IncompleteRegistrationBanner";
 
 // Define Guardian type
 type GuardianRow = Database["public"]["Tables"]["guardians"]["Row"];
@@ -94,6 +96,33 @@ interface LoaderData {
     studentAttendanceData?: StudentAttendance[];
     profileComplete?: boolean;
     missingProfileFields?: string[];
+    incompleteRegistrations?: IncompleteRegistrationWithEvent[];
+}
+
+// Action handler for dismissing incomplete registrations
+export async function action({request}: ActionFunctionArgs) {
+    const {supabaseServer} = getSupabaseServerClient(request);
+    const formData = await request.formData();
+    const intent = formData.get('intent');
+
+    if (intent === 'dismiss') {
+        const incompleteRegistrationId = formData.get('incompleteRegistrationId') as string;
+
+        if (!incompleteRegistrationId) {
+            return json({error: 'Missing incomplete registration ID'}, {status: 400});
+        }
+
+        const {error} = await dismissIncompleteRegistration(supabaseServer, incompleteRegistrationId);
+
+        if (error) {
+            console.error('[family-portal] Error dismissing incomplete registration:', error);
+            return json({error: 'Failed to dismiss incomplete registration'}, {status: 500});
+        }
+
+        return json({success: true});
+    }
+
+    return json({error: 'Invalid intent'}, {status: 400});
 }
 
 // Placeholder loader - will need to fetch actual family data later
@@ -434,6 +463,12 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
     if (!finalFamilyData.province) missingProfileFields.push('province');
     const profileComplete = missingProfileFields.length === 0;
 
+    // 8. Fetch incomplete event registrations
+    const {data: incompleteRegistrations} = await getIncompleteRegistrations(
+        supabaseServer,
+        profileData.family_id
+    );
+
     // Return profile, combined family data, waiver status, upcoming classes, attendance data, and profile completeness
     return json({
         profile: {familyId: String(profileData.family_id)},
@@ -443,7 +478,8 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
         upcomingClasses,
         studentAttendanceData,
         profileComplete,
-        missingProfileFields
+        missingProfileFields,
+        incompleteRegistrations: incompleteRegistrations || []
     }, {headers});
 }
 
@@ -467,7 +503,7 @@ const getEligibilityBadgeVariant = (status: EligibilityStatus['reason']): "defau
 export default function FamilyDashboard() {
     // Always call hooks at the top level
     const loaderData = useLoaderData<typeof loader>();
-    const {family, error, allWaiversSigned, pendingWaivers, upcomingClasses, studentAttendanceData, profileComplete, missingProfileFields} = loaderData;
+    const {family, error, allWaiversSigned, pendingWaivers, upcomingClasses, studentAttendanceData, profileComplete, missingProfileFields, incompleteRegistrations} = loaderData;
     const isClientReady = useClientReady();
 
     // Cache data for offline access when component mounts
@@ -534,6 +570,11 @@ export default function FamilyDashboard() {
         <OfflineErrorBoundary>
             <div className="min-h-screen page-background-styles text-foreground">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                    {/* Incomplete Event Registrations Banner - Show incomplete event registrations */}
+                    {incompleteRegistrations && incompleteRegistrations.length > 0 && (
+                        <IncompleteRegistrationBanner incompleteRegistrations={incompleteRegistrations} />
+                    )}
+
                     {/* Incomplete Profile Banner - Show when profile is missing address information */}
                     {!profileComplete && missingProfileFields && missingProfileFields.length > 0 && (
                         <Alert className="mb-6 bg-blue-50 dark:bg-blue-900/20 border-blue-500">
