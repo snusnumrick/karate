@@ -306,8 +306,8 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
         return redirect("/family/setup", {headers});
     }
 
-    // 2-5. Fetch family data, students, guardians, payment, and waivers in parallel
-    // Split the nested query to improve performance
+    // 2-4. Fetch family data, payment, and waivers in parallel
+    // Check cache for required waivers first
     const now = Date.now();
     const cachedWaivers = requiredWaiversCache && requiredWaiversCache.expiresAt > now
         ? requiredWaiversCache.data
@@ -317,17 +317,13 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
     const parallelResults = await Promise.all([
         supabaseServer
             .from('families')
-            .select('*')
+            .select(`
+              *,
+              students(*),
+              guardians(*)
+            `)
             .eq('id', profileData.family_id)
             .single(),
-        supabaseServer
-            .from('students')
-            .select('*')
-            .eq('family_id', profileData.family_id),
-        supabaseServer
-            .from('guardians')
-            .select('*')
-            .eq('family_id', profileData.family_id),
         supabaseServer
             .from('payments')
             .select(`
@@ -365,15 +361,13 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
     ]);
     timings.parallelQueries = performance.now() - parallelStart;
 
-    const {data: familyData, error: familyError} = parallelResults[0];
-    const {data: studentsData, error: studentsError} = parallelResults[1];
-    const {data: guardiansData, error: guardiansError} = parallelResults[2];
-    const {data: recentPaymentData, error: paymentError} = parallelResults[3];
-    const {data: requiredWaivers, error: requiredWaiversError} = parallelResults[4];
-    const {data: signedWaivers, error: signedWaiversError} = parallelResults[5];
+    const {data: familyBaseData, error: familyError} = parallelResults[0];
+    const {data: recentPaymentData, error: paymentError} = parallelResults[1];
+    const {data: requiredWaivers, error: requiredWaiversError} = parallelResults[2];
+    const {data: signedWaivers, error: signedWaiversError} = parallelResults[3];
 
-    if (familyError || !familyData) {
-        console.error("Error fetching family data:", familyError?.message ?? "Family not found");
+    if (familyError || !familyBaseData) {
+        console.error("Error fetching base family data:", familyError?.message ?? "Family not found");
         timings.total = performance.now() - overallStart;
         return json({
             profile: {familyId: String(profileData.family_id)},
@@ -382,13 +376,6 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
         }, {status: 500, headers});
     }
 
-    // Combine family with students and guardians
-    const familyBaseData = {
-        ...familyData,
-        students: studentsData || [],
-        guardians: guardiansData || []
-    };
-
     if (paymentError) {
         console.error("Error fetching recent payment data:", paymentError.message);
         // Don't fail the whole page, just proceed without payment info
@@ -396,25 +383,71 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
 
     // console.log("Most Recent Successful Payment Data:", recentPaymentData);
 
-    // 5. Fetch only eligibility for students (belt awards and enrollments not shown on main page)
+    // 5. Fetch student data (eligibility, belt awards, enrollments) with batch optimization
     const studentDataStart = performance.now();
     const studentsWithEligibility: StudentWithEligibility[] = !familyBaseData.students || familyBaseData.students.length === 0
         ? []
         : await (async () => {
             const studentIds = familyBaseData.students.map(s => s.id);
 
-            // Only fetch eligibility - belt awards and enrollments not displayed on main page
-            const eligibilityMap = await batchCheckStudentEligibility(studentIds, supabaseServer);
+            // Batch fetch all data in parallel
+            const [eligibilityMap, {data: allBeltAwards}, {data: allEnrollments}] = await Promise.all([
+                batchCheckStudentEligibility(studentIds, supabaseServer),
+                supabaseServer
+                    .from('belt_awards')
+                    .select('student_id, type, awarded_date')
+                    .in('student_id', studentIds)
+                    .order('awarded_date', {ascending: false}),
+                supabaseServer
+                    .from('enrollments')
+                    .select(`
+                        student_id,
+                        status,
+                        classes (
+                            name
+                        ),
+                        programs (
+                            name
+                        )
+                    `)
+                    .in('student_id', studentIds)
+                    .eq('status', 'active')
+            ]);
 
-            // Combine eligibility with student data
+            // Group belt awards by student (latest only)
+            type BeltAwardRecord = NonNullable<typeof allBeltAwards>[number];
+            const beltAwardsByStudent = new Map<string, BeltAwardRecord>();
+            allBeltAwards?.forEach(award => {
+                if (!beltAwardsByStudent.has(award.student_id)) {
+                    beltAwardsByStudent.set(award.student_id, award);
+                }
+            });
+
+            // Group enrollments by student
+            const enrollmentsByStudent = new Map<string, typeof allEnrollments>();
+            allEnrollments?.forEach(enrollment => {
+                const existing = enrollmentsByStudent.get(enrollment.student_id) || [];
+                existing.push(enrollment);
+                enrollmentsByStudent.set(enrollment.student_id, existing);
+            });
+
+            // Combine all data for each student
             return familyBaseData.students.map(student => {
                 const eligibility = eligibilityMap.get(student.id) || {eligible: false, reason: 'Expired' as const};
+                const beltAward = beltAwardsByStudent.get(student.id);
+                const enrollments = enrollmentsByStudent.get(student.id) || [];
+
+                const activeEnrollments = enrollments.map(enrollment => ({
+                    class_name: enrollment.classes?.name || 'Unknown Class',
+                    program_name: enrollment.programs?.name || 'Unknown Program',
+                    status: enrollment.status
+                }));
 
                 return {
                     ...student,
                     eligibility,
-                    currentBeltRank: null, // Not displayed on main page
-                    activeEnrollments: [], // Not displayed on main page
+                    currentBeltRank: beltAward?.type || null,
+                    activeEnrollments,
                 };
             });
         })();
