@@ -2802,9 +2802,10 @@ WITH UserConversations AS (
                         pd.first_name,
                     -- Last name if only last name exists
                         pd.last_name,
-                    -- Role if admin/instructor and name missing
+                    -- Role if admin/instructor and name missing (fixed cast)
                         CASE
-                            WHEN pd.role IN ('admin'::profile_role, 'instructor'::profile_role) THEN initcap(pd.role::text) -- Capitalize role
+                            WHEN pd.role IN ('admin'::profile_role, 'instructor'::profile_role)
+                                THEN initcap(CAST(pd.role AS TEXT))  -- Explicit CAST function instead of ::
                             ELSE NULL
                             END,
                     -- Email prefix as fallback

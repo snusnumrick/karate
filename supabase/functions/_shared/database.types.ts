@@ -3309,6 +3309,18 @@ export type Database = {
         Args: { p_family_id: string }
         Returns: number
       }
+      get_main_page_schedule_summary: {
+        Args: never
+        Returns: {
+          age_range: string
+          days: string
+          duration: string
+          max_age: number
+          max_students: number
+          min_age: number
+          time_range: string
+        }[]
+      }
       get_missing_program_waivers: {
         Args: {
           p_enrollment_type?: string
