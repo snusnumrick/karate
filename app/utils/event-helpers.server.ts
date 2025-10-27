@@ -1,4 +1,30 @@
 import { EventTypeService } from "~/services/event-type.server";
+import { getSupabaseAdminClient } from "~/utils/supabase.server";
+
+type EventTypeConfig = Record<string, { label: string; color: string }>;
+
+const EVENT_TYPE_CONFIG_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+let eventTypeConfigCache: { data: EventTypeConfig; expiresAt: number } | null = null;
+let eventTypeConfigInflight: Promise<EventTypeConfig> | null = null;
+
+function buildEventTypeConfig(eventTypes: Array<{
+  name: string;
+  display_name: string;
+  color_class: string | null;
+  dark_mode_class: string | null;
+}>): EventTypeConfig {
+  const config: EventTypeConfig = {};
+
+  eventTypes.forEach((eventType) => {
+    const colorClass = eventType.dark_mode_class || eventType.color_class || '';
+    config[eventType.name] = {
+      label: eventType.display_name,
+      color: colorClass
+    };
+  });
+
+  return config;
+}
 
 /**
  * Gets event type options for select components from database
@@ -66,23 +92,56 @@ export async function getEventTypeColorWithBorder(eventType: string, request: Re
  * Gets event type configuration with colors including dark mode variants from database
  */
 export async function getEventTypeConfigWithDarkMode(request: Request) {
-  try {
-    const eventTypeService = new EventTypeService(request);
-    const eventTypes = await eventTypeService.getActiveEventTypes();
-    
-    const config: Record<string, { label: string; color: string }> = {};
-    
-    eventTypes.forEach((eventType) => {
-      const colorClass = eventType.dark_mode_class || eventType.color_class;
-      config[eventType.name] = {
-        label: eventType.display_name,
-        color: colorClass
-      };
-    });
-    
-    return config;
-  } catch (error) {
-    console.warn('Failed to fetch event type config with dark mode from database:', error);
-    return {};
+  const now = Date.now();
+
+  if (eventTypeConfigCache && eventTypeConfigCache.expiresAt > now) {
+    return eventTypeConfigCache.data;
   }
+
+  if (eventTypeConfigInflight) {
+    return eventTypeConfigInflight;
+  }
+
+  eventTypeConfigInflight = (async (): Promise<EventTypeConfig> => {
+    try {
+      const supabaseAdmin = getSupabaseAdminClient();
+      const { data, error } = await supabaseAdmin
+        .from('event_types')
+        .select('name, display_name, color_class, dark_mode_class')
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true });
+
+      if (error) {
+        throw error;
+      }
+
+      const config = buildEventTypeConfig(data || []);
+      eventTypeConfigCache = {
+        data: config,
+        expiresAt: Date.now() + EVENT_TYPE_CONFIG_CACHE_TTL
+      };
+
+      return config;
+    } catch (error) {
+      console.warn('Failed to fetch event types via admin client; falling back to request-scoped client.', error);
+
+      try {
+        const eventTypeService = new EventTypeService(request);
+        const eventTypes = await eventTypeService.getActiveEventTypes();
+        const config = buildEventTypeConfig(eventTypes);
+        eventTypeConfigCache = {
+          data: config,
+          expiresAt: Date.now() + EVENT_TYPE_CONFIG_CACHE_TTL
+        };
+        return config;
+      } catch (fallbackError) {
+        console.warn('Fallback fetch for event type config failed:', fallbackError);
+        return {};
+      }
+    } finally {
+      eventTypeConfigInflight = null;
+    }
+  })();
+
+  return eventTypeConfigInflight;
 }

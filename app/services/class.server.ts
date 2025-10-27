@@ -1,6 +1,10 @@
 import { getSupabaseAdminClient } from '~/utils/supabase.server';
 import type { Database } from '~/types/database.types';
 import { mapProgramNullToUndefined, mapInstructorNullToUndefined, mapSessionNullToUndefined, mapClassNullToUndefined } from '~/utils/mappers';
+
+const MAIN_PAGE_SCHEDULE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+let mainPageScheduleCache: { data: MainPageScheduleSummary | null; expiresAt: number } | null = null;
+let mainPageScheduleInflight: Promise<MainPageScheduleSummary | null> | null = null;
 import { DEFAULT_SCHEDULE } from '~/constants/schedule';
 import type {
   Class,
@@ -1090,64 +1094,56 @@ export function buildScheduleSummaryFromClasses(classes: ScheduleSummaryClass[])
 export async function getMainPageScheduleData(
   supabase = getSupabaseAdminClient()
 ): Promise<MainPageScheduleSummary | null> {
-  try {
-    // Get all active classes with their schedules and programs
-    const { data: classesData, error } = await supabase
-      .from('classes')
-      .select(`
-        id,
-        name,
-        program:programs!inner(
-          min_age,
-          max_age,
-          duration_minutes,
-          max_capacity
-        )
-      `)
-      .eq('is_active', true);
+  const now = Date.now();
 
-    if (error || !classesData || classesData.length === 0) {
-      return null;
-    }
-
-    // Get schedules for all active classes
-    const classIds = classesData.map(c => c.id);
-    const { data: schedulesData } = await supabase
-      .from('class_schedules')
-      .select('class_id, day_of_week, start_time')
-      .in('class_id', classIds)
-      .order('day_of_week')
-      .order('start_time');
-
-    if (!schedulesData || schedulesData.length === 0) {
-      return null;
-    }
-
-    const schedulesByClassId = schedulesData.reduce<Record<string, Array<{ day_of_week: string; start_time: string }>>>(
-      (acc, schedule) => {
-        const key = schedule.class_id;
-        if (!acc[key]) {
-          acc[key] = [];
-        }
-        acc[key].push({
-          day_of_week: schedule.day_of_week,
-          start_time: schedule.start_time,
-        });
-        return acc;
-      },
-      {}
-    );
-
-    const classes: ScheduleSummaryClass[] = classesData.map(classItem => ({
-      program: Array.isArray(classItem.program) ? classItem.program[0] ?? null : classItem.program,
-      schedules: schedulesByClassId[classItem.id] || [],
-    }));
-
-    return buildScheduleSummaryFromClasses(classes);
-  } catch (error) {
-    console.error('Error fetching main page schedule data:', error);
-    return null;
+  if (mainPageScheduleCache && mainPageScheduleCache.expiresAt > now) {
+    return mainPageScheduleCache.data;
   }
+
+  if (mainPageScheduleInflight) {
+    return mainPageScheduleInflight;
+  }
+
+  mainPageScheduleInflight = (async (): Promise<MainPageScheduleSummary | null> => {
+    try {
+      const { data, error } = await supabase.rpc('get_main_page_schedule_summary');
+
+      if (error) {
+        throw error;
+      }
+
+      const rawSummary = data && data.length > 0 ? data[0] : null;
+      const summary: MainPageScheduleSummary | null = rawSummary
+        ? {
+            days: rawSummary.days ?? DEFAULT_SCHEDULE.days,
+            time: rawSummary.time_range ?? DEFAULT_SCHEDULE.timeRange,
+            ageRange: rawSummary.age_range ?? `${DEFAULT_SCHEDULE.minAge}+`,
+            duration: rawSummary.duration ?? `60 minutes`,
+            maxStudents: rawSummary.max_students ?? 20,
+            minAge: rawSummary.min_age ?? DEFAULT_SCHEDULE.minAge,
+            maxAge: rawSummary.max_age ?? DEFAULT_SCHEDULE.maxAge,
+          }
+        : null;
+
+      mainPageScheduleCache = {
+        data: summary,
+        expiresAt: Date.now() + MAIN_PAGE_SCHEDULE_CACHE_TTL
+      };
+
+      return summary;
+    } catch (error) {
+      console.error('Error fetching main page schedule data via RPC:', error);
+      mainPageScheduleCache = {
+        data: null,
+        expiresAt: Date.now() + MAIN_PAGE_SCHEDULE_CACHE_TTL
+      };
+      return null;
+    } finally {
+      mainPageScheduleInflight = null;
+    }
+  })();
+
+  return mainPageScheduleInflight;
 }
 
 /**

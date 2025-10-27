@@ -63,7 +63,8 @@ export type EventWithEventType = Omit<EventWithEventTypeRow, 'registration_fee' 
 
 // Simple in-memory cache for events
 const eventCache = new Map<string, { data: UpcomingEvent[], timestamp: number }>();
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
+const loggedInEventCache = new Map<string, { data: UpcomingEvent[], timestamp: number }>();
+const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes in milliseconds
 
 let supabase: ReturnType<typeof getSupabaseAdminClient> | null = null;
 
@@ -190,8 +191,7 @@ export class EventService {
     const cacheKey = 'logged_in_events';
     const now = Date.now();
 
-    // Check cache first
-    const cached = eventCache.get(cacheKey);
+    const cached = loggedInEventCache.get(cacheKey);
     if (cached && (now - cached.timestamp) < CACHE_DURATION) {
       return cached.data;
     }
@@ -228,7 +228,7 @@ export class EventService {
           icon
         )
       `)
-      .in('visibility', ['public', 'internal'])
+      .in('visibility', ['public', 'limited', 'internal'])
       .in('status', ['published', 'registration_open'])
       .or(`end_date.gte.${today},end_date.is.null`)
       .gte('start_date', today)
@@ -241,10 +241,9 @@ export class EventService {
     }
 
     const eventsData = (events || []).map(applyEventMoney);
-    
-    // Cache the results
-    eventCache.set(cacheKey, { data: eventsData, timestamp: now });
-    
+
+    loggedInEventCache.set(cacheKey, { data: eventsData, timestamp: now });
+
     return eventsData;
   }
 
@@ -272,5 +271,6 @@ export class EventService {
 
   static clearCache() {
     eventCache.clear();
+    loggedInEventCache.clear();
   }
 }

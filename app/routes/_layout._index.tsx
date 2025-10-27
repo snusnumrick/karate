@@ -2,6 +2,8 @@
 import type { MetaFunction, MetaArgs, MetaDescriptor,  LoaderFunctionArgs } from "@remix-run/node";
 import { Link, useLoaderData } from "@remix-run/react";
 import { json } from "@remix-run/node";
+import { performance } from "node:perf_hooks";
+import { parse } from "cookie";
 import { MapPin, Clock, Users, Phone, Mail, Award, GraduationCap, Baby, Trophy, Dumbbell, Brain, ShieldCheck, Star, Footprints, Wind, Calendar, ExternalLink } from 'lucide-react'; // Import icons for environment
 import { siteConfig } from "~/config/site"; // Import site config
 import { EventService, type UpcomingEvent } from "~/services/event.server";
@@ -40,22 +42,55 @@ export async function loader({ request }: LoaderFunctionArgs) {
     const { getEventTypeConfigWithDarkMode } = await import("~/utils/event-helpers.server");
     const { getMainPageScheduleData } = await import("~/services/class.server");
     const { getSupabaseServerClient } = await import("~/utils/supabase.server");
-    
+
+    const timings: Record<string, number> = {};
+    const overallStart = performance.now();
+
+    async function time<T>(label: string, task: () => Promise<T>): Promise<T> {
+        const start = performance.now();
+        const result = await task();
+        timings[label] = performance.now() - start;
+        return result;
+    }
+
     try {
-        // Check if user is logged in to determine which events to show
+        const supabaseInitStart = performance.now();
         const { supabaseServer } = getSupabaseServerClient(request);
-        const { data: { user } } = await supabaseServer.auth.getUser();
-        const isLoggedIn = !!user;
-        
-        // Fetch both upcoming events and schedule data in parallel
-        const [upcomingEvents, scheduleData, eventTypeConfig] = await Promise.all([
-            isLoggedIn ? EventService.getEventsForLoggedInUsers() : EventService.getUpcomingEvents(),
-            getMainPageScheduleData(),
-            getEventTypeConfigWithDarkMode(request)
+        timings.supabaseInit = performance.now() - supabaseInitStart;
+
+        const cookies = parse(request.headers.get('cookie') ?? '');
+        const cookieKeys = Object.keys(cookies);
+        const hasSessionCookie = cookieKeys.some((key) =>
+            key.startsWith('sb-') ||
+            key.startsWith('sb:') ||
+            key.endsWith('-token')
+        );
+        const hasAuthHeader = Boolean(request.headers.get('authorization'));
+
+        const shouldFetchAuth = hasSessionCookie || hasAuthHeader;
+
+        const authPromise = shouldFetchAuth
+            ? time('auth', () => supabaseServer.auth.getUser())
+            : Promise.resolve<{ data: { user: null } }>({ data: { user: null } });
+
+        const upcomingEventsPromise = time('events', async () => {
+            const { data: { user } } = await authPromise;
+            return user ? EventService.getEventsForLoggedInUsers() : EventService.getUpcomingEvents();
+        });
+        const schedulePromise = time('schedule', () => getMainPageScheduleData());
+        const eventTypePromise = time('eventTypes', () => getEventTypeConfigWithDarkMode(request));
+
+        const [{ data: { user } }, upcomingEvents, scheduleData, eventTypeConfig] = await Promise.all([
+            authPromise,
+            upcomingEventsPromise,
+            schedulePromise,
+            eventTypePromise
         ]);
-        
+
+        const serializationStart = performance.now();
+
         // Format event type names on the server side
-        const upcomingEventsWithFormatted: UpcomingEventWithFormatted[] = upcomingEvents.map(event => ({
+        const upcomingEventsWithFormatted: UpcomingEventWithFormatted[] = upcomingEvents.map((event: UpcomingEvent) => ({
           ...event,
           formattedEventType: event.event_type?.display_name || event.event_type?.name || 'Other'
         }));
@@ -65,6 +100,18 @@ export async function loader({ request }: LoaderFunctionArgs) {
           registration_fee: serializeMoney(event.registration_fee),
           late_registration_fee: serializeMoney(event.late_registration_fee),
         }));
+
+        timings.serialization = performance.now() - serializationStart;
+        timings.total = performance.now() - overallStart;
+
+        const serverTimingHeader = Object.entries(timings)
+            .map(([key, value]) => `${key};dur=${value.toFixed(2)}`)
+            .join(', ');
+
+        console.log('[homepage.metrics]', {
+            isLoggedIn: Boolean(user),
+            timings
+        });
 
         return json(
             { 
@@ -78,13 +125,20 @@ export async function loader({ request }: LoaderFunctionArgs) {
                     // public: can be cached by browsers and CDNs
                     // max-age: cache duration in seconds
                     // stale-while-revalidate: serve stale content while fetching fresh data
-                    'Cache-Control': 'public, max-age=300, stale-while-revalidate=600'
+                    'Cache-Control': 'public, max-age=300, stale-while-revalidate=600',
+                    ...(serverTimingHeader ? { 'Server-Timing': serverTimingHeader } : {})
                 }
             }
         );
     } catch (error) {
+        timings.error = performance.now() - overallStart;
         console.error('Error loading homepage data:', error);
-        const eventTypeConfig = await getEventTypeConfigWithDarkMode(request);
+        const eventTypeConfig = await time('eventTypesError', () => getEventTypeConfigWithDarkMode(request));
+        timings.total = performance.now() - overallStart;
+        const serverTimingHeader = Object.entries(timings)
+            .map(([key, value]) => `${key};dur=${value.toFixed(2)}`)
+            .join(', ');
+
         return json(
             { 
                 upcomingEvents: [], 
@@ -94,7 +148,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
             {
                 headers: {
                     // Don't cache error responses
-                    'Cache-Control': 'no-cache, no-store, must-revalidate'
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    ...(serverTimingHeader ? { 'Server-Timing': serverTimingHeader } : {})
                 }
             }
         );
@@ -188,9 +243,9 @@ export default function Index() {
     const scheduleTimeRange24 = parseTimeRange(displaySchedule.timeRange);
     const displayDaysArray = displaySchedule.days
         .split(/\s*[&,/]+\s*/)
-        .map(day => day.trim())
+        .map((day: string) => day.trim())
         .filter(Boolean)
-        .map(day => formatDayName(day));
+        .map((day: string) => formatDayName(day));
 
     // Build JSON-LD structured data objects here and render with nonce
     const eventsStructuredData = upcomingEvents && upcomingEvents.length > 0 ? {

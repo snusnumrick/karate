@@ -147,6 +147,7 @@ function generateCsp(nonce: string) {
         supabaseOrigin,
         "https://*.google-analytics.com",
         "https://*.googletagmanager.com",
+        "https://*.google.com", // Google Ads and other Google services
         "https://stats.g.doubleclick.net",
         "https://www.google.ca",
         ...(providerDomains.imgSrc || []), // Use provider-specific image domains
@@ -193,6 +194,7 @@ function generateCsp(nonce: string) {
     const frameSrc = [
         "'self'",
         ...providerDomains.frameSrc,
+        "https://*.googletagmanager.com", // Google Tag Manager iframe container
         "https://www.youtube.com",
         "https://player.vimeo.com",
     ].filter(Boolean).join(" ");
