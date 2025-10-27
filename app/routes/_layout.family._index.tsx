@@ -1,7 +1,121 @@
 import {json, type LoaderFunctionArgs, type ActionFunctionArgs, redirect, TypedResponse} from "@remix-run/node"; // Import redirect
 import {Link, useLoaderData} from "@remix-run/react";
-import {checkStudentEligibility, type EligibilityStatus, getSupabaseServerClient} from "~/utils/supabase.server"; // Import eligibility check
+import {type EligibilityStatus, getSupabaseServerClient} from "~/utils/supabase.server"; // Import eligibility check
+import { performance } from "node:perf_hooks";
+import { parse } from "cookie";
 import {getIncompleteRegistrations, dismissIncompleteRegistration, type IncompleteRegistrationWithEvent} from "~/services/incomplete-registration.server";
+import { getCurrentDateTimeInTimezone } from "~/utils/misc";
+import type { Database } from "~/types/database.types";
+
+// Simple in-memory cache for required waivers (rarely changes)
+const REQUIRED_WAIVERS_CACHE_TTL = 15 * 60 * 1000; // 15 minutes
+let requiredWaiversCache: { data: Array<{id: string; title: string}>; expiresAt: number } | null = null;
+
+// Batch check eligibility for multiple students
+async function batchCheckStudentEligibility(
+    studentIds: string[],
+    supabase: ReturnType<typeof getSupabaseServerClient>['supabaseServer']
+): Promise<Map<string, EligibilityStatus>> {
+    if (studentIds.length === 0) {
+        return new Map();
+    }
+
+    // Fetch enrollments and payments in PARALLEL
+    const [{data: allEnrollments}, {data: allPayments}] = await Promise.all([
+        supabase
+            .from('enrollments')
+            .select('student_id, paid_until, status')
+            .in('student_id', studentIds)
+            .in('status', ['active', 'trial'])
+            .order('paid_until', {ascending: false}),
+        supabase
+            .from('payment_students')
+            .select(`
+                student_id,
+                payments!inner (
+                    payment_date,
+                    type,
+                    status
+                )
+            `)
+            .in('student_id', studentIds)
+            .eq('payments.status', 'succeeded')
+            .order('payments.payment_date', {ascending: false})
+    ]);
+
+    // Group enrollments by student
+    const enrollmentsByStudent = new Map<string, typeof allEnrollments>();
+    allEnrollments?.forEach(enrollment => {
+        const existing = enrollmentsByStudent.get(enrollment.student_id) || [];
+        existing.push(enrollment);
+        enrollmentsByStudent.set(enrollment.student_id, existing);
+    });
+
+    // Group payments by student (get latest only)
+    type PaymentRecord = NonNullable<typeof allPayments>[number];
+    const paymentByStudent = new Map<string, PaymentRecord>();
+    allPayments?.forEach(payment => {
+        if (!paymentByStudent.has(payment.student_id)) {
+            paymentByStudent.set(payment.student_id, payment);
+        }
+    });
+
+    const today = getCurrentDateTimeInTimezone();
+    const results = new Map<string, EligibilityStatus>();
+
+    // Process each student
+    studentIds.forEach(studentId => {
+        const enrollments = enrollmentsByStudent.get(studentId) || [];
+
+        if (enrollments.length === 0) {
+            results.set(studentId, {eligible: false, reason: 'Expired'});
+            return;
+        }
+
+        // Check for trial
+        const trialEnrollment = enrollments.find(e => e.status === 'trial');
+        if (trialEnrollment) {
+            results.set(studentId, {eligible: true, reason: 'Trial'});
+            return;
+        }
+
+        // Check active paid enrollments
+        const activeEnrollments = enrollments.filter(e => e.status === 'active');
+        for (const enrollment of activeEnrollments) {
+            if (enrollment.paid_until) {
+                const paidUntilDate = new Date(enrollment.paid_until);
+                if (paidUntilDate >= today) {
+                    const payment = paymentByStudent.get(studentId);
+                    const paymentData = payment?.payments;
+                    const reason: EligibilityStatus['reason'] =
+                        paymentData?.type === 'yearly_group' ? 'Paid - Yearly' : 'Paid - Monthly';
+
+                    results.set(studentId, {
+                        eligible: true,
+                        reason,
+                        lastPaymentDate: paymentData?.payment_date || undefined,
+                        type: paymentData?.type as Database['public']['Enums']['payment_type_enum'] | undefined,
+                        paidUntil: enrollment.paid_until || undefined
+                    });
+                    return;
+                }
+            }
+        }
+
+        // Expired
+        const payment = paymentByStudent.get(studentId);
+        const paymentData = payment?.payments;
+        results.set(studentId, {
+            eligible: false,
+            reason: 'Expired',
+            lastPaymentDate: paymentData?.payment_date || undefined,
+            type: paymentData?.type as Database['public']['Enums']['payment_type_enum'] | undefined,
+            paidUntil: activeEnrollments[0]?.paid_until || undefined
+        });
+    });
+
+    return results;
+}
 import {
     AlertCircle,
     Award,
@@ -19,7 +133,6 @@ import {
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert"; // Import Alert components
 import {Button} from "~/components/ui/button";
 import {Badge} from "~/components/ui/badge"; // Import Badge
-import {Database} from "~/types/database.types";
 import {formatDate, getTodayLocalDateString} from "~/utils/misc"; // For formatting dates
 import {beltColorMap} from "~/utils/constants"; // Import belt color mapping
 import {useClientEffect} from "~/hooks/use-client-effect";
@@ -127,8 +240,27 @@ export async function action({request}: ActionFunctionArgs) {
 
 // Placeholder loader - will need to fetch actual family data later
 export async function loader({request}: LoaderFunctionArgs): Promise<TypedResponse<LoaderData>> {
+    const timings: Record<string, number> = {};
+    const overallStart = performance.now();
+
     const {supabaseServer, response: {headers}} = getSupabaseServerClient(request);
-    const {data: {user}} = await supabaseServer.auth.getUser();
+
+    // Conditional auth check based on cookie presence (like homepage optimization)
+    const cookies = parse(request.headers.get('cookie') ?? '');
+    const cookieKeys = Object.keys(cookies);
+    const hasSessionCookie = cookieKeys.some((key) =>
+        key.startsWith('sb-') ||
+        key.startsWith('sb:') ||
+        key.endsWith('-token')
+    );
+    const hasAuthHeader = Boolean(request.headers.get('authorization'));
+    const shouldFetchAuth = hasSessionCookie || hasAuthHeader;
+
+    const authStart = performance.now();
+    const {data: {user}} = shouldFetchAuth
+        ? await supabaseServer.auth.getUser()
+        : { data: { user: null } };
+    timings.auth = performance.now() - authStart;
 
     if (!user) {
         // This shouldn't happen if the route is protected by the layout,
@@ -139,14 +271,17 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
 
     // 1. Get the user's profile to find their family_id
     // Use maybeSingle() to handle potential duplicate profiles gracefully
+    const profileStart = performance.now();
     const {data: profileData, error: profileError} = await supabaseServer
         .from('profiles')
         .select('family_id') // Only fetch family_id, as names are not on this table
         .eq('id', user.id)
         .maybeSingle();
+    timings.profile = performance.now() - profileStart;
 
     if (profileError) {
         console.error("Error fetching profile:", profileError?.message);
+        timings.total = performance.now() - overallStart;
         // If there's an actual database error (not just duplicate rows)
         return json({
             error: "Failed to load user profile. Please contact support if this persists.",
@@ -155,6 +290,7 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
 
     if (!profileData) {
         console.warn("No profile found for user:", user.id);
+        timings.total = performance.now() - overallStart;
         // Profile doesn't exist - redirect to setup page
         return json({
             error: "User profile not found. Please complete your registration.",
@@ -165,43 +301,80 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
         // User is logged in but not associated with a family yet. Redirect to setup.
         // This might happen after registration but before family creation/linking
         console.warn("User authenticated but no family_id found. Redirecting to /family/setup");
+        timings.total = performance.now() - overallStart;
         // Note: Ensure the /family/setup route exists or adjust the target URL.
         return redirect("/family/setup", {headers});
     }
 
-    // 2. Fetch the family data *and* its related students and guardians (without payments initially)
-    const {data: familyBaseData, error: familyError} = await supabaseServer
-        .from('families')
-        .select(`
-          *,
-          students(*),
-          guardians(*)
-        `)
-        .eq('id', profileData.family_id)
-        .single(); // Fetch the single family record
+    // 2-4. Fetch family data, payment, and waivers in parallel
+    // Check cache for required waivers first
+    const now = Date.now();
+    const cachedWaivers = requiredWaiversCache && requiredWaiversCache.expiresAt > now
+        ? requiredWaiversCache.data
+        : null;
 
-    if (familyError || !familyBaseData) { // Check if familyBaseData itself is null/undefined
+    const parallelStart = performance.now();
+    const parallelResults = await Promise.all([
+        supabaseServer
+            .from('families')
+            .select(`
+              *,
+              students(*),
+              guardians(*)
+            `)
+            .eq('id', profileData.family_id)
+            .single(),
+        supabaseServer
+            .from('payments')
+            .select(`
+                *,
+                payment_students(student_id)
+            `)
+            .eq('family_id', profileData.family_id)
+            .eq('status', 'succeeded')
+            .order('payment_date', {ascending: false, nullsFirst: false})
+            .order('created_at', {ascending: false})
+            .limit(1)
+            .maybeSingle(),
+        cachedWaivers
+            ? Promise.resolve({ data: cachedWaivers, error: null })
+            : (async () => {
+                const result = await supabaseServer
+                    .from('waivers')
+                    .select('id, title')
+                    .eq('required', true);
+
+                // Cache the result
+                if (!result.error && result.data) {
+                    requiredWaiversCache = {
+                        data: result.data,
+                        expiresAt: Date.now() + REQUIRED_WAIVERS_CACHE_TTL
+                    };
+                }
+
+                return result;
+            })(),
+        supabaseServer
+            .from('waiver_signatures')
+            .select('waiver_id')
+            .eq('user_id', user.id)
+    ]);
+    timings.parallelQueries = performance.now() - parallelStart;
+
+    const {data: familyBaseData, error: familyError} = parallelResults[0];
+    const {data: recentPaymentData, error: paymentError} = parallelResults[1];
+    const {data: requiredWaivers, error: requiredWaiversError} = parallelResults[2];
+    const {data: signedWaivers, error: signedWaiversError} = parallelResults[3];
+
+    if (familyError || !familyBaseData) {
         console.error("Error fetching base family data:", familyError?.message ?? "Family not found");
+        timings.total = performance.now() - overallStart;
         return json({
             profile: {familyId: String(profileData.family_id)},
             error: "Failed to load family data.",
             allWaiversSigned: false
         }, {status: 500, headers});
     }
-
-    // 3. Fetch the single most recent *successful* payment separately
-    const {data: recentPaymentData, error: paymentError} = await supabaseServer
-        .from('payments')
-        .select(`
-            *,
-            payment_students(student_id)
-        `)
-        .eq('family_id', profileData.family_id) // Filter by family_id
-        .eq('status', 'succeeded')             // Filter by status
-        .order('payment_date', {ascending: false, nullsFirst: false}) // Order by date
-        .order('created_at', {ascending: false}) // Then by time
-        .limit(1)                              // Limit to one
-        .maybeSingle(); // Use maybeSingle as there might be no successful payments
 
     if (paymentError) {
         console.error("Error fetching recent payment data:", paymentError.message);
@@ -210,51 +383,75 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
 
     // console.log("Most Recent Successful Payment Data:", recentPaymentData);
 
-    // 4. Fetch eligibility, belt awards, and enrollments for each student
-    const studentsWithEligibility: StudentWithEligibility[] = [];
-    if (familyBaseData.students && familyBaseData.students.length > 0) {
-        for (const student of familyBaseData.students) {
-            const eligibility: EligibilityStatus =
-                await checkStudentEligibility(student.id, supabaseServer);
+    // 5. Fetch student data (eligibility, belt awards, enrollments) with batch optimization
+    const studentDataStart = performance.now();
+    const studentsWithEligibility: StudentWithEligibility[] = !familyBaseData.students || familyBaseData.students.length === 0
+        ? []
+        : await (async () => {
+            const studentIds = familyBaseData.students.map(s => s.id);
 
-            // Fetch current belt rank from belt awards
-            const {data: beltAwards} = await supabaseServer
-                .from('belt_awards')
-                .select('type')
-                .eq('student_id', student.id)
-                .order('awarded_date', {ascending: false})
-                .limit(1)
-                .maybeSingle();
+            // Batch fetch all data in parallel
+            const [eligibilityMap, {data: allBeltAwards}, {data: allEnrollments}] = await Promise.all([
+                batchCheckStudentEligibility(studentIds, supabaseServer),
+                supabaseServer
+                    .from('belt_awards')
+                    .select('student_id, type, awarded_date')
+                    .in('student_id', studentIds)
+                    .order('awarded_date', {ascending: false}),
+                supabaseServer
+                    .from('enrollments')
+                    .select(`
+                        student_id,
+                        status,
+                        classes (
+                            name
+                        ),
+                        programs (
+                            name
+                        )
+                    `)
+                    .in('student_id', studentIds)
+                    .eq('status', 'active')
+            ]);
 
-            // Fetch active enrollments with class and program info
-            const {data: enrollments} = await supabaseServer
-                .from('enrollments')
-                .select(`
-                    status,
-                    classes (
-                        name
-                    ),
-                    programs (
-                        name
-                    )
-                `)
-                .eq('student_id', student.id)
-                .eq('status', 'active');
-
-            const activeEnrollments = enrollments?.map(enrollment => ({
-                class_name: enrollment.classes?.name || 'Unknown Class',
-                program_name: enrollment.programs?.name || 'Unknown Program',
-                status: enrollment.status
-            })) || [];
-
-            studentsWithEligibility.push({
-                ...student,
-                eligibility: eligibility,
-                currentBeltRank: beltAwards?.type || null,
-                activeEnrollments: activeEnrollments,
+            // Group belt awards by student (latest only)
+            type BeltAwardRecord = NonNullable<typeof allBeltAwards>[number];
+            const beltAwardsByStudent = new Map<string, BeltAwardRecord>();
+            allBeltAwards?.forEach(award => {
+                if (!beltAwardsByStudent.has(award.student_id)) {
+                    beltAwardsByStudent.set(award.student_id, award);
+                }
             });
-        }
-    }
+
+            // Group enrollments by student
+            const enrollmentsByStudent = new Map<string, typeof allEnrollments>();
+            allEnrollments?.forEach(enrollment => {
+                const existing = enrollmentsByStudent.get(enrollment.student_id) || [];
+                existing.push(enrollment);
+                enrollmentsByStudent.set(enrollment.student_id, existing);
+            });
+
+            // Combine all data for each student
+            return familyBaseData.students.map(student => {
+                const eligibility = eligibilityMap.get(student.id) || {eligible: false, reason: 'Expired' as const};
+                const beltAward = beltAwardsByStudent.get(student.id);
+                const enrollments = enrollmentsByStudent.get(student.id) || [];
+
+                const activeEnrollments = enrollments.map(enrollment => ({
+                    class_name: enrollment.classes?.name || 'Unknown Class',
+                    program_name: enrollment.programs?.name || 'Unknown Program',
+                    status: enrollment.status
+                }));
+
+                return {
+                    ...student,
+                    eligibility,
+                    currentBeltRank: beltAward?.type || null,
+                    activeEnrollments,
+                };
+            });
+        })();
+    timings.studentData = performance.now() - studentDataStart;
 
     // Combine base family data, students with eligibility, and the single payment (if found)
     const finalFamilyData: FamilyData = {
@@ -264,28 +461,15 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
     };
 
 
-    // 5. Fetch required waivers and user's signatures to determine status
+    // 6. Process waivers (already fetched in parallel earlier)
     let allWaiversSigned = false;
     const pendingWaivers: PendingWaiver[] = [];
 
     try {
-        // Check general required waivers
-        const {data: requiredWaivers, error: requiredWaiversError} = await supabaseServer
-            .from('waivers')
-            .select('id, title')
-            .eq('required', true);
-
         if (requiredWaiversError) throw requiredWaiversError;
-
-        // Get user's signed waivers
-        const {data: signedWaivers, error: signedWaiversError} = await supabaseServer
-            .from('waiver_signatures')
-            .select('waiver_id')
-            .eq('user_id', user.id);
-
         if (signedWaiversError) throw signedWaiversError;
 
-        const signedWaiverIds = new Set(signedWaivers?.map(s => s.waiver_id) || []);
+        const signedWaiverIds = new Set(signedWaivers?.map((s: {waiver_id: string}) => s.waiver_id) || []);
 
         // Check general required waivers
         if (!requiredWaivers || requiredWaivers.length === 0) {
@@ -305,46 +489,53 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
             });
         }
 
-        // Check program-specific waivers for each student's enrollments
+        // Check program-specific waivers for all students' enrollments with batch query
         if (studentsWithEligibility.length > 0) {
-            for (const student of studentsWithEligibility) {
-                // Get active enrollments with program waiver requirements
-                const {data: enrollmentWaivers, error: enrollmentError} = await supabaseServer
-                    .from('enrollments')
-                    .select(`
-                        id,
-                        programs!inner(
-                            name,
-                            required_waiver:waivers(
-                                id,
-                                title
-                            )
+            const enrollmentWaiversStart = performance.now();
+            const studentIds = studentsWithEligibility.map(s => s.id);
+
+            // Batch query for all students' enrollment waivers
+            const {data: allEnrollmentWaivers, error: enrollmentError} = await supabaseServer
+                .from('enrollments')
+                .select(`
+                    id,
+                    student_id,
+                    programs!inner(
+                        name,
+                        required_waiver:waivers(
+                            id,
+                            title
                         )
-                    `)
-                    .eq('student_id', student.id)
-                    .in('status', ['active', 'trial'])
-                    .not('programs.required_waiver_id', 'is', null);
+                    )
+                `)
+                .in('student_id', studentIds)
+                .in('status', ['active', 'trial'])
+                .not('programs.required_waiver_id', 'is', null);
 
-                if (enrollmentError) {
-                    console.error('Error fetching enrollment waivers:', enrollmentError);
-                    continue;
-                }
+            timings.enrollmentWaivers = performance.now() - enrollmentWaiversStart;
 
-                // Check each enrollment's required waiver
-                enrollmentWaivers?.forEach(enrollment => {
-                    // Supabase returns required_waiver as an array, so get the first element
+            if (enrollmentError) {
+                console.error('Error fetching enrollment waivers:', enrollmentError);
+            } else if (allEnrollmentWaivers) {
+                // Create student name lookup
+                const studentNameMap = new Map<string, string>();
+                studentsWithEligibility.forEach(student => {
+                    studentNameMap.set(student.id, `${student.first_name} ${student.last_name}`);
+                });
+
+                // Process all enrollment waivers
+                allEnrollmentWaivers.forEach(enrollment => {
                     const waiverArray = enrollment.programs?.required_waiver;
                     const waiver = Array.isArray(waiverArray) && waiverArray.length > 0 ? waiverArray[0] : null;
 
                     if (waiver && !signedWaiverIds.has(waiver.id)) {
-                        // Add to pending list if not already there
                         const exists = pendingWaivers.some(pw => pw.waiver_id === waiver.id && pw.enrollment_id === enrollment.id);
                         if (!exists) {
                             pendingWaivers.push({
                                 waiver_id: waiver.id,
                                 waiver_name: waiver.title,
                                 program_name: enrollment.programs?.name,
-                                student_name: `${student.first_name} ${student.last_name}`,
+                                student_name: studentNameMap.get(enrollment.student_id),
                                 enrollment_id: enrollment.id
                             });
                             allWaiversSigned = false;
@@ -364,13 +555,17 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
         allWaiversSigned = false;
     }
 
-    // 6. Fetch upcoming class sessions for enrolled students (one per student)
-    let upcomingClasses: UpcomingClassSession[] = [];
+    // 7-8. Fetch upcoming classes, attendance, and incomplete registrations with batch optimization
+    const additionalDataStart = performance.now();
+    const [upcomingClasses, studentAttendanceData, {data: incompleteRegistrations}] = await Promise.all([
+        (async (): Promise<UpcomingClassSession[]> => {
+            if (studentsWithEligibility.length === 0) return [];
 
-    if (studentsWithEligibility.length > 0) {
-        try {
-            const upcomingClassesPromises = studentsWithEligibility.map(async (student) => {
-                const {data} = await supabaseServer
+            try {
+                const studentIds = studentsWithEligibility.map(s => s.id);
+
+                // Batch query for all students' upcoming sessions
+                const {data: allSessions} = await supabaseServer
                     .from('class_sessions')
                     .select(`
                         session_date,
@@ -391,70 +586,93 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
                             last_name
                         )
                     `)
-                    .eq('classes.enrollments.student_id', student.id)
+                    .in('classes.enrollments.student_id', studentIds)
                     .in('classes.enrollments.status', ['active', 'trial'])
-                    .gte('session_date', getTodayLocalDateString()) // Only future sessions
+                    .gte('session_date', getTodayLocalDateString())
                     .order('session_date', {ascending: true})
-                    .order('start_time', {ascending: true})
-                    .limit(1); // Limit to next 1 session per student
+                    .order('start_time', {ascending: true});
 
-                return data?.[0] ? {
-                    student_id: data[0].classes.enrollments[0].student_id,
-                    student_name: `${data[0].classes.enrollments[0].students.first_name} ${data[0].classes.enrollments[0].students.last_name}`,
-                    class_name: data[0].classes.name,
-                    session_date: data[0].session_date,
-                    start_time: data[0].start_time,
-                    end_time: data[0].end_time,
-                    instructor_name: data[0].instructor ? `${data[0].instructor.first_name} ${data[0].instructor.last_name}` : undefined
-                } : null;
-            });
+                // Group by student and get first session for each
+                type SessionRecord = NonNullable<typeof allSessions>[number];
+                const sessionsByStudent = new Map<string, SessionRecord>();
+                allSessions?.forEach(session => {
+                    const enrollment = session.classes.enrollments[0];
+                    if (enrollment) {
+                        const studentId = enrollment.student_id;
+                        if (!sessionsByStudent.has(studentId)) {
+                            sessionsByStudent.set(studentId, session);
+                        }
+                    }
+                });
 
-            const upcomingClassesResults = await Promise.all(upcomingClassesPromises);
-            upcomingClasses = upcomingClassesResults.filter(Boolean) as UpcomingClassSession[];
-        } catch (error) {
-            console.error('Error processing upcoming class sessions:', error);
-        }
-    }
+                return Array.from(sessionsByStudent.values())
+                    .filter(session => session.classes.enrollments[0])
+                    .map(session => {
+                        const enrollment = session.classes.enrollments[0]!;
+                        return {
+                            student_id: enrollment.student_id,
+                            student_name: `${enrollment.students.first_name} ${enrollment.students.last_name}`,
+                            class_name: session.classes.name,
+                            session_date: session.session_date,
+                            start_time: session.start_time,
+                            end_time: session.end_time,
+                            instructor_name: session.instructor ? `${session.instructor.first_name} ${session.instructor.last_name}` : undefined
+                        };
+                    });
+            } catch (error) {
+                console.error('Error processing upcoming class sessions:', error);
+                return [];
+            }
+        })(),
+        (async (): Promise<StudentAttendance[]> => {
+            if (studentsWithEligibility.length === 0) return [];
 
-    // 7. Fetch attendance data for each student (last session date and status)
-    let studentAttendanceData: StudentAttendance[] = [];
+            try {
+                const studentIds = studentsWithEligibility.map(s => s.id);
 
-    if (studentsWithEligibility.length > 0) {
-        try {
-            const attendancePromises = studentsWithEligibility.map(async (student) => {
-                const {data, error} = await supabaseServer
+                // Batch query for all students' attendance
+                const {data: allAttendance} = await supabaseServer
                     .from('attendance')
                     .select(`
+                        student_id,
                         status,
                         class_sessions!inner(
                             session_date
                         )
                     `)
-                    .eq('student_id', student.id)
-                    .not('class_session_id', 'is', null) // Only get records with valid class sessions
-                    .order('class_sessions(session_date)', {ascending: false}) // Fixed ordering syntax
-                    .limit(1);
+                    .in('student_id', studentIds)
+                    .not('class_session_id', 'is', null)
+                    .order('class_sessions(session_date)', {ascending: false});
 
-                if (error) {
-                    console.error(`Error fetching attendance for student ${student.id}:`, error);
-                }
+                // Group by student and get latest attendance for each
+                type AttendanceRecord = NonNullable<typeof allAttendance>[number];
+                const attendanceByStudent = new Map<string, AttendanceRecord>();
+                allAttendance?.forEach(attendance => {
+                    if (!attendanceByStudent.has(attendance.student_id)) {
+                        attendanceByStudent.set(attendance.student_id, attendance);
+                    }
+                });
 
-                return {
-                    student_id: student.id,
-                    student_name: `${student.first_name} ${student.last_name}`,
-                    last_session_date: data?.[0]?.class_sessions?.session_date || undefined,
-                    attendance_status: data?.[0]?.status === 'present' ? 'Present' as const :
-                        data?.[0]?.status === 'absent' ? 'Absent' as const :
-                            data?.[0]?.status === 'excused' ? 'Excused' as const :
-                                data?.[0]?.status === 'late' ? 'Late' as const : undefined
-                };
-            });
-
-            studentAttendanceData = await Promise.all(attendancePromises);
-        } catch (error) {
-            console.error('Error fetching attendance data:', error);
-        }
-    }
+                return studentsWithEligibility.map(student => {
+                    const attendance = attendanceByStudent.get(student.id);
+                    return {
+                        student_id: student.id,
+                        student_name: `${student.first_name} ${student.last_name}`,
+                        last_session_date: attendance?.class_sessions?.session_date || undefined,
+                        attendance_status: attendance?.status === 'present' ? 'Present' as const :
+                            attendance?.status === 'absent' ? 'Absent' as const :
+                                attendance?.status === 'excused' ? 'Excused' as const :
+                                    attendance?.status === 'late' ? 'Late' as const : undefined
+                    };
+                });
+            } catch (error) {
+                console.error('Error fetching attendance data:', error);
+                return [];
+            }
+        })(),
+        getIncompleteRegistrations(supabaseServer, profileData.family_id)
+    ]);
+    timings.additionalData = performance.now() - additionalDataStart;
 
     // Check if profile is complete (has address information)
     const missingProfileFields: string[] = [];
@@ -463,11 +681,19 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
     if (!finalFamilyData.province) missingProfileFields.push('province');
     const profileComplete = missingProfileFields.length === 0;
 
-    // 8. Fetch incomplete event registrations
-    const {data: incompleteRegistrations} = await getIncompleteRegistrations(
-        supabaseServer,
-        profileData.family_id
-    );
+    // Calculate total timing
+    timings.total = performance.now() - overallStart;
+
+    // Generate Server-Timing header
+    const serverTimingHeader = Object.entries(timings)
+        .map(([key, value]) => `${key};dur=${value.toFixed(2)}`)
+        .join(', ');
+
+    console.log('[family.metrics]', {
+        familyId: profileData.family_id,
+        studentCount: studentsWithEligibility.length,
+        timings
+    });
 
     // Return profile, combined family data, waiver status, upcoming classes, attendance data, and profile completeness
     return json({
@@ -480,7 +706,12 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
         profileComplete,
         missingProfileFields,
         incompleteRegistrations: incompleteRegistrations || []
-    }, {headers});
+    }, {
+        headers: {
+            ...headers,
+            'Server-Timing': serverTimingHeader
+        }
+    });
 }
 
 
