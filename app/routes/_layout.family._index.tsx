@@ -314,52 +314,69 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
         : null;
 
     const parallelStart = performance.now();
+    const familyQueryStart = performance.now();
+    const familyQuery = supabaseServer
+        .from('families')
+        .select(`
+          *,
+          students(*),
+          guardians(*)
+        `)
+        .eq('id', profileData.family_id)
+        .single();
+
+    const paymentsQueryStart = performance.now();
+    const paymentsQuery = supabaseServer
+        .from('payments')
+        .select(`
+            *,
+            payment_students(student_id)
+        `)
+        .eq('family_id', profileData.family_id)
+        .eq('status', 'succeeded')
+        .order('payment_date', {ascending: false, nullsFirst: false})
+        .order('created_at', {ascending: false})
+        .limit(1)
+        .maybeSingle();
+
+    const waiversQueryStart = performance.now();
+    const waiversQuery = cachedWaivers
+        ? Promise.resolve({ data: cachedWaivers, error: null })
+        : (async () => {
+            const result = await supabaseServer
+                .from('waivers')
+                .select('id, title')
+                .eq('required', true);
+
+            // Cache the result
+            if (!result.error && result.data) {
+                requiredWaiversCache = {
+                    data: result.data,
+                    expiresAt: Date.now() + REQUIRED_WAIVERS_CACHE_TTL
+                };
+            }
+
+            return result;
+        })();
+
+    const signaturesQueryStart = performance.now();
+    const signaturesQuery = supabaseServer
+        .from('waiver_signatures')
+        .select('waiver_id')
+        .eq('user_id', user.id);
+
     const parallelResults = await Promise.all([
-        supabaseServer
-            .from('families')
-            .select(`
-              *,
-              students(*),
-              guardians(*)
-            `)
-            .eq('id', profileData.family_id)
-            .single(),
-        supabaseServer
-            .from('payments')
-            .select(`
-                *,
-                payment_students(student_id)
-            `)
-            .eq('family_id', profileData.family_id)
-            .eq('status', 'succeeded')
-            .order('payment_date', {ascending: false, nullsFirst: false})
-            .order('created_at', {ascending: false})
-            .limit(1)
-            .maybeSingle(),
-        cachedWaivers
-            ? Promise.resolve({ data: cachedWaivers, error: null })
-            : (async () => {
-                const result = await supabaseServer
-                    .from('waivers')
-                    .select('id, title')
-                    .eq('required', true);
-
-                // Cache the result
-                if (!result.error && result.data) {
-                    requiredWaiversCache = {
-                        data: result.data,
-                        expiresAt: Date.now() + REQUIRED_WAIVERS_CACHE_TTL
-                    };
-                }
-
-                return result;
-            })(),
-        supabaseServer
-            .from('waiver_signatures')
-            .select('waiver_id')
-            .eq('user_id', user.id)
+        familyQuery,
+        paymentsQuery,
+        waiversQuery,
+        signaturesQuery
     ]);
+
     timings.parallelQueries = performance.now() - parallelStart;
+    timings.familyQuery = performance.now() - familyQueryStart;
+    timings.paymentsQuery = performance.now() - paymentsQueryStart;
+    timings.waiversQuery = performance.now() - waiversQueryStart;
+    timings.signaturesQuery = performance.now() - signaturesQueryStart;
 
     const {data: familyBaseData, error: familyError} = parallelResults[0];
     const {data: recentPaymentData, error: paymentError} = parallelResults[1];
@@ -557,8 +574,8 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
 
     // 7-8. Fetch upcoming classes, attendance, and incomplete registrations with batch optimization
     const additionalDataStart = performance.now();
-    const [upcomingClasses, studentAttendanceData, {data: incompleteRegistrations}] = await Promise.all([
-        (async (): Promise<UpcomingClassSession[]> => {
+    const upcomingClassesStart = performance.now();
+    const upcomingClassesPromise = (async (): Promise<UpcomingClassSession[]> => {
             if (studentsWithEligibility.length === 0) return [];
 
             try {
@@ -623,8 +640,10 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
                 console.error('Error processing upcoming class sessions:', error);
                 return [];
             }
-        })(),
-        (async (): Promise<StudentAttendance[]> => {
+        })();
+
+    const attendanceDataStart = performance.now();
+    const attendanceDataPromise = (async (): Promise<StudentAttendance[]> => {
             if (studentsWithEligibility.length === 0) return [];
 
             try {
@@ -669,10 +688,21 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
                 console.error('Error fetching attendance data:', error);
                 return [];
             }
-        })(),
-        getIncompleteRegistrations(supabaseServer, profileData.family_id)
+        })();
+
+    const incompleteRegistrationsStart = performance.now();
+    const incompleteRegistrationsPromise = getIncompleteRegistrations(supabaseServer, profileData.family_id);
+
+    const [upcomingClasses, studentAttendanceData, {data: incompleteRegistrations}] = await Promise.all([
+        upcomingClassesPromise,
+        attendanceDataPromise,
+        incompleteRegistrationsPromise
     ]);
+
     timings.additionalData = performance.now() - additionalDataStart;
+    timings.upcomingClasses = performance.now() - upcomingClassesStart;
+    timings.attendanceData = performance.now() - attendanceDataStart;
+    timings.incompleteRegistrations = performance.now() - incompleteRegistrationsStart;
 
     // Check if profile is complete (has address information)
     const missingProfileFields: string[] = [];

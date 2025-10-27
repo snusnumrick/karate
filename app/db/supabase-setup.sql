@@ -822,6 +822,11 @@ $$
         IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_payment_students_student_id') THEN
             CREATE INDEX idx_payment_students_student_id ON payment_students (student_id);
         END IF;
+
+        -- Performance indexes for family dashboard loader (Migration 038)
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_payment_students_student_payment') THEN
+            CREATE INDEX idx_payment_students_student_payment ON payment_students(student_id, payment_id);
+        END IF;
     END
 $$;
 
@@ -3966,6 +3971,11 @@ CREATE INDEX idx_enrollments_status ON public.enrollments (status);
 END IF;
 IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_enrollments_enrolled_at') THEN
 CREATE INDEX idx_enrollments_enrolled_at ON public.enrollments (enrolled_at);
+END IF;
+-- Performance index for family dashboard loader (Migration 037)
+-- Composite index for exact query pattern: student_id + status + paid_until
+IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_enrollments_student_status_paid') THEN
+CREATE INDEX idx_enrollments_student_status_paid ON public.enrollments(student_id, status, paid_until DESC NULLS LAST);
 END IF;
 END $$;
 
