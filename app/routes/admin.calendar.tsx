@@ -115,7 +115,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
         const calendarStart = startOfWeek(monthStart);
         const calendarEnd = endOfWeek(monthEnd);
 
-`/*        console.log('Admin Calendar - Date range calculation:', {
+        /*        console.log('Admin Calendar - Date range calculation:', {
             currentMonth,
             monthStartParsed: parseLocalDate(currentMonth + '-01'),
             monthStart,
@@ -123,7 +123,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
             calendarEnd,
             calendarStartFormatted: formatDate(calendarStart, { formatString: 'yyyy-MM-dd' }),
             calendarEndFormatted: formatDate(calendarEnd, { formatString: 'yyyy-MM-dd' })
-        });*/`
+        });*/
 
         // Fetch programs for filtering
         const { data: programsData } = await supabaseServer
