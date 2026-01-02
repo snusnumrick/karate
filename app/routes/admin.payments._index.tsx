@@ -41,14 +41,14 @@ type LoaderData = {
 };
 
 export async function loader({request}: LoaderFunctionArgs) {
-    console.log("Entering /admin/payments loader...");
+    // console.log("Entering /admin/payments loader...");
     const {response} = getSupabaseServerClient(request); // Get headers via helper
     const headers = response.headers;
 
     const supabaseAdmin = getSupabaseAdminClient();
 
     try {
-        console.log("Admin payments loader: Fetching payments with family names...");
+        // console.log("Admin payments loader: Fetching payments with family names...");
         
         // Fetch regular payments
         const {data: paymentsData, error: paymentsError} = await supabaseAdmin

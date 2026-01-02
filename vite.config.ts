@@ -5,6 +5,8 @@ import { deriveNonceForRequest } from "./app/utils/nonce.server";
 import { vercelPreset } from "@vercel/remix/vite";
 import type { Plugin } from "vite";
 import path from "path";
+import { visualizer } from 'rollup-plugin-visualizer';
+import viteImagemin from 'vite-plugin-imagemin';
 
 import { setRemixDevLoadContext } from "@remix-run/dev/dist/vite/plugin";
 
@@ -84,6 +86,21 @@ export default defineConfig({
     }),
     tsconfigPaths(),
     cspNoncePlugin(),
+    // Bundle analyzer - generates dist/stats.html
+    visualizer({
+      filename: 'dist/stats.html',
+      open: false,
+      gzipSize: true,
+      brotliSize: true,
+    }),
+    // Image optimization
+    viteImagemin({
+      gifsicle: { optimizationLevel: 7 },
+      optipng: { optimizationLevel: 7 },
+      mozjpeg: { quality: 80 },
+      pngquant: { quality: [0.8, 0.9] },
+      webp: { quality: 80 }
+    })
   ],
   optimizeDeps: {
     include: [

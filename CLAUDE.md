@@ -120,7 +120,8 @@ Currency is automatically configured from `app/config/site.ts` → `localization
 **Database Requirements:**
 - Supabase Storage bucket named `waivers` (created via dashboard, not migration)
 - RLS policies for waiver PDF access control
-- Migrations 029 and 030 applied (student_ids, pdf_storage_path columns)
+- Migrations 029-030 applied (student_ids, pdf_storage_path columns)
+- Migrations 034-035 applied (requirement flags, refresh function fixes)
 
 **Features:**
 - PDF generation with @react-pdf/renderer
@@ -128,6 +129,8 @@ Currency is automatically configured from `app/config/site.ts` → `localization
 - Student coverage tracking for legal compliance
 - Event registration flow: Student Selection → Waiver → Registration
 - Admin signature tracking with student coverage details
+- **Waiver Types**: Waivers can be marked as `required_for_registration` or `required_for_trial` (migration 034)
+- **Incomplete Registration Tracking**: System tracks registration state so users can resume later (migration 036)
 
 **Storage Setup:**
 1. Create `waivers` bucket in Supabase Dashboard (Storage section)
@@ -139,3 +142,53 @@ Currency is automatically configured from `app/config/site.ts` → `localization
 - Playwright tests available for E2E testing
 - Vitest configured for unit testing
 - Test database connection script available as `test-db-connection.js`
+
+## Recent Database Migrations
+
+### Migrations 031-033: Profile Management
+- **031**: Fix duplicate profiles
+- **032**: Create profile trigger and fix missing profiles
+- **033**: Ensure all users have proper profile creation
+
+### Migration 034: Waiver Requirement Flags
+- Adds `required_for_registration` and `required_for_trial` columns to waivers table
+- Allows differentiating waivers for different use cases
+- Creates indexes for efficient filtering
+
+### Migration 035: Waiver Refresh Function Fix
+- Resolves conflicting function definitions from earlier migrations
+- Ensures proper SECURITY DEFINER permissions for materialized view refreshes
+- Fixes cascade delete failures
+
+### Migration 036: Incomplete Event Registrations ⭐ NEW FEATURE
+- Creates `incomplete_event_registrations` table to track registration progress
+- Tracks current step: `student_selection`, `waiver_signing`, or `payment`
+- Stores selected student IDs and metadata for state recovery
+- Auto-expires after 7 days with cleanup function
+- Includes RLS policies for family access control
+- Allows users to resume registration where they left off
+
+### Migrations 037-038: Performance Indexes
+- **037**: Adds composite index for enrollments (student_id, status, paid_until) for dashboard queries
+- **038**: Adds indexes for payment_students join table and fixes conversation summaries function
+- **Additional**: Performance optimizations for family page with batching and caching
+
+## Recent Features
+
+### Incomplete Registration Flow
+Users can now:
+1. Start event registration and select students
+2. Leave mid-process (e.g., to gather more information)
+3. Return later to resume exactly where they left off
+4. System tracks progress automatically for 7 days
+5. Progress banner displayed on family dashboard
+
+### Performance Optimizations
+- Family page loader optimized with comprehensive batching
+- Caching implementation for repeated queries
+- Over-fetching issues resolved (with one revert that caused student card issues)
+- Schedule summary optimizations
+
+### AI Integration
+- Google Gemini API integration for database chat
+- Models configured: `gemini-2.5-pro` (primary), `gemini-2.5-flash` (backup/summary)

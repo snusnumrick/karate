@@ -505,7 +505,7 @@ export async function getInvoices(
 ): Promise<{ invoices: InvoiceWithDetails[]; total: number; totalPages: number }> {
   const client = supabaseAdmin ?? getSupabaseAdminClient();
   
-  console.log('[Service/getInvoices] Fetching invoices with filters:', filters);
+  // console.log('[Service/getInvoices] Fetching invoices with filters:', filters);
 
   let query = client
     .from('invoices')

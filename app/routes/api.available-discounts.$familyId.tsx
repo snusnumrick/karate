@@ -77,7 +77,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     const applicableDiscounts: AvailableDiscountCode[] = [];
 
     for (const discount of allDiscountCodes) {
-      console.log(`Checking discount code ${discount.code} (${discount.id})...`);
+      // console.log(`Checking discount code ${discount.code} (${discount.id})...`);
 
       // Check if discount is applicable to the payment type
       if (!discount.applicable_to.includes(applicableTo)) {
@@ -114,7 +114,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 
       // Check if discount has already been used by this family/student for one-time discounts
       if (discount.usage_type === 'one_time') {
-        console.log(`  Checking if discount has already been used...`);
+        // console.log(`  Checking if discount has already been used...`);
         let query = (supabaseServer as ExtendedSupabaseClient)
           .from('discount_code_usage')
           .select('id')
@@ -147,7 +147,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
         : (formatMoney(discount.discount_value as Money));
       
       const formatted_display = `${discount.name} ${discountValueDisplay}${discountSymbol}${discount.description ? ` (${discount.description})` : ''}`;
-      console.log(`  Discount is valid. Display: ${formatted_display}`);
+      // console.log(`  Discount is valid. Display: ${formatted_display}`);
 
       applicableDiscounts.push({
         ...discount,

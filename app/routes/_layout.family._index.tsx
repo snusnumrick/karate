@@ -1,11 +1,63 @@
-import {json, type LoaderFunctionArgs, type ActionFunctionArgs, redirect, TypedResponse} from "@remix-run/node"; // Import redirect
+import React from 'react';
+import {json, defer, type LoaderFunctionArgs, type ActionFunctionArgs, redirect} from "@remix-run/node"; // Import redirect
 import {Link, useLoaderData} from "@remix-run/react";
 import {type EligibilityStatus, getSupabaseServerClient} from "~/utils/supabase.server"; // Import eligibility check
 import { performance } from "node:perf_hooks";
 import { parse } from "cookie";
-import {getIncompleteRegistrations, dismissIncompleteRegistration, type IncompleteRegistrationWithEvent} from "~/services/incomplete-registration.server";
-import { getCurrentDateTimeInTimezone } from "~/utils/misc";
+import {getIncompleteRegistrations, dismissIncompleteRegistration} from "~/services/incomplete-registration.server";
+import { getCurrentDateTimeInTimezone, formatDate, getTodayLocalDateString } from "~/utils/misc";
 import type { Database } from "~/types/database.types";
+
+// Type definitions for memoized components
+interface StudentData {
+  id: string;
+  first_name: string;
+  last_name: string;
+  updated_at?: string;
+  eligibility: {
+    reason: string;
+    lastPaymentDate?: string;
+    paidUntil?: string;
+  };
+  activeEnrollments?: Array<{
+    class_name: string;
+  }>;
+  currentBeltRank?: string | null;
+}
+
+interface SessionData {
+  student_name: string;
+  class_name: string;
+  instructor_name?: string;
+  session_date: string;
+  start_time: string;
+  end_time: string;
+}
+
+interface AttendanceData {
+  student_name: string;
+  last_session_date?: string;
+  attendance_status?: string;
+}
+
+// Slim type for FamilyData that matches actual query result
+interface FamilyData {
+  id: string;
+  name: string;
+  email: string;
+  address?: string | null;
+  city?: string | null;
+  province?: string | null;
+  postal_code?: string | null;
+  primary_phone?: string | null;
+  students: StudentData[];
+  guardians: Array<{
+    id: string;
+    first_name: string;
+    last_name: string;
+    relationship: string;
+  }>;
+}
 
 // Simple in-memory cache for required waivers (rarely changes)
 const REQUIRED_WAIVERS_CACHE_TTL = 15 * 60 * 1000; // 15 minutes
@@ -133,7 +185,6 @@ import {
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert"; // Import Alert components
 import {Button} from "~/components/ui/button";
 import {Badge} from "~/components/ui/badge"; // Import Badge
-import {formatDate, getTodayLocalDateString} from "~/utils/misc"; // For formatting dates
 import {beltColorMap} from "~/utils/constants"; // Import belt color mapping
 import {useClientEffect} from "~/hooks/use-client-effect";
 import {OfflineErrorBoundary} from "~/components/OfflineErrorBoundary";
@@ -141,33 +192,6 @@ import {cacheAttendanceData, cacheFamilyData, cacheUpcomingClasses} from "~/util
 import {useClientReady} from "~/hooks/use-client-ready";
 import {FamilyLoadingScreen} from "~/components/LoadingScreen";
 import {IncompleteRegistrationBanner} from "~/components/IncompleteRegistrationBanner";
-
-// Define Guardian type
-type GuardianRow = Database["public"]["Tables"]["guardians"]["Row"];
-
-// Extend student type within FamilyData to include eligibility, belt info, and enrollments
-type StudentWithEligibility = Database["public"]["Tables"]["students"]["Row"] & {
-    eligibility: EligibilityStatus;
-    currentBeltRank?: Database["public"]["Enums"]["belt_rank_enum"] | null;
-    activeEnrollments?: {
-        class_name: string;
-        program_name: string;
-        status: Database["public"]["Enums"]["enrollment_status"];
-    }[];
-};
-
-// Define FamilyData using the extended student type
-export type FamilyData = Database["public"]["Tables"]["families"]["Row"] & {
-    students?: StudentWithEligibility[]; // Use the extended student type
-    payments?: (
-        Database["public"]["Tables"]["payments"]["Row"] & {
-        payment_students: {
-            student_id: string;
-        }[];
-    }
-        )[];
-    guardians?: GuardianRow[]; // Add guardians array
-};
 
 // Define upcoming class session type
 type UpcomingClassSession = {
@@ -197,21 +221,6 @@ type PendingWaiver = {
     enrollment_id?: string;
 };
 
-interface LoaderData {
-    profile?: { familyId: string };
-    family?: FamilyData;
-    error?: string;
-    allWaiversSigned?: boolean;
-    registrationWaiversComplete?: boolean;
-    missingRegistrationWaivers?: string[];
-    pendingWaivers?: PendingWaiver[];
-    upcomingClasses?: UpcomingClassSession[];
-    studentAttendanceData?: StudentAttendance[];
-    profileComplete?: boolean;
-    missingProfileFields?: string[];
-    incompleteRegistrations?: IncompleteRegistrationWithEvent[];
-}
-
 // Action handler for dismissing incomplete registrations
 export async function action({request}: ActionFunctionArgs) {
     const {supabaseServer} = getSupabaseServerClient(request);
@@ -239,7 +248,7 @@ export async function action({request}: ActionFunctionArgs) {
 }
 
 // Placeholder loader - will need to fetch actual family data later
-export async function loader({request}: LoaderFunctionArgs): Promise<TypedResponse<LoaderData>> {
+export async function loader({request}: LoaderFunctionArgs) {
     const timings: Record<string, number> = {};
     const overallStart = performance.now();
 
@@ -318,9 +327,9 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
     const familyQuery = supabaseServer
         .from('families')
         .select(`
-          *,
-          students(*),
-          guardians(*)
+          id, name, email, address, city, province, postal_code, primary_phone,
+          students!inner(id, first_name, last_name),
+          guardians(id, first_name, last_name, relationship)
         `)
         .eq('id', profileData.family_id)
         .single();
@@ -379,7 +388,7 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
     timings.signaturesQuery = performance.now() - signaturesQueryStart;
 
     const {data: familyBaseData, error: familyError} = parallelResults[0];
-    const {data: recentPaymentData, error: paymentError} = parallelResults[1];
+    const {error: paymentError} = parallelResults[1];
     const {data: requiredWaivers, error: requiredWaiversError} = parallelResults[2];
     const {data: signedWaivers, error: signedWaiversError} = parallelResults[3];
 
@@ -402,7 +411,7 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
 
     // 5. Fetch student data (eligibility, belt awards, enrollments) with batch optimization
     const studentDataStart = performance.now();
-    const studentsWithEligibility: StudentWithEligibility[] = !familyBaseData.students || familyBaseData.students.length === 0
+    const studentsWithEligibility: StudentData[] = !familyBaseData.students || familyBaseData.students.length === 0
         ? []
         : await (async () => {
             const studentIds = familyBaseData.students.map(s => s.id);
@@ -472,9 +481,16 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
 
     // Combine base family data, students with eligibility, and the single payment (if found)
     const finalFamilyData: FamilyData = {
-        ...familyBaseData,
-        students: studentsWithEligibility,
-        payments: recentPaymentData ? [recentPaymentData] : [], // Add payment as an array (or empty array)
+        id: familyBaseData.id,
+        name: familyBaseData.name,
+        email: familyBaseData.email,
+        address: familyBaseData.address,
+        city: familyBaseData.city,
+        province: familyBaseData.province,
+        postal_code: familyBaseData.postal_code,
+        primary_phone: familyBaseData.primary_phone,
+        students: studentsWithEligibility as StudentData[],
+        guardians: familyBaseData.guardians || []
     };
 
 
@@ -726,40 +742,213 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
     });
 
     // Return profile, combined family data, waiver status, upcoming classes, attendance data, and profile completeness
-    return json({
+    // Use defer() to stream non-critical data (upcoming classes and attendance) for faster initial render
+    return defer({
         profile: {familyId: String(profileData.family_id)},
-        family: finalFamilyData, // Use the combined data
+        family: finalFamilyData, // Critical - render immediately
         allWaiversSigned,
         pendingWaivers,
-        upcomingClasses,
-        studentAttendanceData,
+        upcomingClasses, // Non-critical - stream when ready
+        studentAttendanceData, // Non-critical - stream when ready
         profileComplete,
         missingProfileFields,
         incompleteRegistrations: incompleteRegistrations || []
     }, {
         headers: {
             ...headers,
-            'Server-Timing': serverTimingHeader
+            'Server-Timing': serverTimingHeader,
+            'Cache-Control': 'private, max-age=300, stale-while-revalidate=86400'
         }
-    });
+    }) as any; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
 
-// Helper function for eligibility badge variants
-const getEligibilityBadgeVariant = (status: EligibilityStatus['reason']): "default" | "secondary" | "destructive" | "outline" => {
-    switch (status) {
-        // Adjusted cases based on the actual reasons in EligibilityStatus
-        case 'Paid - Monthly':
-        case 'Paid - Yearly':
-            return 'default'; // Greenish
-        case 'Trial':
-            return 'secondary'; // Bluish/Grayish
-        case 'Expired':
-            return 'destructive'; // Reddish
-        default:
-            return 'outline';
-    }
-};
+// Memoized components to prevent unnecessary re-renders
+const StudentCard = React.memo(({ student, beltColorMap }: { student: StudentData; beltColorMap: Record<string, string> }) => {
+    const getEligibilityBadgeVariant = (reason: string) => {
+        if (!reason) return 'secondary';
+        if (reason.startsWith('Paid')) return 'default';
+        if (reason === 'No Payment Required') return 'secondary';
+        if (reason === 'Trial') return 'outline';
+        if (reason === 'Expired' || reason === 'No Payment') return 'destructive';
+        return 'outline';
+    };
+
+    return (
+        <Link
+            to={`/family/student/${student.id}`}
+            className="block p-4 form-card-styles rounded-lg border-l-4 border-green-500 hover:shadow-md transition-shadow duration-300 group"
+        >
+            <div className="flex justify-between items-start mb-3">
+                <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                        <Users className="h-4 w-4 text-green-600"/>
+                        <h3 className="font-bold text-gray-900 dark:text-gray-100 group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors">
+                            {student.first_name} {student.last_name}
+                        </h3>
+                    </div>
+                    {/* Belt Rank Indicator */}
+                    {student.currentBeltRank && (
+                        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-1">
+                            <Award className="h-3 w-3"/>
+                            <div className="flex items-center gap-1">
+                                <div
+                                    className={`w-3 h-3 rounded-full ${beltColorMap[student.currentBeltRank]} ${student.currentBeltRank === 'white' ? 'border border-gray-400' : ''}`}
+                                    title={`${student.currentBeltRank.charAt(0).toUpperCase() + student.currentBeltRank.slice(1)} Belt`}
+                                ></div>
+                                <span className="capitalize font-medium">
+                                    {student.currentBeltRank} Belt
+                                </span>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Eligibility Badge */}
+                <div className="text-right px-3 py-2 rounded-lg shadow-sm">
+                    <Badge
+                        variant={getEligibilityBadgeVariant(student.eligibility.reason)}
+                        className="text-sm font-medium px-2 py-1">
+                        {student.eligibility.reason.startsWith('Paid') ? 'Active' : student.eligibility.reason}
+                    </Badge>
+                </div>
+            </div>
+
+            {/* Additional Info */}
+            <div className="space-y-2">
+                {/* Paid Until Date */}
+                {(student.eligibility.reason.startsWith('Paid') || student.eligibility.reason === 'Expired') && student.eligibility.lastPaymentDate && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                        <Clock className="h-3 w-3"/>
+                        <span>Paid until: </span>
+                        <span className="font-medium text-blue-600 dark:text-blue-400">
+                            {(() => {
+                                const lastPayment = new Date(student.eligibility.lastPaymentDate);
+                                const paidUntil = new Date(lastPayment);
+                                if (student.eligibility.reason === 'Paid - Monthly') {
+                                    paidUntil.setMonth(paidUntil.getMonth() + 1);
+                                } else if (student.eligibility.reason === 'Paid - Yearly') {
+                                    paidUntil.setFullYear(paidUntil.getFullYear() + 1);
+                                }
+                                return formatDate(student.eligibility.paidUntil, {formatString: 'MMM d, yyyy'});
+                            })()}
+                        </span>
+                    </div>
+                )}
+            </div>
+
+            {/* Active Enrollments */}
+            {student.activeEnrollments && student.activeEnrollments.length > 0 && (
+                <div className="space-y-2 mt-3">
+                    <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                        <BookOpen className="h-4 w-4"/>
+                        <span>Enrolled Classes:</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        {student.activeEnrollments.map((enrollment, index) => (
+                            <Badge key={index} variant="outline"
+                                   className="text-sm px-3 py-1 bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700 text-green-700 dark:text-green-300">
+                                {enrollment.class_name}
+                            </Badge>
+                        ))}
+                    </div>
+                </div>
+            )}
+        </Link>
+    );
+}, (prevProps, nextProps) => {
+    // Only re-render if student data changed
+    return prevProps.student.id === nextProps.student.id &&
+           prevProps.student.updated_at === nextProps.student.updated_at &&
+           JSON.stringify(prevProps.student.eligibility) === JSON.stringify(nextProps.student.eligibility);
+});
+
+StudentCard.displayName = 'StudentCard';
+
+const UpcomingClassCard = React.memo(({ session }: { session: SessionData }) => {
+    return (
+        <div className="p-4 form-card-styles rounded-lg border-l-4 border-green-500 hover:shadow-md transition-shadow duration-300">
+            <div className="flex justify-between items-start">
+                <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                        <Award className="h-4 w-4 text-blue-600"/>
+                        <p className="font-bold text-gray-900 dark:text-gray-100">
+                            {session.student_name}
+                        </p>
+                    </div>
+                    <p className="text-sm font-medium text-blue-600 dark:text-blue-400 mb-1">
+                        {session.class_name}
+                    </p>
+                    {session.instructor_name && (
+                        <p className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                            <Users className="h-3 w-3"/>
+                            Instructor: {session.instructor_name}
+                        </p>
+                    )}
+                </div>
+                <div className="text-right bg-white dark:bg-gray-800 px-3 py-2 rounded-lg shadow-sm">
+                    <p className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                        {formatDate(session.session_date, {formatString: 'MMM d'})}
+                    </p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                        <Clock className="h-3 w-3"/>
+                        {session.start_time.slice(0, 5)} - {session.end_time.slice(0, 5)}
+                    </p>
+                </div>
+            </div>
+        </div>
+    );
+});
+
+UpcomingClassCard.displayName = 'UpcomingClassCard';
+
+const AttendanceCard = React.memo(({ attendance }: { attendance: AttendanceData }) => {
+    return (
+        <div className="p-4 form-card-styles rounded-lg border-l-4 border-green-500 hover:shadow-md transition-shadow duration-300">
+            <div className="flex justify-between items-center">
+                <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                        <UserCheck className="h-4 w-4 text-green-600"/>
+                        <p className="font-bold text-gray-900 dark:text-gray-100">
+                            {attendance.student_name}
+                        </p>
+                    </div>
+                    {attendance.last_session_date ? (
+                        <p className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                            <Clock className="h-3 w-3"/>
+                            Last session: {formatDate(attendance.last_session_date, {formatString: 'MMM d, yyyy'})}
+                        </p>
+                    ) : (
+                        <p className="text-sm text-gray-500 dark:text-gray-500">
+                            No attendance recorded yet
+                        </p>
+                    )}
+                </div>
+                <div className="text-right">
+                    {attendance.attendance_status ? (
+                        <Badge
+                            variant={
+                                attendance.attendance_status === 'Present' ? 'default' :
+                                    attendance.attendance_status === 'Absent' ? 'destructive' :
+                                        attendance.attendance_status === 'Excused' ? 'secondary' :
+                                            attendance.attendance_status === 'Late' ? 'outline' : 'outline'
+                            }
+                            className="text-sm px-3 py-1 font-medium"
+                        >
+                            {attendance.attendance_status}
+                        </Badge>
+                    ) : (
+                        <Badge variant="outline" className="text-sm px-3 py-1">
+                            No record
+                        </Badge>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+});
+
+AttendanceCard.displayName = 'AttendanceCard';
 
 export default function FamilyDashboard() {
     // Always call hooks at the top level
@@ -833,7 +1022,8 @@ export default function FamilyDashboard() {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                     {/* Incomplete Event Registrations Banner - Show incomplete event registrations */}
                     {incompleteRegistrations && incompleteRegistrations.length > 0 && (
-                        <IncompleteRegistrationBanner incompleteRegistrations={incompleteRegistrations} />
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        <IncompleteRegistrationBanner incompleteRegistrations={incompleteRegistrations as any} />
                     )}
 
                     {/* Incomplete Profile Banner - Show when profile is missing address information */}
@@ -902,91 +1092,8 @@ export default function FamilyDashboard() {
                             {/* Display students as cards or a message if none */}
                             {family.students && family.students.length > 0 ? (
                                 <div className="space-y-4 mb-6">
-                                    {family.students.map((student) => (
-                                        <Link
-                                            key={student.id}
-                                            to={`/family/student/${student.id}`}
-                                            className="block p-4 form-card-styles rounded-lg border-l-4 border-green-500 hover:shadow-md transition-shadow duration-300 group"
-                                        >
-                                            <div className="flex justify-between items-start mb-3">
-                                                <div className="flex-1">
-                                                    <div className="flex items-center gap-2 mb-2">
-                                                        <Users className="h-4 w-4 text-green-600"/>
-                                                        <h3 className="font-bold text-gray-900 dark:text-gray-100 group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors">
-                                                            {student.first_name} {student.last_name}
-                                                        </h3>
-                                                    </div>
-                                                    {/* Belt Rank Indicator */}
-                                                    {student.currentBeltRank && (
-                                                        <div
-                                                            className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-1">
-                                                            <Award className="h-3 w-3"/>
-                                                            <div className="flex items-center gap-1">
-                                                                <div
-                                                                    className={`w-3 h-3 rounded-full ${beltColorMap[student.currentBeltRank]} ${student.currentBeltRank === 'white' ? 'border border-gray-400' : ''}`}
-                                                                    title={`${student.currentBeltRank.charAt(0).toUpperCase() + student.currentBeltRank.slice(1)} Belt`}
-                                                                ></div>
-                                                                <span className="capitalize font-medium">
-                                                            {student.currentBeltRank} Belt
-                                                        </span>
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </div>
-
-                                                {/* Eligibility Badge */}
-                                                <div className="text-right px-3 py-2 rounded-lg shadow-sm">
-                                                    <Badge
-                                                        variant={getEligibilityBadgeVariant(student.eligibility.reason)}
-                                                        className="text-sm font-medium px-2 py-1">
-                                                        {student.eligibility.reason.startsWith('Paid') ? 'Active' : student.eligibility.reason}
-                                                    </Badge>
-                                                </div>
-                                            </div>
-
-                                            {/* Additional Info */}
-                                            <div className="space-y-2">
-                                                {/* Paid Until Date */}
-                                                {(student.eligibility.reason.startsWith('Paid') || student.eligibility.reason === 'Expired') && student.eligibility.lastPaymentDate && (
-                                                    <div
-                                                        className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                                                        <Clock className="h-3 w-3"/>
-                                                        <span>Paid until: </span>
-                                                        <span className="font-medium text-blue-600 dark:text-blue-400">
-                                                    {(() => {
-                                                        const lastPayment = new Date(student.eligibility.lastPaymentDate);
-                                                        const paidUntil = new Date(lastPayment);
-                                                        if (student.eligibility.reason === 'Paid - Monthly') {
-                                                            paidUntil.setMonth(paidUntil.getMonth() + 1);
-                                                        } else if (student.eligibility.reason === 'Paid - Yearly') {
-                                                            paidUntil.setFullYear(paidUntil.getFullYear() + 1);
-                                                        }
-                                                        return formatDate(student.eligibility.paidUntil, {formatString: 'MMM d, yyyy'});
-                                                    })()} 
-                                                </span>
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            {/* Active Enrollments */}
-                                            {student.activeEnrollments && student.activeEnrollments.length > 0 && (
-                                                <div className="space-y-2 mt-3">
-                                                    <div
-                                                        className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                        <BookOpen className="h-4 w-4"/>
-                                                        <span>Enrolled Classes:</span>
-                                                    </div>
-                                                    <div className="flex flex-wrap gap-2">
-                                                        {student.activeEnrollments.map((enrollment, index) => (
-                                                            <Badge key={index} variant="outline"
-                                                                   className="text-sm px-3 py-1 bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700 text-green-700 dark:text-green-300">
-                                                                {enrollment.class_name}
-                                                            </Badge>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </Link>
+                                    {family.students.map((student: StudentData) => (
+                                        <StudentCard key={student.id} student={student} beltColorMap={beltColorMap} />
                                     ))}
                                 </div>
                             ) : (
@@ -1018,39 +1125,8 @@ export default function FamilyDashboard() {
                             </div>
                             {upcomingClasses && upcomingClasses.length > 0 ? (
                                 <div className="space-y-4">
-                                    {upcomingClasses.map((session, index) => (
-                                        <div key={index}
-                                             className="p-4 form-card-styles rounded-lg border-l-4 border-green-500 hover:shadow-md transition-shadow duration-300">
-                                            <div className="flex justify-between items-start">
-                                                <div className="flex-1">
-                                                    <div className="flex items-center gap-2 mb-2">
-                                                        <Award className="h-4 w-4 text-blue-600"/>
-                                                        <p className="font-bold text-gray-900 dark:text-gray-100">
-                                                            {session.student_name}
-                                                        </p>
-                                                    </div>
-                                                    <p className="text-sm font-medium text-blue-600 dark:text-blue-400 mb-1">
-                                                        {session.class_name}
-                                                    </p>
-                                                    {session.instructor_name && (
-                                                        <p className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1">
-                                                            <Users className="h-3 w-3"/>
-                                                            Instructor: {session.instructor_name}
-                                                        </p>
-                                                    )}
-                                                </div>
-                                                <div
-                                                    className="text-right bg-white dark:bg-gray-800 px-3 py-2 rounded-lg shadow-sm">
-                                                    <p className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                                                        {formatDate(session.session_date, {formatString: 'MMM d'})}
-                                                    </p>
-                                                    <p className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1">
-                                                        <Clock className="h-3 w-3"/>
-                                                        {session.start_time.slice(0, 5)} - {session.end_time.slice(0, 5)}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </div>
+                                    {upcomingClasses.map((session: SessionData, index: number) => (
+                                        <UpcomingClassCard key={index} session={session} />
                                     ))}
                                     <Button asChild
                                             className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-300">
@@ -1090,50 +1166,8 @@ export default function FamilyDashboard() {
                             </div>
                             {studentAttendanceData && studentAttendanceData.length > 0 ? (
                                 <div className="space-y-4">
-                                    {studentAttendanceData.map((attendance, index) => (
-                                        <div key={index}
-                                             className="p-4 form-card-styles rounded-lg border-l-4 border-green-500 hover:shadow-md transition-shadow duration-300">
-                                            <div className="flex justify-between items-center">
-                                                <div className="flex-1">
-                                                    <div className="flex items-center gap-2 mb-2">
-                                                        <UserCheck className="h-4 w-4 text-green-600"/>
-                                                        <p className="font-bold text-gray-900 dark:text-gray-100">
-                                                            {attendance.student_name}
-                                                        </p>
-                                                    </div>
-                                                    {attendance.last_session_date ? (
-                                                        <p className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-1">
-                                                            <Clock className="h-3 w-3"/>
-                                                            Last
-                                                            session: {formatDate(attendance.last_session_date, {formatString: 'MMM d, yyyy'})}
-                                                        </p>
-                                                    ) : (
-                                                        <p className="text-sm text-gray-500 dark:text-gray-500">
-                                                            No attendance recorded yet
-                                                        </p>
-                                                    )}
-                                                </div>
-                                                <div className="text-right">
-                                                    {attendance.attendance_status ? (
-                                                        <Badge
-                                                            variant={
-                                                                attendance.attendance_status === 'Present' ? 'default' :
-                                                                    attendance.attendance_status === 'Absent' ? 'destructive' :
-                                                                        attendance.attendance_status === 'Excused' ? 'secondary' :
-                                                                            attendance.attendance_status === 'Late' ? 'outline' : 'outline'
-                                                            }
-                                                            className="text-sm px-3 py-1 font-medium"
-                                                        >
-                                                            {attendance.attendance_status}
-                                                        </Badge>
-                                                    ) : (
-                                                        <Badge variant="outline" className="text-sm px-3 py-1">
-                                                            No record
-                                                        </Badge>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
+                                    {studentAttendanceData.map((attendance: AttendanceData, index: number) => (
+                                        <AttendanceCard key={index} attendance={attendance} />
                                     ))}
                                     <Button asChild
                                             className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-300">
@@ -1182,7 +1216,7 @@ export default function FamilyDashboard() {
                             )}
                             {family.guardians && family.guardians.length > 0 ? (
                                 <div className="space-y-3 mb-6">
-                                    {family.guardians.map((guardian) => (
+                                    {family.guardians.map((guardian: { id: string; first_name: string; last_name: string; relationship: string }) => (
                                         <Link
                                             key={guardian.id}
                                             to={`/family/guardian/${guardian.id}`}
@@ -1267,7 +1301,7 @@ export default function FamilyDashboard() {
                                     {/* Show list of pending waivers */}
                                     {pendingWaivers && pendingWaivers.length > 0 && (
                                         <div className="space-y-3 mb-6">
-                                            {pendingWaivers.map((waiver, index) => (
+                                            {pendingWaivers.map((waiver: { id: string; title: string }, index: number) => (
                                                 <div key={index}
                                                      className="p-3 form-card-styles rounded-lg border-l-4 border-orange-500">
                                                     <div className="flex items-start gap-3">
@@ -1276,13 +1310,8 @@ export default function FamilyDashboard() {
                                                         </div>
                                                         <div className="flex-1">
                                                             <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">
-                                                                {waiver.waiver_name}
+                                                                {waiver.title}
                                                             </p>
-                                                            {waiver.program_name && waiver.student_name && (
-                                                                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                                                                    Required for <span className="font-medium">{waiver.student_name}</span> - {waiver.program_name}
-                                                                </p>
-                                                            )}
                                                         </div>
                                                     </div>
                                                 </div>

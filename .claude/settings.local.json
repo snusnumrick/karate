@@ -57,7 +57,10 @@
       "Bash(git commit:*)",
       "Bash(git add:*)",
       "Bash(git revert:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(git log:*)",
+      "Bash(npx @squoosh/cli:*)",
+      "Bash(npx playwright install:*)"
     ],
     "deny": [],
     "ask": []

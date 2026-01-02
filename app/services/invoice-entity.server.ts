@@ -160,7 +160,7 @@ export async function getInvoiceEntitiesWithStats(
 ): Promise<InvoiceEntityWithStats[]> {
   const client = supabaseAdmin ?? getSupabaseAdminClient();
   
-  console.log('[Service/getInvoiceEntitiesWithStats] Fetching entities with stats');
+  // console.log('[Service/getInvoiceEntitiesWithStats] Fetching entities with stats');
 
   let entityQuery = client
     .from('invoice_entities')

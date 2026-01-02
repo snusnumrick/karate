@@ -37,18 +37,18 @@ type LoaderData = {
 // }
 
 export async function loader({request}: LoaderFunctionArgs): Promise<Response> {
-    console.log("Entering /admin/attendance loader...");
+    // console.log("Entering /admin/attendance loader...");
     const url = new URL(request.url);
     const searchParams = url.searchParams;
     const startDate = searchParams.get("startDate") || undefined;
     const endDate = searchParams.get("endDate") || undefined;
     const studentId = searchParams.get("studentId") || undefined;
-    console.log(`Fetching attendance with filters: startDate=${startDate}, endDate=${endDate}, studentId=${studentId}`);
+    // console.log(`Fetching attendance with filters: startDate=${startDate}, endDate=${endDate}, studentId=${studentId}`);
 
     const supabaseAdmin = getSupabaseAdminClient();
 
     try {
-        console.log("Admin attendance loader - Fetching all students for filter...");
+        // console.log("Admin attendance loader - Fetching all students for filter...");
         const {data: allStudentsData, error: studentsError} = await supabaseAdmin
             .from('students')
             .select('id, first_name, last_name')

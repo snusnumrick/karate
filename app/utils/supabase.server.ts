@@ -333,7 +333,7 @@ export async function checkStudentEligibility(
     studentId: string,
     supabaseAdmin: TypedSupabaseClient
 ): Promise<EligibilityStatus> {
-    console.log(`Checking eligibility for student ID: ${studentId}`);
+    // console.log(`Checking eligibility for student ID: ${studentId}`);
 
     // 1. Fetch the student's active enrollments with their paid_until dates and status
     const {data: enrollments, error: enrollmentError} = await supabaseAdmin

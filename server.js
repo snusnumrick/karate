@@ -2,6 +2,7 @@
 import { createRequestHandler } from "@remix-run/express";
 import { broadcastDevReady } from "@remix-run/node";
 import express from "express";
+import compression from "compression";
 import crypto from "node:crypto";
 
 const viteDevServer =
@@ -14,6 +15,16 @@ const viteDevServer =
       );
 
 const app = express();
+
+// Add compression middleware for all responses
+app.use(compression({
+  filter: (req, res) => {
+    if (req.headers['x-no-compression']) return false;
+    return compression.filter(req, res);
+  },
+  threshold: 1024,
+  level: 6
+}));
 
 // Don't use app.use with the build import
 
