@@ -461,6 +461,7 @@ export class StripePaymentProvider extends PaymentProvider {
           : rawType;
           
     return {
+      eventId: stripeEvent.id,
       type: normalizedType,
       rawType,
       intent: {

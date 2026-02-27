@@ -22,14 +22,21 @@ export async function action({ request }: ActionFunctionArgs) {
     const requestId = headers.get('x-vercel-id')
         ?? headers.get('x-request-id')
         ?? headers.get('traceparent');
-    const signatureHeader = headers.get('x-square-signature');
+    const canonicalSignatureHeader = headers.get('x-square-hmacsha256-signature');
+    const legacySignatureHeader = headers.get('x-square-signature');
+    const signatureHeader = canonicalSignatureHeader ?? legacySignatureHeader;
+    const signatureHeaderName = canonicalSignatureHeader
+        ? 'x-square-hmacsha256-signature'
+        : legacySignatureHeader
+            ? 'x-square-signature'
+            : 'missing';
     const contentType = headers.get('content-type');
     const userAgent = headers.get('user-agent');
 
     console.log(
         `[Square Webhook] ${method} ${url.pathname} (reqId=${requestId ?? 'n/a'}) from ${ipHeader}. ` +
         `content-type=${contentType ?? 'n/a'} user-agent=${userAgent ?? 'n/a'} ` +
-        `signature=${signatureHeader ? `${signatureHeader.slice(0, 8)}...` : 'missing'}`
+        `signatureHeader=${signatureHeaderName} signature=${signatureHeader ? `${signatureHeader.slice(0, 8)}...` : 'missing'}`
     );
 
     if (method !== 'POST') {

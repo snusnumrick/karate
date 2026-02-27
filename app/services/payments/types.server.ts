@@ -102,6 +102,7 @@ export interface WebhookEvent {
 }
 
 export interface ParsedWebhookEvent {
+  eventId: string;
   type: string;
   rawType: string;
   intent: {

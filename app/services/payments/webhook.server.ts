@@ -3,7 +3,6 @@ import { updatePaymentStatus, getSupabaseAdminClient } from '~/utils/supabase.se
 import { toCents } from '~/utils/money';
 import type { PaymentProvider, ParsedWebhookEvent } from './types.server';
 import {
-  checkWebhookIdempotency,
   createWebhookEvent,
   markWebhookEventSucceeded,
   markWebhookEventFailed,
@@ -26,7 +25,7 @@ export async function handlePaymentWebhook(
 
   try {
     const event = await provider.parseWebhookEvent(payload, headers, requestUrl);
-    const { intent } = event;
+    const { intent, eventId } = event;
     let metadata = intent.metadata ?? {};
 
     // Enrich metadata for Square (which has limited metadata support)
@@ -36,23 +35,9 @@ export async function handlePaymentWebhook(
     }
 
     console.log(
-      `[Webhook ${provider.id}] Parsed event rawType=${event.rawType} mappedType=${event.type} intent=${intent.id} ` +
+      `[Webhook ${provider.id}] Parsed event eventId=${eventId} rawType=${event.rawType} mappedType=${event.type} intent=${intent.id} ` +
       `metadataKeys=${Object.keys(metadata).length ? Object.keys(metadata).join(',') : 'none'}`
     );
-
-    // Check idempotency - have we already processed this event?
-    const { isDuplicate, existingEvent } = await checkWebhookIdempotency(
-      provider.id,
-      intent.id
-    );
-
-    if (isDuplicate) {
-      console.warn(
-        `[Webhook ${provider.id}] Duplicate event ${intent.id} detected. ` +
-        `Original status: ${existingEvent?.status}. Skipping processing.`
-      );
-      return { success: true, isDuplicate: true };
-    }
 
     // Create webhook event record
     try {
@@ -65,7 +50,7 @@ export async function handlePaymentWebhook(
 
       webhookEventId = await createWebhookEvent({
         provider: provider.id,
-        eventId: intent.id,
+        eventId,
         eventType: event.type,
         rawType: event.rawType,
         rawPayload: JSON.parse(payload),
@@ -77,8 +62,7 @@ export async function handlePaymentWebhook(
       console.log(`[Webhook ${provider.id}] Created webhook event record: ${webhookEventId}`);
     } catch (createError) {
       if (createError instanceof Error && createError.message === 'DUPLICATE_EVENT') {
-        // Race condition - another instance created it first
-        console.warn(`[Webhook ${provider.id}] Event ${intent.id} already being processed by another instance`);
+        console.warn(`[Webhook ${provider.id}] Duplicate provider event ${eventId} ignored`);
         return { success: true, isDuplicate: true };
       }
       // Non-fatal - log and continue

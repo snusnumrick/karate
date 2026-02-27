@@ -684,6 +684,13 @@ export class SquarePaymentProvider extends PaymentProvider {
       }
       const rawType = event.type;
       let normalizedType = this.mapSquareEventType(rawType);
+      const providerEventId = (event.event_id as string | undefined)
+        ?? (event.eventId as string | undefined)
+        ?? (event.id as string | undefined);
+
+      if (!providerEventId) {
+        throw new Error('Missing Square provider event identifier');
+      }
 
       // Extract relevant data based on event type
       let intentId: string | undefined;
@@ -796,8 +803,7 @@ export class SquarePaymentProvider extends PaymentProvider {
       } else {
         const genericObject = paymentPayload ?? orderPayload ?? {};
         intentId = (genericObject.id as string | undefined)
-          ?? (event.data.id as string | undefined)
-          ?? event.event_id;
+          ?? (event.data.id as string | undefined);
       }
 
       if (!intentId) {
@@ -806,6 +812,7 @@ export class SquarePaymentProvider extends PaymentProvider {
       }
 
       const parsedEvent: ParsedWebhookEvent = {
+        eventId: providerEventId,
         type: normalizedType,
         rawType,
         intent: {
