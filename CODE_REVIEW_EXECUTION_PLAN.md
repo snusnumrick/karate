@@ -15,6 +15,11 @@ Last updated: **2026-02-27**
 | R1-T4 | ✅ Completed | Added provider-level `eventId` to parsed webhook contract and provider parsers. |
 | R1-T5 | ✅ Completed | Webhook handler now uses insert-first idempotency keyed by provider `eventId` (no select-then-insert race gate). |
 | R1-T6 | ✅ Completed | Route logging now prioritizes `x-square-hmacsha256-signature` and records header source. |
+| R2-T1 | ✅ Completed | Square `confirmPaymentIntent` now throws on hard failures instead of returning synthetic failed intents. |
+| R2-T2 | ✅ Completed | `getInvoiceByNumber` no longer performs double fetch; overdue pagination/count now filtered in DB query. |
+| R2-T3 | ✅ Completed | Removed registration-payment linking race by updating just-created registration IDs (no `setTimeout` workaround). |
+| R2-T4 | ✅ Completed | Added atomic RPC `record_individual_session_usage` and updated service to use it. |
+| R2-T5 | ✅ Completed | `useBackgroundRefresh` now uses callback ref to prevent re-render polling loops. |
 
 ## Schedule
 | Release | Window | Goal | Exit Gate |
@@ -30,7 +35,7 @@ Last updated: **2026-02-27**
 |---|---|---|
 | API role guard becomes async and DB-backed | `requireApiRole(user, requiredRole): Promise<void>` querying `profiles.role`; `401` for unauthenticated, `403` for unauthorized | `app/utils/api-auth.server.ts` and API route call sites |
 | Webhook parse model includes provider event id | `ParsedWebhookEvent` gains required `eventId: string` (separate from payment intent id) | `app/services/payments/types.server.ts`, Stripe/Square providers, webhook handler |
-| Atomic DB APIs added for race-prone writes | New RPCs: `create_event_registrations_with_payment(...)`, `record_individual_session_usage(...)` | New SQL migrations in `supabase/migrations`, service/route callers |
+| Atomic DB API added for session usage | New RPC: `record_individual_session_usage(...)` | `supabase/migrations/039_add_atomic_session_usage_rpc.sql`, `app/services/student.server.ts` |
 | Root POST behavior normalized | `action` on root returns `405 Method Not Allowed` | `app/root.tsx` |
 
 ## Detailed Execution

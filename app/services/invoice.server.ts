@@ -470,14 +470,7 @@ export async function getInvoiceByNumber(
 
   const { data: invoice, error: invoiceError } = await client
     .from('invoices')
-    .select(`
-      *,
-      invoice_entities(*),
-      families(id, name),
-      invoice_line_items(*),
-      invoice_payments(*),
-      invoice_status_history(*)
-    `)
+    .select('id')
     .eq('invoice_number', invoiceNumber)
     .single();
 
@@ -521,17 +514,19 @@ export async function getInvoices(
   // Handle "overdue" as a special computed status
   const hasOverdueFilter = filters.status?.includes('overdue' as InvoiceStatus);
   const dbStatuses = filters.status?.filter(s => s !== 'overdue');
+  const today = getTodayLocalDateString();
 
-  // If we have overdue filter, we need to fetch all unpaid invoices and filter by date
-  // If we also have specific statuses, we need to fetch both sets
+  // Apply overdue filter directly in DB query so pagination/count stay correct
   if (hasOverdueFilter && (!dbStatuses || dbStatuses.length === 0)) {
-    // Only overdue filter - get all unpaid invoices, will filter by date after query
-    query = query.neq('status', 'paid').neq('status', 'cancelled');
+    query = query
+      .neq('status', 'paid')
+      .neq('status', 'cancelled')
+      .lt('due_date', today);
   } else if (hasOverdueFilter && dbStatuses && dbStatuses.length > 0) {
-    // Both overdue and specific statuses - get unpaid OR specific statuses
-    query = query.or(`status.in.(${dbStatuses.join(',')}),and(status.neq.paid,status.neq.cancelled)`);
+    query = query.or(
+      `status.in.(${dbStatuses.join(',')}),and(status.neq.paid,status.neq.cancelled,due_date.lt.${today})`
+    );
   } else if (dbStatuses && dbStatuses.length > 0) {
-    // Only specific statuses
     query = query.in('status', dbStatuses);
   }
   
@@ -571,7 +566,7 @@ export async function getInvoices(
   // Order by creation date (newest first)
   query = query.order('created_at', { ascending: false });
 
-  const { data: invoices, error } = await query;
+  const { data: invoices, error, count } = await query;
 
   if (error) {
     console.error('[Service/getInvoices] Error fetching invoices:', error);
@@ -610,24 +605,11 @@ export async function getInvoices(
     }
   }
 
-  // Filter by overdue status if requested (post-query filtering)
-  let filteredInvoices = invoices || [];
-  if (hasOverdueFilter) {
-    const today = getTodayLocalDateString();
-    filteredInvoices = filteredInvoices.filter(inv => {
-      const isOverdue = inv.status !== 'paid' && inv.due_date < today;
-      // Check if invoice matches other requested statuses (excluding 'overdue' which is computed)
-      const matchesOtherStatuses = dbStatuses && dbStatuses.length > 0 ? dbStatuses.some(s => s === inv.status) : false;
-      // Include if overdue OR matches other requested statuses
-      return isOverdue || matchesOtherStatuses;
-    });
-  }
-
-  const total = filteredInvoices.length; // Use filtered count
+  const total = count || 0;
   const totalPages = Math.ceil(total / limit);
 
   // Convert monetary fields to Money objects
-  const convertedInvoicesUnknown = convertRowsToMoney('invoices', filteredInvoices) ?? [];
+  const convertedInvoicesUnknown = convertRowsToMoney('invoices', invoices || []) ?? [];
 
   const invoicesWithDetails: InvoiceWithDetails[] = convertedInvoicesUnknown.map((inv) => {
     const invoice = inv as Record<string, unknown> & {

@@ -258,6 +258,7 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
     }
 
     const registrationId = createdRegistrations_db?.[0]?.id;
+    const createdRegistrationIds = (createdRegistrations_db || []).map(reg => reg.id);
 
     // Send confirmation email
     try {
@@ -397,12 +398,15 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
         eventId,
         familyId,
         studentIds,
+        registrationIds: createdRegistrationIds,
         registrationFee
       });
-      
-      // Small delay to ensure registrations are committed
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
+
+      if (createdRegistrationIds.length === 0) {
+        console.error('No registrations were created before payment linking');
+        return json({ error: 'Failed to link payment - no registrations found to update' }, { status: 500 });
+      }
+
       const { data: updateResult, error: linkError } = await supabaseAdmin
         .from('event_registrations')
         .update({
@@ -410,9 +414,7 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
           payment_amount_cents: toCents(registrationFee), // Payment amount in cents
           payment_required: true
         })
-        .eq('event_id', eventId)
-        .eq('family_id', familyId)
-        .in('student_id', studentIds)
+        .in('id', createdRegistrationIds)
         .select('id, payment_id');
 
       if (linkError) {

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 interface BackgroundRefreshConfig {
   interval: number; // in milliseconds
@@ -7,12 +7,18 @@ interface BackgroundRefreshConfig {
 }
 
 export function useBackgroundRefresh({ interval, urls, onData }: BackgroundRefreshConfig) {
+  const onDataRef = useRef(onData);
+
+  useEffect(() => {
+    onDataRef.current = onData;
+  }, [onData]);
+
   useEffect(() => {
     const fetchData = async (url: string) => {
       try {
         const response = await fetch(url);
         const data = await response.json();
-        onData?.(url, data);
+        onDataRef.current?.(url, data);
       } catch (error) {
         console.error(`Background refresh failed for ${url}:`, error);
       }
@@ -27,5 +33,5 @@ export function useBackgroundRefresh({ interval, urls, onData }: BackgroundRefre
     }, interval);
 
     return () => clearInterval(intervalId);
-  }, [interval, urls, onData]);
+  }, [interval, urls]);
 }

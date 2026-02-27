@@ -9,7 +9,6 @@ type StudentRow = Omit<Database['public']['Tables']['students']['Row'], 'belt_ra
 type FamilyRow = Database['public']['Tables']['families']['Row'];
 type BeltRankEnum = Database['public']['Enums']['belt_rank_enum'];
 type IndividualSessionRow = Database['public']['Tables']['one_on_one_sessions']['Row'];
-type OneOnOneSessionUsageRow = Database['public']['Tables']['one_on_one_session_usage']['Row'];
 
 // Define the expected return type for the getStudentDetails service function
 export type StudentDetails = StudentRow & {
@@ -176,8 +175,7 @@ export async function deleteStudent(
 
 /**
  * Records the usage of a single 1:1 session for a student.
- * This involves decrementing the quantity on the purchase record and inserting a usage record.
- * Performs operations sequentially (consider RPC for transactionality if needed).
+ * Uses a database RPC to atomically decrement quantity and insert the usage record.
  * Uses the Supabase Admin client for direct database access.
  *
  * @param sessionPurchaseId The ID of the 'one_on_one_sessions' record being used.
@@ -204,76 +202,36 @@ export async function recordIndividualSessionUsage(
     console.log(`[Service/recordIndividualSessionUsage] Recording usage for session purchase ${sessionPurchaseId} by student ${studentId}`);
 
     const client = supabaseAdmin ?? getSupabaseAdminClient();
-
-    // 1. Fetch the session to ensure it exists and has quantity
-    const { data: sessionData, error: fetchError } = await client
-        .from('one_on_one_sessions')
-        .select('quantity_remaining, family_id')
-        .eq('id', sessionPurchaseId)
-        .single();
-
-    if (fetchError || !sessionData) {
-        console.error(`[Service/recordIndividualSessionUsage] Session purchase record ${sessionPurchaseId} not found or error fetching:`, fetchError?.message);
-        throw new Error(`Session purchase record not found or error fetching: ${fetchError?.message}`);
-    }
-
-    if (sessionData.quantity_remaining <= 0) {
-        console.warn(`[Service/recordIndividualSessionUsage] Session ${sessionPurchaseId} has no remaining quantity.`);
-        throw new Error("Selected session has no remaining quantity.");
-    }
-
-    // 2. Decrement the quantity_remaining
-    const newQuantity = sessionData.quantity_remaining - 1;
-    const { error: updateError } = await client
-        .from('one_on_one_sessions')
-        .update({ quantity_remaining: newQuantity, updated_at: new Date().toISOString() })
-        .eq('id', sessionPurchaseId);
-
-    if (updateError) {
-        console.error(`[Service/recordIndividualSessionUsage] Error decrementing session ${sessionPurchaseId}:`, updateError.message);
-        throw new Error(`Failed to update session balance: ${updateError.message}`);
-    }
-
-    // 3. Insert the usage record
-    const usageRecord: Omit<OneOnOneSessionUsageRow, 'id' | 'created_at'> = {
-        session_purchase_id: sessionPurchaseId,
-        student_id: studentId,
-        usage_date: usageDate,
-        notes: notes,
-        recorded_by: adminUserId,
+    const rpcClient = client as unknown as {
+        rpc: (
+            fn: string,
+            args?: Record<string, unknown>
+        ) => Promise<{ data: number | null; error: { message: string } | null }>;
     };
-    const { error: usageInsertError } = await client
-        .from('one_on_one_session_usage')
-        .insert(usageRecord);
 
-    if (usageInsertError) {
-        console.error(`[Service/recordIndividualSessionUsage] Error inserting usage record for session ${sessionPurchaseId}:`, usageInsertError.message);
-        // Attempt to rollback decrement
-        console.warn(`[Service/recordIndividualSessionUsage] Attempting rollback of quantity decrement for session ${sessionPurchaseId}`);
-        await client
-            .from('one_on_one_sessions')
-            .update({ quantity_remaining: sessionData.quantity_remaining, updated_at: new Date().toISOString() })
-            .eq('id', sessionPurchaseId); // Attempt rollback
-        throw new Error(`Failed to record session usage details: ${usageInsertError.message}`);
-    }
-
-    // 4. Fetch the updated total balance for the family
-    let newBalance = 0;
-    if (sessionData.family_id) {
-        const { data: balanceData, error: balanceFetchError } = await client
-            .from('family_one_on_one_balance')
-            .select('total_remaining_sessions')
-            .eq('family_id', sessionData.family_id)
-            .maybeSingle();
-
-        if (balanceFetchError) {
-            console.error(`[Service/recordIndividualSessionUsage] Error fetching updated balance for family ${sessionData.family_id}:`, balanceFetchError.message);
-            // Proceed, but balance might be stale in the return value
-        } else {
-            newBalance = balanceData?.total_remaining_sessions ?? 0;
+    const { data: newBalance, error: rpcError } = await rpcClient.rpc(
+        'record_individual_session_usage',
+        {
+            p_session_purchase_id: sessionPurchaseId,
+            p_student_id: studentId,
+            p_usage_date: usageDate,
+            p_admin_user_id: adminUserId,
+            p_notes: notes,
         }
+    );
+
+    if (rpcError) {
+        console.error(
+            `[Service/recordIndividualSessionUsage] Atomic usage RPC failed for session ${sessionPurchaseId}:`,
+            rpcError.message
+        );
+        throw new Error(`Failed to record session usage: ${rpcError.message}`);
     }
 
-    console.log(`[Service/recordIndividualSessionUsage] Successfully recorded usage for session ${sessionPurchaseId}. New family balance: ${newBalance}`);
-    return newBalance;
+    const updatedBalance = newBalance ?? 0;
+    console.log(
+        `[Service/recordIndividualSessionUsage] Successfully recorded usage for session ${sessionPurchaseId}. ` +
+        `New family balance: ${updatedBalance}`
+    );
+    return updatedBalance;
 }

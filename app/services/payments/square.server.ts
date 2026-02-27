@@ -305,8 +305,9 @@ export class SquarePaymentProvider extends PaymentProvider {
       };
     } catch (error) {
       // Enhanced error logging for production debugging
+      const errorMessage = error instanceof Error ? error.message : String(error);
       console.error(`[Square] Payment confirmation failed for intent ${request.payment_intent_id}:`, {
-        error: error instanceof Error ? error.message : String(error),
+        error: errorMessage,
         paymentIntentId: request.payment_intent_id,
         hasPaymentMethodId: !!request.payment_method_id,
         environment: this.environment,
@@ -322,20 +323,8 @@ export class SquarePaymentProvider extends PaymentProvider {
       if (this.environment === 'production') {
         // Example: sendToMonitoring(error, { context: 'square_payment_confirmation' });
       }
-      
-      return {
-        id: request.payment_intent_id,
-        amount: fromCents(0),
-        currency: this.defaultCurrency,
-        status: 'failed',
-        client_secret: request.payment_intent_id,
-        metadata: {
-          error: error instanceof Error ? error.message : 'Payment processing failed',
-          failedAt: new Date().toISOString()
-        },
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
+
+      throw new Error(`Square payment confirmation failed: ${errorMessage}`);
     }
   }
 
