@@ -21,7 +21,7 @@ Last updated: **2026-02-27**
 | R2-T4 | ✅ Completed | Added atomic RPC `record_individual_session_usage` and updated service to use it. Commit: `8f98d71` |
 | R2-T5 | ✅ Completed | `useBackgroundRefresh` now uses callback ref to prevent re-render polling loops. Commit: `8f98d71` |
 | R3-T1 | ✅ Completed | Added `ErrorBoundary` exports to six high-risk routes to prevent full-page crashes on unhandled route errors. Commit: `909a38e` |
-| R3-T2 | 🔄 In Progress | CSRF resilience and user-facing recovery flow improvements. Next active task. |
+| R3-T2 | ✅ Completed | Added graceful CSRF failure handling (`403` + session-expired message) and user-facing recovery actions in payment setup UI. |
 | R3-T3 | ✅ Completed | Added `SIGNED_OUT` auth-state redirects to `/login` for protected/admin route contexts. Commit: `098f583` |
 | R3-T4 | ✅ Completed | Added idempotent push message listener setup/cleanup, restricted-context notification guards, and realtime reconnect scheduling for family/admin message channels. Commit: `10a4890` |
 | R3-T5 | ✅ Completed | Added defensive root `action` that throws `405 Method Not Allowed` with `Allow: GET`. Commit: `3c8d64f` |

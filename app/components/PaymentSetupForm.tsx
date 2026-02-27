@@ -61,6 +61,7 @@ interface ActionResponse {
   supabasePaymentId?: string;
   zeroPayment?: boolean;
   error?: string;
+  errorCode?: 'CSRF_TOKEN_INVALID';
   fieldErrors?: Record<string, string>;
   // Duplicate payment fields
   duplicatePaymentId?: string;
@@ -271,6 +272,7 @@ export function PaymentSetupForm({
   const currentSubtotalDisplay = formatMoney(currentSubtotal);
   const currentDiscountDisplay = appliedDiscount ? formatMoney(currentDiscountAmount) : null;
   const currentTotalDisplay = formatMoney(currentTotal);
+  const isCsrfError = fetcher.data?.errorCode === 'CSRF_TOKEN_INVALID';
 
   // Helper to format pending payment message
   const formatPendingPaymentMessage = useCallback(() => {
@@ -442,7 +444,33 @@ export function PaymentSetupForm({
   return (
     <div className={className}>
       {/* Display errors */}
-      {fetcher.data?.error && fetcher.data.error !== 'DUPLICATE_PENDING_PAYMENT' && (
+      {isCsrfError && (
+        <Alert className="mb-4 border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30">
+          <ExclamationTriangleIcon className="h-4 w-4 text-amber-700 dark:text-amber-400"/>
+          <AlertTitle className="text-amber-900 dark:text-amber-200">Session Expired</AlertTitle>
+          <AlertDescription className="text-amber-800 dark:text-amber-300">
+            {fetcher.data?.error ?? "Your security token expired. Please refresh the page and try again."}
+            <div className="mt-3 flex gap-2">
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => {
+                  if (typeof window !== 'undefined') {
+                    window.location.reload();
+                  }
+                }}
+              >
+                Refresh Page
+              </Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => navigate('/family')}>
+                Return to Family Portal
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {fetcher.data?.error && !isCsrfError && fetcher.data.error !== 'DUPLICATE_PENDING_PAYMENT' && (
         <Alert variant="destructive" className="mb-4">
           <ExclamationTriangleIcon className="h-4 w-4"/>
           <AlertTitle>Error</AlertTitle>

@@ -14,6 +14,7 @@ import {ExclamationTriangleIcon} from "@radix-ui/react-icons";
 import {useLoaderData, useRouteError, useSearchParams} from "@remix-run/react";
 import {PaymentSetupForm} from "~/components/PaymentSetupForm";
 import {csrf} from "~/utils/csrf.server";
+import {CSRFError} from "remix-utils/csrf/server";
 import {
     Money,
     ZERO_MONEY,
@@ -95,6 +96,7 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
 // --- Action Function ---
 type ActionResponse = {
     error?: string;
+    errorCode?: 'CSRF_TOKEN_INVALID';
     fieldErrors?: { [key: string]: string };
     zeroPayment?: boolean;
 };
@@ -107,7 +109,20 @@ export async function action({request}: ActionFunctionArgs): Promise<TypedRespon
     const {supabaseServer, response} = getSupabaseServerClient(request);
     
     // CSRF validation
-    await csrf.validate(request);
+    try {
+        await csrf.validate(request);
+    } catch (error) {
+        if (error instanceof CSRFError) {
+            return json(
+                {
+                    error: "Your session expired. Please refresh the page and try again.",
+                    errorCode: "CSRF_TOKEN_INVALID"
+                },
+                {status: 403, headers: response.headers}
+            );
+        }
+        throw error;
+    }
     
     const formData = await request.formData();
 
