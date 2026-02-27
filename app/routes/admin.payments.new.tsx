@@ -66,61 +66,54 @@ export async function loader({request}: LoaderFunctionArgs) {
     const supabaseAdmin = getSupabaseAdminClient();
 
     try {
-        // console.log("Admin new payment loader: Fetching families...");
-        const {data: families, error} = await supabaseAdmin
-            .from('families')
-            .select('id, name')
-            .order('name', {ascending: true});
-
-        if (error) {
-            console.error("Error fetching families:", error.message);
-            throw new Response("Failed to load family data.", {status: 500, headers: Object.fromEntries(headers)});
-        }
-        // console.log(`Admin new payment loader: Fetched ${families?.length ?? 0} families.`);
-
-        // Fetch students
-        // console.log("Admin new payment loader: Fetching students...");
-        const { data: students, error: studentsError } = await supabaseAdmin
-            .from('students')
-            .select('id, first_name, last_name, family_id')
-            .order('first_name', { ascending: true });
-
-        if (studentsError) {
-            console.error("Error fetching students:", studentsError.message);
-            throw new Response("Failed to load student data.", { status: 500, headers: Object.fromEntries(headers) });
-        }
-        // console.log(`Admin new payment loader: Fetched ${students?.length ?? 0} students.`);
-
-        // Fetch all active tax rates (admin should have choice of all available taxes)
-        // console.log("Admin new payment loader: Fetching active tax rates...");
-        const { data: taxRatesData, error: taxRatesError } = await supabaseAdmin
-            .from('tax_rates')
-            .select('id, name, rate, description') // Select fields needed for display/calculation
-            .eq('is_active', true)
-            .order('name', { ascending: true });
-
-        if (taxRatesError) {
-            console.error("Error fetching tax rates:", taxRatesError.message);
-            // Proceed without tax rates, but log the error. The component should handle missing rates.
-            // throw new Response("Failed to load tax rate data.", { status: 500, headers: Object.fromEntries(headers) });
-        }
-        // console.log(`Admin new payment loader: Fetched ${taxRatesData?.length ?? 0} active tax rates.`);
-
-        // Fetch products with variants for store purchases
-        // console.log("Admin new payment loader: Fetching products with variants...");
-        const { data: productsData, error: productsError } = await supabaseAdmin
-            .from('products')
-            .select(`
+        const [
+            {data: families, error: familiesError},
+            {data: students, error: studentsError},
+            {data: taxRatesData, error: taxRatesError},
+            {data: productsData, error: productsError}
+        ] = await Promise.all([
+            supabaseAdmin
+                .from('families')
+                .select('id, name')
+                .order('name', {ascending: true}),
+            supabaseAdmin
+                .from('students')
+                .select('id, first_name, last_name, family_id')
+                .order('first_name', {ascending: true}),
+            supabaseAdmin
+                .from('tax_rates')
+                .select('id, name, rate, description')
+                .eq('is_active', true)
+                .order('name', {ascending: true}),
+            supabaseAdmin
+                .from('products')
+                .select(`
                 *,
                 product_variants (*)
             `)
-            .eq('is_active', true)
-            .eq('product_variants.is_active', true)
-            .order('name');
+                .eq('is_active', true)
+                .eq('product_variants.is_active', true)
+                .order('name')
+        ]);
+
+        if (familiesError) {
+            console.error("Error fetching families:", familiesError.message);
+            throw new Response("Failed to load family data.", {status: 500, headers: Object.fromEntries(headers)});
+        }
+
+        if (studentsError) {
+            console.error("Error fetching students:", studentsError.message);
+            throw new Response("Failed to load student data.", {status: 500, headers: Object.fromEntries(headers)});
+        }
 
         if (productsError) {
             console.error("Error fetching products:", productsError.message);
             // Continue without products but log the error
+        }
+
+        if (taxRatesError) {
+            console.error("Error fetching tax rates:", taxRatesError.message);
+            // Continue without tax rates, but log the error. The component should handle missing rates.
         }
 
         // Filter out products with no active variants or variants with zero stock
