@@ -387,14 +387,6 @@ export function safeDivide(money: Money, divisor: number): Money {
   return money.divide(divisor);
 }
 
-/**
- * Calculate completion percentage as number (for progress bars, etc.)
- */
-export function calculateCompletionPercentage(completed: number, total: number): number {
-  if (total === 0) return 0;
-  return Math.round((completed / total) * 100);
-}
-
 export const ZERO_MONEY = fromCents(0);
 export const ONE_DOLLAR = fromDollars(1);
 export const ONE_CENT = fromCents(1);

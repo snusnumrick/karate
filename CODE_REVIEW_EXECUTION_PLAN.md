@@ -31,8 +31,9 @@ Last updated: **2026-02-27**
 | R4-T2b | ✅ Completed | Parallelized `admin.payments.new` loader families/students/tax-rates/products fetches with `Promise.all` while preserving existing error semantics. Commit: `3825dc3` |
 | R4-T2c | ✅ Completed | Parallelized family payment eligibility data assembly (family/students fetch, pricing/payments/sessions/discounts fan-out, and per-student eligibility checks). Commit: `a7552ce` |
 | R4-T3 | 🔄 In Progress | Parent tracking item for DRY refactors (shared mappers, webhook extraction, service error model, API consistency). |
-| R4-T3a | ✅ Completed | Standardized CSRF validation API usage in `instructor.attendance.tsx` to use `csrf.validate(request)` with explicit user-facing 403 handling. |
-| R4-T4 | ⏸ Not Started | Hygiene backlog (dead code/log cleanup, naming consistency, `updatePaymentStatus` parameter object refactor). |
+| R4-T3a | ✅ Completed | Standardized CSRF validation API usage in `instructor.attendance.tsx` to use `csrf.validate(request)` with explicit user-facing 403 handling. Commit: `58f9518` |
+| R4-T4 | 🔄 In Progress | Parent tracking item for hygiene backlog (dead code/log cleanup, naming consistency, `updatePaymentStatus` parameter object refactor). |
+| R4-T4a | ✅ Completed | Removed misplaced `calculateCompletionPercentage` helper from `money.ts` (non-money concern, unused export). |
 
 ## Schedule
 | Release | Window | Goal | Exit Gate |
