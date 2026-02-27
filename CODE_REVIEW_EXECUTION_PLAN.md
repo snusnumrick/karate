@@ -10,8 +10,8 @@ Last updated: **2026-02-27**
 | Task ID | Status | Notes |
 |---|---|---|
 | R1-T1 | ✅ Completed | Removed 6 unauthenticated test/debug files. Commit: `1c81d54` |
-| R1-T2 | ⏳ In Progress | Add production guard to `app/routes/admin.test-email.tsx`. |
-| R1-T3 | ⏸ Not Started | API role authorization source and async callsite updates. |
+| R1-T2 | ✅ Completed | Added production-only route guard (`404`) in loader/action for `admin.test-email.tsx`. |
+| R1-T3 | ⏳ In Progress | API role authorization source and async callsite updates. |
 | R1-T4 | ⏸ Not Started | Webhook parsed event identity (`eventId`) refactor. |
 | R1-T5 | ⏸ Not Started | Atomic idempotency path in webhook handler. |
 | R1-T6 | ⏸ Not Started | Square webhook header normalization in route logs. |

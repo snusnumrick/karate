@@ -26,12 +26,20 @@ type ActionData = {
   };
 };
 
+function assertNonProductionRoute(): void {
+  if (process.env.NODE_ENV === "production") {
+    throw new Response("Not Found", { status: 404 });
+  }
+}
+
 export async function loader({ request }: LoaderFunctionArgs) {
+  assertNonProductionRoute();
   await requireAdminUser(request);
   return json({});
 }
 
 export async function action({ request }: ActionFunctionArgs) {
+  assertNonProductionRoute();
   await requireAdminUser(request);
 
   try {
