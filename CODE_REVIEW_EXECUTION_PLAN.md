@@ -25,6 +25,10 @@ Last updated: **2026-02-27**
 | R3-T3 | ✅ Completed | Added `SIGNED_OUT` auth-state redirects to `/login` for protected/admin route contexts. Commit: `098f583` |
 | R3-T4 | ✅ Completed | Added idempotent push message listener setup/cleanup, restricted-context notification guards, and realtime reconnect scheduling for family/admin message channels. Commit: `10a4890` |
 | R3-T5 | ✅ Completed | Added defensive root `action` that throws `405 Method Not Allowed` with `Allow: GET`. Commit: `3c8d64f` |
+| R4-T1 | ✅ Completed | Cached admin Supabase client in `getSupabaseAdminClient()` with config-aware singleton reuse to avoid repeated client creation overhead. |
+| R4-T2 | ⏸ Not Started | Parallelize and batch high-cost loader/service paths (enrollment, payment eligibility, discounts, admin payments). |
+| R4-T3 | ⏸ Not Started | DRY refactors (shared mappers, webhook handler extraction, consistent service error model). |
+| R4-T4 | ⏸ Not Started | Hygiene backlog (dead code/log cleanup, naming consistency, `updatePaymentStatus` parameter object refactor). |
 
 ## Schedule
 | Release | Window | Goal | Exit Gate |

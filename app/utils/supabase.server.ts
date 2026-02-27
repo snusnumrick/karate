@@ -16,6 +16,9 @@ export type { EligibilityStatus };
 // Export createClient for use in other modules
 export { createClient };
 
+let adminClientSingleton: SupabaseClientType<Database> | null = null;
+let adminClientConfig: { url: string; serviceKey: string } | null = null;
+
 /**
  * Creates a Supabase admin client with service role privileges.
  * This is a centralized function to avoid code duplication across the codebase.
@@ -24,15 +27,31 @@ export { createClient };
  * @throws {Error} If Supabase URL or Service Role Key are missing
  */
 export function getSupabaseAdminClient() {
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabaseUrl = process.env.SUPABASE_URL?.trim() || '';
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || '';
 
     if (!supabaseUrl || !supabaseServiceKey) {
         console.warn('Missing Supabase URL or Service Role Key environment variables. Admin client functionality will be disabled.');
         throw new Error('Missing Supabase URL or Service Role Key environment variables.');
     }
 
-    return createClient<Database, "public">(supabaseUrl, supabaseServiceKey) as unknown as SupabaseClientType<Database>;
+    if (
+        adminClientSingleton &&
+        adminClientConfig?.url === supabaseUrl &&
+        adminClientConfig?.serviceKey === supabaseServiceKey
+    ) {
+        return adminClientSingleton;
+    }
+
+    adminClientSingleton = createClient<Database, "public">(supabaseUrl, supabaseServiceKey, {
+        auth: {
+            persistSession: false,
+            autoRefreshToken: false
+        }
+    }) as unknown as SupabaseClientType<Database>;
+
+    adminClientConfig = { url: supabaseUrl, serviceKey: supabaseServiceKey };
+    return adminClientSingleton;
 }
 
 // Note: Provider-specific environment validation is now handled by each provider's isConfigured() method
