@@ -10,21 +10,21 @@ Last updated: **2026-02-27**
 | Task ID | Status | Notes |
 |---|---|---|
 | R1-T1 | ✅ Completed | Removed 6 unauthenticated test/debug files. Commit: `1c81d54` |
-| R1-T2 | ✅ Completed | Added production-only route guard (`404`) in loader/action for `admin.test-email.tsx`. |
-| R1-T3 | ✅ Completed | Role checks now query `profiles.role`; auth errors normalized to `401`; API routes updated to `await requireApiRole`. |
-| R1-T4 | ✅ Completed | Added provider-level `eventId` to parsed webhook contract and provider parsers. |
-| R1-T5 | ✅ Completed | Webhook handler now uses insert-first idempotency keyed by provider `eventId` (no select-then-insert race gate). |
-| R1-T6 | ✅ Completed | Route logging now prioritizes `x-square-hmacsha256-signature` and records header source. |
-| R2-T1 | ✅ Completed | Square `confirmPaymentIntent` now throws on hard failures instead of returning synthetic failed intents. |
-| R2-T2 | ✅ Completed | `getInvoiceByNumber` no longer performs double fetch; overdue pagination/count now filtered in DB query. |
-| R2-T3 | ✅ Completed | Removed registration-payment linking race by updating just-created registration IDs (no `setTimeout` workaround). |
-| R2-T4 | ✅ Completed | Added atomic RPC `record_individual_session_usage` and updated service to use it. |
-| R2-T5 | ✅ Completed | `useBackgroundRefresh` now uses callback ref to prevent re-render polling loops. |
-| R3-T1 | ✅ Completed | Added `ErrorBoundary` exports to six high-risk routes to prevent full-page crashes on unhandled route errors. |
-| R3-T2 | ⏸ Not Started | CSRF resilience and user-facing recovery flow improvements. |
-| R3-T3 | ✅ Completed | Added `SIGNED_OUT` auth-state redirects to `/login` for protected/admin route contexts. |
-| R3-T4 | ✅ Completed | Added idempotent push message listener setup/cleanup, restricted-context notification guards, and realtime reconnect scheduling for family/admin message channels. |
-| R3-T5 | ✅ Completed | Added defensive root `action` that throws `405 Method Not Allowed` with `Allow: GET`. |
+| R1-T2 | ✅ Completed | Added production-only route guard (`404`) in loader/action for `admin.test-email.tsx`. Commit: `cc2607d` |
+| R1-T3 | ✅ Completed | Role checks now query `profiles.role`; auth errors normalized to `401`; API routes updated to `await requireApiRole`. Commit: `ad80f4a` |
+| R1-T4 | ✅ Completed | Added provider-level `eventId` to parsed webhook contract and provider parsers. Commit: `0fa03b4` |
+| R1-T5 | ✅ Completed | Webhook handler now uses insert-first idempotency keyed by provider `eventId` (no select-then-insert race gate). Commit: `0fa03b4` |
+| R1-T6 | ✅ Completed | Route logging now prioritizes `x-square-hmacsha256-signature` and records header source. Commit: `0fa03b4` |
+| R2-T1 | ✅ Completed | Square `confirmPaymentIntent` now throws on hard failures instead of returning synthetic failed intents. Commit: `8f98d71` |
+| R2-T2 | ✅ Completed | `getInvoiceByNumber` no longer performs double fetch; overdue pagination/count now filtered in DB query. Commit: `8f98d71` |
+| R2-T3 | ✅ Completed | Removed registration-payment linking race by updating just-created registration IDs (no `setTimeout` workaround). Commit: `8f98d71` |
+| R2-T4 | ✅ Completed | Added atomic RPC `record_individual_session_usage` and updated service to use it. Commit: `8f98d71` |
+| R2-T5 | ✅ Completed | `useBackgroundRefresh` now uses callback ref to prevent re-render polling loops. Commit: `8f98d71` |
+| R3-T1 | ✅ Completed | Added `ErrorBoundary` exports to six high-risk routes to prevent full-page crashes on unhandled route errors. Commit: `909a38e` |
+| R3-T2 | 🔄 In Progress | CSRF resilience and user-facing recovery flow improvements. Next active task. |
+| R3-T3 | ✅ Completed | Added `SIGNED_OUT` auth-state redirects to `/login` for protected/admin route contexts. Commit: `098f583` |
+| R3-T4 | ✅ Completed | Added idempotent push message listener setup/cleanup, restricted-context notification guards, and realtime reconnect scheduling for family/admin message channels. Commit: `10a4890` |
+| R3-T5 | ✅ Completed | Added defensive root `action` that throws `405 Method Not Allowed` with `Allow: GET`. Commit: `3c8d64f` |
 
 ## Schedule
 | Release | Window | Goal | Exit Gate |
