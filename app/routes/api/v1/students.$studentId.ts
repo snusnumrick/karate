@@ -16,7 +16,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
         user = await requireApiAuth(request);
         // 2. Authorize: Ensure user has the required role (e.g., 'admin')
         // Adjust role check based on your application's needs
-        requireApiRole(user, 'admin');
+        await requireApiRole(user, 'admin');
     } catch (error) {
         // requireApiAuth and requireApiRole throw Response objects on failure
         if (error instanceof Response) {

@@ -11,8 +11,8 @@ Last updated: **2026-02-27**
 |---|---|---|
 | R1-T1 | ✅ Completed | Removed 6 unauthenticated test/debug files. Commit: `1c81d54` |
 | R1-T2 | ✅ Completed | Added production-only route guard (`404`) in loader/action for `admin.test-email.tsx`. |
-| R1-T3 | ⏳ In Progress | API role authorization source and async callsite updates. |
-| R1-T4 | ⏸ Not Started | Webhook parsed event identity (`eventId`) refactor. |
+| R1-T3 | ✅ Completed | Role checks now query `profiles.role`; auth errors normalized to `401`; API routes updated to `await requireApiRole`. |
+| R1-T4 | ⏳ In Progress | Webhook parsed event identity (`eventId`) refactor. |
 | R1-T5 | ⏸ Not Started | Atomic idempotency path in webhook handler. |
 | R1-T6 | ⏸ Not Started | Square webhook header normalization in route logs. |
 

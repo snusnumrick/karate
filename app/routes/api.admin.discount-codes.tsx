@@ -7,7 +7,7 @@ import { fromDollars } from '~/utils/money';
 export async function loader({ request }: LoaderFunctionArgs) {
   try {
     const user = await requireApiAuth(request);
-    requireApiRole(user, 'admin');
+    await requireApiRole(user, 'admin');
   } catch (error) {
     if (error instanceof Response) throw error;
     throw error;
@@ -29,7 +29,7 @@ export async function action({ request }: ActionFunctionArgs) {
   let user;
   try {
     user = await requireApiAuth(request);
-    requireApiRole(user, 'admin');
+    await requireApiRole(user, 'admin');
   } catch (error) {
     if (error instanceof Response) throw error;
     throw error;

@@ -4,6 +4,7 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { json } from "@remix-run/node";
 import type { User } from "@supabase/supabase-js";
 import type { Database } from "~/types/database.types";
+import { getSupabaseAdminClient } from "~/utils/supabase.server";
 
 // Helper to create a Supabase client specifically for JWT verification
 // Uses the public URL and anon key, as JWT verification happens based on the token itself
@@ -38,7 +39,7 @@ function createSupabaseClientForAuth(request: Request): SupabaseClient<Database>
  *
  * @param request The incoming Remix request object.
  * @returns The authenticated Supabase User object if successful.
- * @throws {Response} Throws 401 for missing/invalid token, 403 if user not found.
+ * @throws {Response} Throws 401 for missing/invalid token.
  */
 export async function requireApiAuth(request: Request): Promise<User> {
     const authHeader = request.headers.get("Authorization");
@@ -62,13 +63,12 @@ export async function requireApiAuth(request: Request): Promise<User> {
 
     if (error) {
         console.error("[API Auth] Error verifying token:", error.message);
-        // Distinguish between invalid token and other errors if needed
-        throw json({ error: `Forbidden: ${error.message}` }, { status: 403 });
+        throw json({ error: `Unauthorized: ${error.message}` }, { status: 401 });
     }
 
     if (!user) {
         console.warn("[API Auth] Token verified but no user found.");
-        throw json({ error: "Forbidden: User not found for token" }, { status: 403 });
+        throw json({ error: "Unauthorized: User not found for token" }, { status: 401 });
     }
 
     console.log(`[API Auth] User ${user.id} authenticated successfully via API token.`);
@@ -76,18 +76,29 @@ export async function requireApiAuth(request: Request): Promise<User> {
 }
 
 /**
- * Optional: Checks if the authenticated user has a specific role (e.g., 'admin').
- * Assumes roles are stored in user metadata.
+ * Checks if the authenticated user has a specific role (e.g., 'admin').
+ * Role source of truth is the profiles table.
  *
  * @param user The authenticated Supabase User object.
  * @param requiredRole The role required for access.
  * @throws {Response} Throws 403 if the user does not have the required role.
  */
-export function requireApiRole(user: User, requiredRole: string): void {
-    // Example: Check for role in user_metadata. Adjust based on your actual structure.
-    const roles = user.user_metadata?.roles as string[] | undefined;
-    if (!roles || !roles.includes(requiredRole)) {
-        console.warn(`[API Auth] User ${user.id} lacks required role '${requiredRole}'. Roles: ${roles}`);
+export async function requireApiRole(user: User, requiredRole: string): Promise<void> {
+    const supabaseAdmin = getSupabaseAdminClient();
+
+    const { data: profile, error } = await supabaseAdmin
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .maybeSingle();
+
+    if (error) {
+        console.error(`[API Auth] Failed to resolve role for user ${user.id}:`, error.message);
+        throw json({ error: "Internal Server Error: Failed to resolve user role." }, { status: 500 });
+    }
+
+    if (!profile?.role || profile.role !== requiredRole) {
+        console.warn(`[API Auth] User ${user.id} lacks required role '${requiredRole}'. Role: ${profile?.role ?? "none"}`);
         throw json({ error: `Forbidden: Requires '${requiredRole}' role.` }, { status: 403 });
     }
     console.log(`[API Auth] User ${user.id} has required role '${requiredRole}'.`);
