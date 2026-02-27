@@ -151,6 +151,14 @@ export default function Layout() {
                     navigate('/reset-password');
                     return;
                 }
+
+                const isProtectedRoute = isAdminRoute || isInstructorRoute || isFamilyRoute;
+                if (event === 'SIGNED_OUT' && isProtectedRoute) {
+                    const redirectTarget = `${location.pathname}${location.search}`;
+                    navigate(`/login?redirectTo=${encodeURIComponent(redirectTarget)}`);
+                    return;
+                }
+
                 // Compare with the ref value instead of serverSession prop
                 if (session?.access_token !== lastAccessTokenRef.current) {
                     lastAccessTokenRef.current = session?.access_token;
@@ -162,7 +170,7 @@ export default function Layout() {
         return () => {
             subscription?.unsubscribe();
         };
-    }, [supabase, revalidator, navigate]);
+    }, [supabase, revalidator, navigate, location.pathname, location.search, isAdminRoute, isInstructorRoute, isFamilyRoute]);
 
 
     const user = serverSession?.user;

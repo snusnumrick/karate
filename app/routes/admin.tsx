@@ -1,4 +1,4 @@
-import {Outlet, useRouteError, useLoaderData} from "@remix-run/react";
+import {Outlet, useRouteError, useLoaderData, useNavigate} from "@remix-run/react";
 import {json, type LoaderFunctionArgs, redirect} from "@vercel/remix";
 import {getSupabaseServerClient, isUserAdmin} from "~/utils/supabase.server";
 import AdminNavbar from "~/components/AdminNavbar";
@@ -75,6 +75,7 @@ function AuthTokenSender({ supabase }: { supabase: SupabaseClient<Database> }) {
 // The actual layout component
 export default function AdminLayout() {
     const { ENV } = useLoaderData<typeof loader>();
+    const navigate = useNavigate();
     const [supabase, setSupabase] = React.useState<SupabaseClient<Database> | null>(null);
 
     React.useEffect(() => {
@@ -84,6 +85,22 @@ export default function AdminLayout() {
         ) as unknown as SupabaseClient<Database>;
         setSupabase(client);
     }, [ENV.SUPABASE_URL, ENV.SUPABASE_ANON_KEY]);
+
+    React.useEffect(() => {
+        if (!supabase) return;
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+            if (event === 'SIGNED_OUT') {
+                const redirectTarget = `${window.location.pathname}${window.location.search}`;
+                navigate(`/login?redirectTo=${encodeURIComponent(redirectTarget)}`);
+            }
+        });
+
+        return () => {
+            subscription?.unsubscribe();
+        };
+    }, [supabase, navigate]);
+
     return (
         <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900">
             <AdminNavbar/> {/* Add the Admin Navbar */}
