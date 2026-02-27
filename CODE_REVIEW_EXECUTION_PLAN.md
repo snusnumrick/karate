@@ -29,6 +29,7 @@ Last updated: **2026-02-27**
 | R4-T2 | 🔄 In Progress | Parent tracking item for high-cost loader/service parallelization (enrollment, payment eligibility, discounts, admin payments). |
 | R4-T2a | ✅ Completed | Parallelized and batched `getAllDiscountCodes` by running creator and usage queries concurrently and using map-based joins. |
 | R4-T2b | ✅ Completed | Parallelized `admin.payments.new` loader families/students/tax-rates/products fetches with `Promise.all` while preserving existing error semantics. |
+| R4-T2c | ✅ Completed | Parallelized family payment eligibility data assembly (family/students fetch, pricing/payments/sessions/discounts fan-out, and per-student eligibility checks). |
 | R4-T3 | ⏸ Not Started | DRY refactors (shared mappers, webhook handler extraction, consistent service error model). |
 | R4-T4 | ⏸ Not Started | Hygiene backlog (dead code/log cleanup, naming consistency, `updatePaymentStatus` parameter object refactor). |
 

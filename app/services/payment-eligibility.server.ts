@@ -84,13 +84,21 @@ export async function getFamilyPaymentEligibilityData(
   supabaseClient: ReturnType<typeof getSupabaseAdminClient>
 ): Promise<PaymentEligibilityData> {
   try {
-    // 1. Fetch Family Name
-    const { data: familyData, error: familyError } = await supabaseClient
+    const familyPromise = supabaseClient
       .from('families')
       .select('name')
       .eq('id', familyId)
-      .single() as { data: { name: string | null } | null, error: Error };
+      .single();
 
+    const studentsPromise = supabaseClient
+      .from('students')
+      .select('id::text, first_name::text, last_name::text')
+      .eq('family_id', familyId);
+
+    const [familyResult, studentsResult] = await Promise.all([familyPromise, studentsPromise]);
+
+    const familyData = familyResult.data as { name: string | null } | null;
+    const familyError = familyResult.error;
     if (familyError || !familyData) {
       console.error('Payment Eligibility Error: Failed to load family name', familyError?.message);
       return {
@@ -102,12 +110,7 @@ export async function getFamilyPaymentEligibilityData(
     }
     const familyName: string = familyData.name!;
 
-    // 2. Fetch Students for the Family
-    const { data: studentsData, error: studentsError } = await supabaseClient
-      .from('students')
-      .select('id::text, first_name::text, last_name::text')
-      .eq('family_id', familyId);
-
+    const { data: studentsData, error: studentsError } = studentsResult;
     if (studentsError) {
       console.error('Payment Eligibility Error: Failed to load students', studentsError.message);
       return {
@@ -130,23 +133,38 @@ export async function getFamilyPaymentEligibilityData(
     }
     const students = studentsData;
 
-    // 3b. Load current program pricing for each student (monthly/yearly/individual)
-    let studentPricingMap = new Map<string, EnrollmentPaymentOption[]>();
-    try {
-      const studentPaymentOptions = await getFamilyPaymentOptions(familyId, supabaseClient);
-      studentPricingMap = new Map(
-        studentPaymentOptions.map(option => [option.studentId, option.enrollments])
-      );
-    } catch (pricingError) {
-      console.error('Payment Eligibility Error: Failed to load program pricing', pricingError);
-    }
+    const nowIso = getCurrentDateTimeInTimezone().toISOString();
 
-    // 3. Fetch Successful Payments for the Family
-    const { data: paymentsData, error: paymentsError } = await supabaseClient
-      .from('payments')
-      .select('id, status')
-      .eq('family_id', familyId)
-      .eq('status', 'succeeded');
+    const [
+      studentPricingMap,
+      { data: paymentsData, error: paymentsError },
+      individualSessions,
+      { data: availableDiscountsData, error: discountsError }
+    ] = await Promise.all([
+      getFamilyPaymentOptions(familyId, supabaseClient)
+        .then((studentPaymentOptions) =>
+          new Map(
+            studentPaymentOptions.map((option) => [option.studentId, option.enrollments])
+          )
+        )
+        .catch((pricingError) => {
+          console.error('Payment Eligibility Error: Failed to load program pricing', pricingError);
+          return new Map<string, EnrollmentPaymentOption[]>();
+        }),
+      supabaseClient
+        .from('payments')
+        .select('id, status')
+        .eq('family_id', familyId)
+        .eq('status', 'succeeded'),
+      getFamilyIndividualSessions(familyId, supabaseClient),
+      supabaseClient
+        .from('discount_codes')
+        .select('id')
+        .eq('is_active', true)
+        .or(`family_id.eq.${familyId},family_id.is.null`)
+        .or('valid_until.is.null,valid_until.gte.' + nowIso)
+        .limit(1)
+    ]);
 
     if (paymentsError) {
       console.error('Payment Eligibility Error: Failed to load payments', paymentsError.message);
@@ -160,7 +178,6 @@ export async function getFamilyPaymentEligibilityData(
     }
     const successfulPaymentIds = paymentsData?.map(p => p.id) || [];
 
-    // 4. Fetch Payment-Student Links for Successful Payments
     let paymentStudentLinks: Array<{ student_id: string, payment_id: string }> = [];
     if (successfulPaymentIds.length > 0) {
       const { data: linksData, error: linksError } = await supabaseClient
@@ -184,18 +201,22 @@ export async function getFamilyPaymentEligibilityData(
       paymentStudentLinks = linksData || [];
     }
 
-    // 5. Get individual sessions for the family
-    const individualSessions = await getFamilyIndividualSessions(familyId, supabaseClient);
+    const paymentCountByStudent = new Map<string, number>();
+    for (const link of paymentStudentLinks) {
+      paymentCountByStudent.set(
+        link.student_id,
+        (paymentCountByStudent.get(link.student_id) ?? 0) + 1
+      );
+    }
 
-    // 6. Calculate Eligibility and Next Payment Details Per Student
-    const studentPaymentDetails: StudentPaymentDetail[] = [];
+    const eligibilityEntries = await Promise.all(
+      students.map(async (student) => [student.id, await checkStudentEligibility(student.id, supabaseClient)] as const)
+    );
+    const eligibilityByStudent = new Map<string, EligibilityStatus>(eligibilityEntries);
 
-    for (const student of students) {
-      // Check current eligibility
-      const eligibility : EligibilityStatus = await checkStudentEligibility(student.id, supabaseClient);
-
-      // Determine next payment amount - using flat monthly rate
-      const pastPaymentCount = paymentStudentLinks.filter(link => link.student_id === student.id).length;
+    const studentPaymentDetails: StudentPaymentDetail[] = students.map((student) => {
+      const eligibility = eligibilityByStudent.get(student.id)!;
+      const pastPaymentCount = paymentCountByStudent.get(student.id) ?? 0;
       const enrollmentOptions = studentPricingMap.get(student.id) ?? [];
       const monthlyOption = enrollmentOptions.find(option => option.monthlyAmount);
       const yearlyOption = enrollmentOptions.find(option => option.yearlyAmount);
@@ -222,7 +243,7 @@ export async function getFamilyPaymentEligibilityData(
       // Trial students can make payment to upgrade, expired students need payment
       const needsPayment = eligibility.reason === 'Trial' || eligibility.reason === 'Expired';
 
-      studentPaymentDetails.push({
+      return {
         studentId: student.id,
         firstName: student.first_name,
         lastName: student.last_name,
@@ -236,17 +257,8 @@ export async function getFamilyPaymentEligibilityData(
         monthlyAmount: monthlyAmount ?? undefined,
         yearlyAmount: yearlyAmount ?? undefined,
         individualSessionAmount: individualSessionAmount ?? undefined,
-      });
-    }
-
-    // 7. Check for Available Discounts
-    const { data: availableDiscountsData, error: discountsError } = await supabaseClient
-      .from('discount_codes')
-      .select('id')
-      .eq('is_active', true)
-      .or(`family_id.eq.${familyId},family_id.is.null`)
-      .or('valid_until.is.null,valid_until.gte.' + getCurrentDateTimeInTimezone().toISOString())
-      .limit(1);
+      };
+    });
 
     const hasAvailableDiscounts = !discountsError && availableDiscountsData && availableDiscountsData.length > 0;
 
