@@ -31,10 +31,18 @@ class NotificationService {
   private constructor() {
     if (typeof window !== 'undefined') {
       this.isSupported = 'Notification' in window;
-      this.permission = this.isSupported ? Notification.permission : 'denied';
-      
-      // Initialize push notifications
-      this.initializePushNotifications();
+
+      try {
+        this.permission = this.isSupported ? Notification.permission : 'denied';
+      } catch (error) {
+        console.warn('Unable to read Notification.permission in this browser context:', error);
+        this.permission = 'denied';
+        this.isSupported = false;
+      }
+
+      if (this.isSupported && window.isSecureContext) {
+        void this.initializePushNotifications();
+      }
     }
   }
 

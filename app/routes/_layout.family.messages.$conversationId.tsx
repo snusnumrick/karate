@@ -494,6 +494,32 @@ export default function ConversationView() {
         channelSubscriptionRef.current[channelName] = true;
 
         console.log(`[Family] Attempting to set up channel: ${channelName}`);
+        let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+
+        const scheduleReconnect = (reason: string) => {
+            if (isCleaningUpRef.current || reconnectTimeout || !supabase) {
+                return;
+            }
+
+            reconnectTimeout = setTimeout(async () => {
+                reconnectTimeout = null;
+                if (isCleaningUpRef.current) {
+                    return;
+                }
+
+                try {
+                    if (channel) {
+                        await channel.unsubscribe();
+                        await supabase.removeChannel(channel);
+                    }
+                } catch (error) {
+                    console.error(`[Family] Error during channel reconnect cleanup (${reason}):`, error);
+                } finally {
+                    channelSubscriptionRef.current[channelName] = false;
+                    await setupChannel();
+                }
+            }, 1500);
+        };
 
         // Define a function to create and set up the channel
         const setupChannel = async () => {
@@ -671,6 +697,10 @@ export default function ConversationView() {
                         console.log(`[Family] Successfully subscribed to messages channel: ${channelName}`);
                         // Keep track of subscription status in the ref
                         hasSubscribedRef.current = true;
+                        if (reconnectTimeout) {
+                            clearTimeout(reconnectTimeout);
+                            reconnectTimeout = null;
+                        }
                     }
 
                     if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
@@ -679,6 +709,9 @@ export default function ConversationView() {
                         hasSubscribedRef.current = false;
                         if (channelName) {
                             channelSubscriptionRef.current[channelName] = false;
+                        }
+                        if (!isCleaningUpRef.current) {
+                            scheduleReconnect(status);
                         }
                     }
                 });
@@ -704,6 +737,10 @@ export default function ConversationView() {
             console.log(`[Family] Cleaning up channel: ${channelName}`);
 
             const cleanup = async () => {
+                if (reconnectTimeout) {
+                    clearTimeout(reconnectTimeout);
+                    reconnectTimeout = null;
+                }
                 if (channel && supabase) {
                     try {
                         // First unsubscribe from the channel

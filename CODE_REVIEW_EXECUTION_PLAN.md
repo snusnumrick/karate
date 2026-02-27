@@ -23,7 +23,7 @@ Last updated: **2026-02-27**
 | R3-T1 | ✅ Completed | Added `ErrorBoundary` exports to six high-risk routes to prevent full-page crashes on unhandled route errors. |
 | R3-T2 | ⏸ Not Started | CSRF resilience and user-facing recovery flow improvements. |
 | R3-T3 | ✅ Completed | Added `SIGNED_OUT` auth-state redirects to `/login` for protected/admin route contexts. |
-| R3-T4 | ⏸ Not Started | Push/realtime reconnect and capability guard hardening. |
+| R3-T4 | ✅ Completed | Added idempotent push message listener setup/cleanup, restricted-context notification guards, and realtime reconnect scheduling for family/admin message channels. |
 | R3-T5 | ✅ Completed | Added defensive root `action` that throws `405 Method Not Allowed` with `Allow: GET`. |
 
 ## Schedule

@@ -34,10 +34,15 @@ class PushNotificationService {
   private vapidPublicKey: string | null = null;
   private subscription: PushSubscription | null = null;
   private isSupported: boolean = false;
+  private messageListener: ((event: MessageEvent) => void) | null = null;
 
   private constructor() {
     if (typeof window !== 'undefined') {
-      this.isSupported = 'serviceWorker' in navigator && 'PushManager' in window;
+      this.isSupported =
+        window.isSecureContext &&
+        'Notification' in window &&
+        'serviceWorker' in navigator &&
+        'PushManager' in window;
     }
   }
 
@@ -447,80 +452,42 @@ class PushNotificationService {
    * Listen for service worker messages
    */
   public setupMessageListener(): void {
-    console.log('🎧 Setting up service worker message listener...');
-    
     if (!('serviceWorker' in navigator)) {
-      console.warn('⚠️ Service Worker not supported, message listener not set up');
       return;
     }
 
-    // Check if service worker is available
-    console.log('🔍 Checking service worker availability...');
-    console.log('   - Controller:', !!navigator.serviceWorker.controller);
-    console.log('   - Ready state:', navigator.serviceWorker.ready);
+    if (this.messageListener) {
+      return;
+    }
 
-    navigator.serviceWorker.addEventListener('message', (event) => {
-      console.log('📨 Received message from service worker:', event.data);
-      console.log('📋 Message event details:', {
-        origin: event.origin,
-        source: event.source ? 'ServiceWorker' : 'Unknown',
-        timestamp: new Date().toISOString()
-      });
-      
-      if (event.data && event.data.type === 'FOCUS_MESSAGE_INPUT') {
-        console.log('🎯 Handling FOCUS_MESSAGE_INPUT request');
-        // Handle focus message input request from service worker
-        const messageInput = document.querySelector('[data-message-input]') as HTMLElement;
-        if (messageInput) {
-          console.log('✅ Message input found, focusing');
-          messageInput.focus();
-        } else {
-          console.warn('⚠️ Message input not found');
-        }
-      } else if (event.data && event.data.type === 'NAVIGATE') {
-        console.log('🔗 Handling NAVIGATE request');
-        console.log('🎯 Navigation URL:', event.data.url);
-        console.log('🌐 Current location:', window.location.href);
-        console.log('🔍 Window availability:', typeof window !== 'undefined');
-        
-        // Handle navigation request from service worker
-        if (event.data.url && typeof window !== 'undefined') {
-          console.log('✅ Navigating to:', event.data.url);
-          try {
-            window.location.href = event.data.url;
-            console.log('✅ Navigation initiated successfully');
-          } catch (error) {
-            console.error('❌ Navigation failed:', error);
-          }
-        } else {
-          console.error('❌ Cannot navigate - missing URL or window object');
-          console.error('   - URL provided:', !!event.data.url);
-          console.error('   - Window available:', typeof window !== 'undefined');
-        }
-      } else if (event.data && event.data.type === 'TEST_CONNECTION_RESPONSE') {
-        console.log('🎉 Test connection response received from service worker!');
-        console.log('   - Message:', event.data.message);
-        console.log('   - Timestamp:', new Date(event.data.timestamp).toISOString());
-        console.log('✅ Service worker communication is working correctly');
-      } else {
-        console.log('ℹ️ Unknown message type or missing data:', event.data?.type || 'no type');
+    this.messageListener = (event: MessageEvent) => {
+      const data = event.data as { type?: string; url?: string } | null;
+
+      if (data?.type === 'FOCUS_MESSAGE_INPUT') {
+        const messageInput = document.querySelector('[data-message-input]') as HTMLElement | null;
+        messageInput?.focus();
+        return;
       }
-    });
-    
-    console.log('✅ Service worker message listener set up successfully');
-    
-    // Test if we can communicate with the service worker
-    navigator.serviceWorker.ready.then((registration) => {
-      console.log('🧪 Testing service worker communication...');
-      if (registration.active) {
-        console.log('📤 Sending test message to service worker...');
-        registration.active.postMessage({ type: 'TEST_CONNECTION' });
-      } else {
-        console.warn('⚠️ No active service worker found for testing');
+
+      if (data?.type === 'NAVIGATE' && data.url) {
+        try {
+          window.location.href = data.url;
+        } catch (error) {
+          console.error('Failed to navigate from service worker message:', error);
+        }
       }
-    }).catch((error) => {
-      console.error('❌ Error testing service worker communication:', error);
-    });
+    };
+
+    navigator.serviceWorker.addEventListener('message', this.messageListener);
+  }
+
+  public cleanupMessageListener(): void {
+    if (!('serviceWorker' in navigator) || !this.messageListener) {
+      return;
+    }
+
+    navigator.serviceWorker.removeEventListener('message', this.messageListener);
+    this.messageListener = null;
   }
 }
 

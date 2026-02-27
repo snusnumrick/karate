@@ -584,6 +584,32 @@ export default function AdminConversationView() {
         channelSubscriptionRef.current[channelName] = true;
 
         console.log(`[Admin] Attempting to set up channel: ${channelName}`);
+        let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+
+        const scheduleReconnect = (reason: string) => {
+            if (isCleaningUpRef.current || reconnectTimeout || !supabase) {
+                return;
+            }
+
+            reconnectTimeout = setTimeout(async () => {
+                reconnectTimeout = null;
+                if (isCleaningUpRef.current) {
+                    return;
+                }
+
+                try {
+                    if (channel) {
+                        await channel.unsubscribe();
+                        await supabase.removeChannel(channel);
+                    }
+                } catch (error) {
+                    console.error(`[Admin] Error during channel reconnect cleanup (${reason}):`, error);
+                } finally {
+                    channelSubscriptionRef.current[channelName] = false;
+                    await setupChannel();
+                }
+            }, 1500);
+        };
 
         // Define a function to create and set up the channel
         const setupChannel = async () => {
@@ -734,18 +760,27 @@ export default function AdminConversationView() {
                             hasSubscribedRef.current = true;
                             // Ensure tracking ref is correct
                             channelSubscriptionRef.current[channelName] = true;
+                            if (reconnectTimeout) {
+                                clearTimeout(reconnectTimeout);
+                                reconnectTimeout = null;
+                            }
                             break;
                         case 'CHANNEL_ERROR':
                             // Log the actual error object for more details
                             console.error(`[Admin Subscription Status Callback] CHANNEL_ERROR on channel ${channelName}:`, err);
                             hasSubscribedRef.current = false;
                             channelSubscriptionRef.current[channelName] = false;
-                            // Consider adding retry logic or user notification here
+                            if (!isCleaningUpRef.current) {
+                                scheduleReconnect(status);
+                            }
                             break;
                         case 'TIMED_OUT':
                             console.warn(`[Admin Subscription Status Callback] TIMED_OUT on channel ${channelName}. Retrying may happen automatically.`);
                             hasSubscribedRef.current = false;
                             channelSubscriptionRef.current[channelName] = false;
+                            if (!isCleaningUpRef.current) {
+                                scheduleReconnect(status);
+                            }
                             break;
                         case 'CLOSED':
                             console.log(`[Admin Subscription Status Callback] Channel ${channelName} CLOSED.`);
@@ -753,6 +788,7 @@ export default function AdminConversationView() {
                             // Only clear the tracking ref if not during intentional cleanup
                             if (!isCleaningUpRef.current && channelName) {
                                 channelSubscriptionRef.current[channelName] = false;
+                                scheduleReconnect(status);
                             }
                             break;
                         default:
@@ -815,6 +851,10 @@ export default function AdminConversationView() {
             console.log(`[Admin] Cleaning up channel: ${channelName}`);
 
             const cleanup = async () => {
+                if (reconnectTimeout) {
+                    clearTimeout(reconnectTimeout);
+                    reconnectTimeout = null;
+                }
                 if (channel && supabase) {
                     try {
                         // First unsubscribe from the channel
