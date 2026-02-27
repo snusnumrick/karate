@@ -22,6 +22,7 @@ type DiscountUsageRowWithCode = Database['public']['Tables']['discount_code_usag
     discount_codes?: Database['public']['Tables']['discount_codes']['Row'] | null;
 };
 type DiscountCodeRow = Database['public']['Tables']['discount_codes']['Row'];
+type DiscountCodeUsageRow = Database['public']['Tables']['discount_code_usage']['Row'];
 
 const toFixedAmountMoney = (value: Money | number): Money => {
     if (typeof value === 'number') {
@@ -108,8 +109,10 @@ export class DiscountService {
      * Get all discount codes (for admin)
      */
     static async getAllDiscountCodes(): Promise<DiscountCodeWithUsage[]> {
+        const supabase = this.getSupabase();
+
         // First get all discount codes with family and student data
-        const {data: codes_db, error: codesError} = await this.getSupabase()
+        const {data: codes_db, error: codesError} = await supabase
             .from('discount_codes')
             .select(`
         *,
@@ -127,28 +130,80 @@ export class DiscountService {
         }
 
         // Get creator information for codes that have created_by
-        const creatorIds = codes_db
+        const creatorIds = [...new Set(codes_db
             .filter((code) => code.created_by)
             .map((code) => code.created_by)
-            .filter((id): id is string => id !== null && id !== undefined);
+            .filter((id): id is string => id !== null && id !== undefined))];
+
+        const codeIds = codes_db.map((code) => code.id);
 
         let creators: Array<{ id: string; email: string; first_name: string | null; last_name: string | null }> = [];
+        let usageData_db: DiscountCodeUsageRow[] = [];
+
         if (creatorIds.length > 0) {
-            const {data: creatorData, error: creatorError} = await this.getSupabase()
-                .from('profiles')
-                .select('id, email, first_name, last_name')
-                .in('id', creatorIds);
+            const [
+                {data: creatorData, error: creatorError},
+                {data: usageData, error: usageError}
+            ] = await Promise.all([
+                supabase
+                    .from('profiles')
+                    .select('id, email, first_name, last_name')
+                    .in('id', creatorIds),
+                supabase
+                    .from('discount_code_usage')
+                    .select(`
+         id,
+         discount_code_id,
+         payment_id,
+         family_id,
+         student_id,
+         discount_amount,
+         original_amount,
+         final_amount,
+         used_at
+       `)
+                    .in('discount_code_id', codeIds)
+                    .order('used_at', {ascending: false})
+            ]);
 
             if (creatorError) {
                 throw new Error(`Failed to fetch creator profiles: ${creatorError.message}`);
             }
+            if (usageError) {
+                throw new Error(`Failed to fetch discount usage: ${usageError.message}`);
+            }
+
             creators = creatorData || [];
+            usageData_db = usageData || [];
+        } else {
+            const {data: usageData, error: usageError} = await supabase
+                .from('discount_code_usage')
+                .select(`
+         id,
+         discount_code_id,
+         payment_id,
+         family_id,
+         student_id,
+         discount_amount,
+         original_amount,
+         final_amount,
+         used_at
+       `)
+                .in('discount_code_id', codeIds)
+                .order('used_at', {ascending: false});
+
+            if (usageError) {
+                throw new Error(`Failed to fetch discount usage: ${usageError.message}`);
+            }
+            usageData_db = usageData || [];
         }
 
-        // Map creators to codes
+        const creatorsById = new Map(creators.map((creator) => [creator.id, creator]));
+
+        // Map creators onto codes
         const codesWithCreators = codes_db.map((code_db) => {
             const normalized = normalizeDiscountCodeRow(code_db);
-            const creator = creators.find(c => c.id === code_db.created_by);
+            const creator = code_db.created_by ? creatorsById.get(code_db.created_by) : undefined;
             return {
                 ...normalized,
                 families: code_db.families ?? null,
@@ -165,30 +220,16 @@ export class DiscountService {
             };
         });
 
-        // Get usage data for all codes
-        const {data: usageData_db, error: usageError} = await this.getSupabase()
-            .from('discount_code_usage')
-            .select(`
-         id,
-         discount_code_id,
-         payment_id,
-         family_id,
-         student_id,
-         discount_amount,
-         original_amount,
-         final_amount,
-         used_at
-       `)
-            .in('discount_code_id', codesWithCreators.map((code) => code.id))
-            .order('used_at', {ascending: false});
-
-        if (usageError) {
-            throw new Error(`Failed to fetch discount usage: ${usageError.message}`);
+        const usageByCode = new Map<string, DiscountCodeUsageRow[]>();
+        for (const usage of usageData_db) {
+            const existing = usageByCode.get(usage.discount_code_id) ?? [];
+            existing.push(usage);
+            usageByCode.set(usage.discount_code_id, existing);
         }
 
         // Combine the data
         return codesWithCreators.map((code) => {
-            const codeUsage_db = (usageData_db || []).filter((usage) => usage.discount_code_id === code.id);
+            const codeUsage_db = usageByCode.get(code.id) ?? [];
             return {
                 ...code,
                 usage_count: codeUsage_db.length,
