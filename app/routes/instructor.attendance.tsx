@@ -11,7 +11,7 @@ import {
 } from '~/services/instructor.server';
 import { recordSessionAttendance } from '~/services/attendance.server';
 import { updateClassSession } from '~/services/class.server';
-import { validateCSRF } from '~/utils/csrf.server';
+import { csrf } from '~/utils/csrf.server';
 import { AuthenticityTokenInput } from 'remix-utils/csrf/react';
 import { formatDate, getTodayLocalDateString, getCurrentDateTimeInTimezone } from '~/utils/misc';
 import { parseLocalDate } from '~/components/calendar/utils';
@@ -141,7 +141,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
 }
 
 export async function action({ request }: ActionFunctionArgs) {
-  await validateCSRF(request);
+  try {
+    await csrf.validate(request);
+  } catch {
+    return json<ActionResponse>(
+      { success: false, error: 'Security token validation failed. Please refresh the page and try again.' },
+      { status: 403 }
+    );
+  }
   const context = await resolveInstructorPortalContext(request);
   const { role, viewInstructorId, supabaseAdmin, headers, userId } = context;
 
