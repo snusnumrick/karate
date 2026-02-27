@@ -60,6 +60,13 @@ export async function loader({context, request}: LoaderFunctionArgs) {
     );
 }
 
+export async function action() {
+    throw new Response("Method Not Allowed", {
+        status: 405,
+        headers: { Allow: "GET" },
+    });
+}
+
 export const links: LinksFunction = () => [
     {rel: "preconnect", href: "https://fonts.googleapis.com"},
     {rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous"},
