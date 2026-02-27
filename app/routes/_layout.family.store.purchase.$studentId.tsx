@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { type ActionFunctionArgs, type LoaderFunctionArgs, json, redirect, TypedResponse } from "@remix-run/node";
-import { Form, useActionData, useLoaderData, useNavigation, useParams, useFetcher, useNavigate } from "@remix-run/react";
+import { Form, useActionData, useLoaderData, useNavigation, useParams, useFetcher, useNavigate, useRouteError } from "@remix-run/react";
 import { getSupabaseServerClient, createInitialPaymentRecord, getSupabaseAdminClient } from "~/utils/supabase.server";
 import { getApplicableTaxRatesForStorePurchase } from "~/services/tax-rates.server";
 import { DiscountService } from "~/services/discount.server";
@@ -831,6 +831,19 @@ export default function PurchaseGiPage() {
                     </Card>
                 </Form>
             )}
+        </div>
+    );
+}
+
+export function ErrorBoundary() {
+    const error = useRouteError();
+    return (
+        <div className="p-8 text-center">
+            <h2 className="text-xl font-semibold text-red-600">Something went wrong</h2>
+            <p className="text-gray-600 mt-2">Please refresh the page or contact support.</p>
+            {error instanceof Error ? (
+                <p className="text-sm text-gray-500 mt-4">{error.message}</p>
+            ) : null}
         </div>
     );
 }

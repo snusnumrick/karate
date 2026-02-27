@@ -1,6 +1,6 @@
 import React from 'react';
 import {json, defer, type LoaderFunctionArgs, type ActionFunctionArgs, redirect} from "@remix-run/node"; // Import redirect
-import {Link, useLoaderData} from "@remix-run/react";
+import {Link, useLoaderData, useRouteError} from "@remix-run/react";
 import {type EligibilityStatus, getSupabaseServerClient} from "~/utils/supabase.server"; // Import eligibility check
 import { performance } from "node:perf_hooks";
 import { parse } from "cookie";
@@ -1367,5 +1367,18 @@ export default function FamilyDashboard() {
                 </div>
             </div>
         </OfflineErrorBoundary>
+    );
+}
+
+export function ErrorBoundary() {
+    const error = useRouteError();
+    return (
+        <div className="p-8 text-center">
+            <h2 className="text-xl font-semibold text-red-600">Something went wrong</h2>
+            <p className="text-gray-600 mt-2">Please refresh the page or contact support.</p>
+            {error instanceof Error ? (
+                <p className="text-sm text-gray-500 mt-4">{error.message}</p>
+            ) : null}
+        </div>
     );
 }

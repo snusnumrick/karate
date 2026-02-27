@@ -1,5 +1,5 @@
 import { json, redirect, type LoaderFunctionArgs, type ActionFunctionArgs, type MetaFunction } from '@remix-run/node';
-import { useLoaderData, Link } from '@remix-run/react';
+import { useLoaderData, useRouteError, Link } from '@remix-run/react';
 import { EventService, type EventWithEventType } from '~/services/event.server';
 import { siteConfig } from '~/config/site';
 import { Button } from '~/components/ui/button';
@@ -886,6 +886,19 @@ export default function EventRegistration() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+export function ErrorBoundary() {
+  const error = useRouteError();
+  return (
+    <div className="p-8 text-center">
+      <h2 className="text-xl font-semibold text-red-600">Something went wrong</h2>
+      <p className="text-gray-600 mt-2">Please refresh the page or contact support.</p>
+      {error instanceof Error ? (
+        <p className="text-sm text-gray-500 mt-4">{error.message}</p>
+      ) : null}
     </div>
   );
 }

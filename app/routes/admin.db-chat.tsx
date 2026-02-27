@@ -1,7 +1,7 @@
 import React, {useEffect, useRef, useState} from 'react'; // Import useEffect and useRef
 import {ActionFunctionArgs, json, LoaderFunctionArgs} from "@vercel/remix";
 // Import useSubmit
-import {Form, useActionData, useLoaderData, useNavigation, useSubmit} from "@remix-run/react";
+import {Form, useActionData, useLoaderData, useNavigation, useRouteError, useSubmit} from "@remix-run/react";
 import {Button} from "~/components/ui/button";
 import {Textarea} from "~/components/ui/textarea";
 
@@ -1074,6 +1074,19 @@ export default function AdminDbChat() {
                     </Card>
                 </div>
             </div>
+        </div>
+    );
+}
+
+export function ErrorBoundary() {
+    const error = useRouteError();
+    return (
+        <div className="p-8 text-center">
+            <h2 className="text-xl font-semibold text-red-600">Something went wrong</h2>
+            <p className="text-gray-600 mt-2">Please refresh the page or contact support.</p>
+            {error instanceof Error ? (
+                <p className="text-sm text-gray-500 mt-4">{error.message}</p>
+            ) : null}
         </div>
     );
 }

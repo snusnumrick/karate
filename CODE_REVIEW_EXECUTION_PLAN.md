@@ -20,6 +20,11 @@ Last updated: **2026-02-27**
 | R2-T3 | ✅ Completed | Removed registration-payment linking race by updating just-created registration IDs (no `setTimeout` workaround). |
 | R2-T4 | ✅ Completed | Added atomic RPC `record_individual_session_usage` and updated service to use it. |
 | R2-T5 | ✅ Completed | `useBackgroundRefresh` now uses callback ref to prevent re-render polling loops. |
+| R3-T1 | ✅ Completed | Added `ErrorBoundary` exports to six high-risk routes to prevent full-page crashes on unhandled route errors. |
+| R3-T2 | ⏸ Not Started | CSRF resilience and user-facing recovery flow improvements. |
+| R3-T3 | ⏸ Not Started | Auth-expiry redirect behavior hardening. |
+| R3-T4 | ⏸ Not Started | Push/realtime reconnect and capability guard hardening. |
+| R3-T5 | ⏸ Not Started | Root route `POST` hardening (`405`). |
 
 ## Schedule
 | Release | Window | Goal | Exit Gate |

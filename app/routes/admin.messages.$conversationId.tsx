@@ -1,6 +1,6 @@
 import {useEffect, useRef, useState} from "react";
 import {type ActionFunctionArgs, json, type LoaderFunctionArgs, type TypedResponse} from "@remix-run/node";
-import {Link, useFetcher, useLoaderData} from "@remix-run/react";
+import {Link, useFetcher, useLoaderData, useRouteError} from "@remix-run/react";
 import {getSupabaseServerClient, getSupabaseAdminClient} from "~/utils/supabase.server";
 import {Database, Tables} from "~/types/database.types";
 import MessageView, {MessageWithSender, SenderProfile} from "~/components/MessageView";
@@ -928,6 +928,19 @@ export default function AdminConversationView() {
                     </div>
                 </div>
             </div>
+        </div>
+    );
+}
+
+export function ErrorBoundary() {
+    const error = useRouteError();
+    return (
+        <div className="p-8 text-center">
+            <h2 className="text-xl font-semibold text-red-600">Something went wrong</h2>
+            <p className="text-gray-600 mt-2">Please refresh the page or contact support.</p>
+            {error instanceof Error ? (
+                <p className="text-sm text-gray-500 mt-4">{error.message}</p>
+            ) : null}
         </div>
     );
 }

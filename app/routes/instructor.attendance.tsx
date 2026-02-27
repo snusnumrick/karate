@@ -1,5 +1,5 @@
 import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
-import { Form, Link, useFetcher, useLoaderData, useSearchParams, useSubmit } from '@remix-run/react';
+import { Form, Link, useFetcher, useLoaderData, useRouteError, useSearchParams, useSubmit } from '@remix-run/react';
 import { addDays, addMinutes, format, isAfter, subDays } from 'date-fns';
 import { useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
 import type { UserRole } from '~/types/auth';
@@ -1118,4 +1118,17 @@ function findCurrentOrNextSession(sessions: InstructorSessionPayload[]): Instruc
   }
 
   return sorted[0] ?? null;
+}
+
+export function ErrorBoundary() {
+  const error = useRouteError();
+  return (
+    <div className="p-8 text-center">
+      <h2 className="text-xl font-semibold text-red-600">Something went wrong</h2>
+      <p className="text-gray-600 mt-2">Please refresh the page or contact support.</p>
+      {error instanceof Error ? (
+        <p className="text-sm text-gray-500 mt-4">{error.message}</p>
+      ) : null}
+    </div>
+  );
 }
