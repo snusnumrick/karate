@@ -1,6 +1,7 @@
 import { json } from "@vercel/remix";
 import { getPaymentProvider } from '~/services/payments/index.server';
 import { handlePaymentWebhook } from '~/services/payments/webhook.server';
+import { buildAppError } from '~/utils/errors';
 
 type RouteWebhookProvider = 'stripe' | 'square';
 
@@ -35,7 +36,7 @@ export async function handleWebhookLoader(provider: RouteWebhookProvider, reques
   const providerLabel = getProviderLabel(provider);
   console.warn(`[${providerLabel} Webhook] Received ${request.method} request. Only POST is supported.`);
   return json(
-    { error: 'Method not allowed' },
+    { error: buildAppError('METHOD_NOT_ALLOWED', 'Method not allowed') },
     { status: 405, headers: { Allow: 'POST' } },
   );
 }
@@ -67,14 +68,17 @@ export async function handleWebhook(provider: RouteWebhookProvider, request: Req
 
   if (method !== 'POST') {
     console.warn(`[${providerLabel} Webhook] Rejecting ${method} request. Only POST is supported.`);
-    return json({ error: 'Method not allowed' }, { status: 405 });
+    return json({ error: buildAppError('METHOD_NOT_ALLOWED', 'Method not allowed') }, { status: 405 });
   }
 
   const paymentProvider = getPaymentProvider();
 
   if (paymentProvider.id !== provider) {
     console.error(`[${providerLabel} Webhook] Received ${providerLabel} webhook but configured provider is '${paymentProvider.id}'.`);
-    return json({ error: "Payment provider mismatch." }, { status: 400 });
+    return json(
+      { error: buildAppError('PAYMENT_PROVIDER_MISMATCH', "Payment provider mismatch.") },
+      { status: 400 },
+    );
   }
 
   const payload = await request.text();
@@ -92,7 +96,16 @@ export async function handleWebhook(provider: RouteWebhookProvider, request: Req
 
   if (!result.success) {
     console.error(`[${providerLabel} Webhook] Processing failed:`, result.error);
-    return json({ error: result.error || 'Webhook processing failed' }, { status: 400 });
+    return json(
+      {
+        error: buildAppError(
+          'WEBHOOK_PROCESSING_FAILED',
+          'Webhook processing failed',
+          result.error ?? undefined,
+        ),
+      },
+      { status: 400 },
+    );
   }
 
   console.log(`[${providerLabel} Webhook] Successfully processed webhook`);

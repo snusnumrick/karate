@@ -52,7 +52,7 @@ Last updated: **2026-02-28**
 | R4-T3h | ✅ Completed | `D7`: Added shared route-agnostic `handleWebhook(provider, request)`/loader helper and switched Stripe/Square webhook routes to the shared handler (with route-helper tests). |
 | R4-T3i | ✅ Completed | `D8`: Consolidated `centsFromRow`/`moneyFromRow` to a single implementation (`utils/database-money`) and kept server-module compatibility wrappers (with regression tests). |
 | R4-T3j | ✅ Completed | `D9`: Standardized service-role Supabase client naming/injection in enrollment flows (`supabaseAdmin` convention), including shared helper and downstream enrollment service paths. |
-| R4-T3k | ⏸ Not Started | `D10`: Standardize error response shape and throwing strategy across services/routes. |
+| R4-T3k | ✅ Completed | `D10`: Added shared app error-envelope helper (`{ code, message, details? }`) and standardized webhook route error responses to this shape. |
 | R4-T3l | ⏸ Not Started | `D11`: Normalize discount domain API style (`DiscountService` class vs function modules) and choose one pattern. |
 | R4-T4 | 🔄 In Progress | Parent tracking item for hygiene backlog (dead code/log cleanup, naming consistency, `updatePaymentStatus` parameter object refactor). |
 | R4-T4a | ✅ Completed | Removed misplaced `calculateCompletionPercentage` helper from `money.ts` (non-money concern, unused export). |

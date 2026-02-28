@@ -55,3 +55,21 @@ export function logStructuredError(
     error: toErrorLogDetails(error),
   });
 }
+
+export type AppErrorEnvelope = {
+  code: string;
+  message: string;
+  details?: unknown;
+};
+
+export function buildAppError(
+  code: string,
+  message: string,
+  details?: unknown
+): AppErrorEnvelope {
+  return {
+    code,
+    message,
+    ...(details === undefined ? {} : { details }),
+  };
+}

@@ -37,7 +37,9 @@ describe('webhook route helper', () => {
     }));
 
     expect(response.status).toBe(400);
-    await expect(response.json()).resolves.toEqual({ error: 'Payment provider mismatch.' });
+    await expect(response.json()).resolves.toEqual({
+      error: { code: 'PAYMENT_PROVIDER_MISMATCH', message: 'Payment provider mismatch.' },
+    });
   });
 
   it('acknowledges duplicate events', async () => {
