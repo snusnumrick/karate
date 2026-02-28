@@ -1,6 +1,9 @@
 import { Money, fromCents, toCents, fromDollars } from '../utils/money';
 import { isLegacyDollars } from '~/utils/money-rules';
-import { getNum } from '~/utils/db-money';
+import {
+  centsFromRow as sharedCentsFromRow,
+  moneyFromRow as sharedMoneyFromRow,
+} from '~/utils/database-money';
 
 // Fields that should be converted to/from Money objects
 export const MONEY_FIELDS = {
@@ -45,16 +48,7 @@ export function centsFromRow<T extends TableName>(
   field: (typeof MONEY_FIELDS)[T][number],
   row: Record<string, unknown>
 ): number {
-  const isCentsField = field.endsWith('_cents');
-  const centsKey = isCentsField ? field : `${field}_cents`;
-  const centsVal = getNum(row, centsKey);
-  if (typeof centsVal === 'number') return Math.round(centsVal);
-
-  const legacyVal = getNum(row, field);
-  if (typeof legacyVal !== 'number') return 0;
-
-  if (isCentsField) return Math.round(legacyVal);
-  return isLegacyDollars(tableName, field) ? Math.round(legacyVal * 100) : Math.round(legacyVal);
+  return sharedCentsFromRow(tableName, field, row);
 }
 
 /**
@@ -66,7 +60,7 @@ export function moneyFromRow<T extends TableName>(
   field: (typeof MONEY_FIELDS)[T][number],
   row: Record<string, unknown>
 ): Money {
-  return fromCents(centsFromRow(tableName, field, row));
+  return sharedMoneyFromRow(tableName, field, row);
 }
 
 export function convertRowToMoney<T extends TableName>(
