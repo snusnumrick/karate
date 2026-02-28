@@ -18,6 +18,7 @@ import { PasswordStrengthIndicator } from "~/components/PasswordStrengthIndicato
 import { AddressSection, OptionalInfoSection } from "~/components/family-registration";
 import { SubmitButtonWithLoading } from "~/components/SubmitButtonWithLoading";
 import { FormLoadingOverlay } from "~/components/FormLoadingOverlay";
+import { logStructuredError, toErrorMessage } from "~/utils/errors";
 
 type ActionData = {
   errors?: {
@@ -88,7 +89,7 @@ export async function loader({request}: LoaderFunctionArgs) {
           context.requiresFullAddress = true; // Events now require full address
         }
       } catch (error) {
-        console.error('Failed to fetch event details:', error);
+        logStructuredError('register.loader.fetchEventDetails', error, { eventId, redirectTo });
         // Fall back to general context
       }
     }
@@ -109,7 +110,7 @@ export async function action({request}: ActionFunctionArgs) {
         // Validate CSRF token
         await csrf.validate(request);
     } catch (error) {
-        console.error('CSRF validation failed:', error);
+        logStructuredError('register.action.csrfValidationFailed', error);
         return json({ errors: { _form: 'Security validation failed. Please try again.' } }, { status: 403 });
     }
     
@@ -234,7 +235,10 @@ export async function action({request}: ActionFunctionArgs) {
         );
 
         if (rpcError) {
-            console.error('Error calling complete_new_user_registration RPC:', rpcError);
+            logStructuredError('register.action.completeRegistrationRpcFailed', rpcError, {
+                userId: user.id,
+                email: contact1Email
+            });
             throw rpcError;
         }
         console.log('RPC complete_new_user_registration successful, family_id:', rpcData);
@@ -248,9 +252,11 @@ export async function action({request}: ActionFunctionArgs) {
         return redirect(successLocation);
 
     } catch (error) {
-        console.error('Registration error:', error);
-        // Ensure error is an instance of Error for consistent message property
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        logStructuredError('register.action.registrationFailed', error, {
+            email: contact1Email,
+            hasRedirectTo: Boolean(redirectToParam)
+        });
+        const errorMessage = toErrorMessage(error, "Registration failed. Please try again.");
         return json({
             error: errorMessage, // Use the processed error message
             formData: Object.fromEntries(formData)
@@ -569,7 +575,7 @@ export function ErrorBoundary() {
     const error = useRouteError();
 
     // Log the error to the console
-    console.error("Registration Route Error:", error);
+    logStructuredError("register.errorBoundary.routeError", error);
 
     let title = "An Unexpected Error Occurred";
     let message = "We encountered an unexpected issue. Please try again later.";
@@ -577,11 +583,12 @@ export function ErrorBoundary() {
 
     if (isRouteErrorResponse(error)) {
         title = `${error.status} ${error.statusText}`;
-        message = error.data?.message || error.data || "An error occurred processing your request.";
+        message = toErrorMessage(error.data, "An error occurred processing your request.");
         status = error.status;
     } else if (error instanceof Error) {
-        // Keep generic message for users, but we logged the specific error
-        message = error.message; // Or keep the generic message above
+        message = toErrorMessage(error, message);
+    } else {
+        message = toErrorMessage(error, message);
     }
 
     return (
