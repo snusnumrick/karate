@@ -58,7 +58,7 @@ Last updated: **2026-02-28**
 | R4-T4a | ✅ Completed | Removed misplaced `calculateCompletionPercentage` helper from `money.ts` (non-money concern, unused export). |
 | R4-T4b | ✅ Completed | `H3`: Added shared structured logger utility and migrated webhook/payment critical paths away from raw `console.*`; added ESLint `no-console` guard on those critical webhook route/service files. |
 | R4-T4c | ✅ Completed | `H4`: Refactored `updatePaymentStatus` to an options-object contract and updated all current call sites (`_layout.pay*`, webhook handler, local webhook test route). |
-| R4-T4d | ⏸ Not Started | `H5`: Replace dynamic runtime imports/requires with static imports where safe. |
+| R4-T4d | ✅ Completed | `H5`: Replaced safe dynamic runtime imports with static imports in always-available server paths (`square.server` and full webhook test route). |
 | R4-T4e | ⏸ Not Started | `H6`: Naming convention sweep (`supabaseServer`/`supabaseAdmin` semantics). |
 | R4-T4f | ⏸ Not Started | `H7`: `||` to `??` coalescing audit to avoid falsy-value data bugs. |
 | R4-T4g | ⏸ Not Started | `H8`: Standardize `cancelled`/`canceled` spelling across schema/types/app code. |

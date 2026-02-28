@@ -6,6 +6,7 @@ import type { ActionFunctionArgs } from "@vercel/remix";
 import { json } from "@vercel/remix";
 import { getPaymentProvider } from '~/services/payments/index.server';
 import { handlePaymentWebhook } from '~/services/payments/webhook.server';
+import { getSupabaseAdminClient } from '~/utils/supabase.server';
 
 export async function action({ request }: ActionFunctionArgs) {
   // Only allow in development
@@ -28,7 +29,6 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 
   // Fetch actual payment details from database
-  const { getSupabaseAdminClient } = await import('~/utils/supabase.server');
   const supabase = getSupabaseAdminClient();
 
   const { data: payment, error: paymentError } = await supabase

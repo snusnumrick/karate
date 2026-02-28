@@ -20,6 +20,7 @@ import type { InvoicePaymentMethod } from '~/types/invoice';
 import { SquareClient, SquareEnvironment, WebhooksHelper } from 'square';
 import type * as SquareSdk from 'square';
 import { siteConfig } from '~/config/site';
+import { getSupabaseAdminClient } from '~/utils/supabase.server';
 
 export class SquarePaymentProvider extends PaymentProvider {
   private applicationId: string;
@@ -211,7 +212,6 @@ export class SquarePaymentProvider extends PaymentProvider {
       // We need to get the amount from the original payment intent (stored in database)
       
       // Retrieve the actual payment amount from the database
-      const { getSupabaseAdminClient } = await import('~/utils/supabase.server');
       const supabaseAdmin = getSupabaseAdminClient();
 
       // Note: request.payment_intent_id contains the database payment record ID (not a Square payment intent ID)
@@ -856,7 +856,6 @@ export class SquarePaymentProvider extends PaymentProvider {
       order_id: string | null;
     };
 
-    const { getSupabaseAdminClient } = await import('~/utils/supabase.server');
     const supabaseAdmin = getSupabaseAdminClient();
 
     const referenceId = enriched.referenceId;
