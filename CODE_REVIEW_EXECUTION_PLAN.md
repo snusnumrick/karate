@@ -37,7 +37,7 @@ Last updated: **2026-02-28**
 | R4-T2b | ✅ Completed | Parallelized `admin.payments.new` loader families/students/tax-rates/products fetches with `Promise.all` while preserving existing error semantics. Commit: `3825dc3` |
 | R4-T2c | ✅ Completed | Parallelized family payment eligibility data assembly (family/students fetch, pricing/payments/sessions/discounts fan-out, and per-student eligibility checks). Commit: `a7552ce` |
 | R4-T2d | ✅ Completed | `P2`: Parallelized `enrollStudent` pre-validation prerequisites (`validateEnrollment`, schedule conflicts, student family lookup, family profile lookup, registration waiver check) while preserving existing authorization/decision semantics. |
-| R4-T2e | ⏸ Not Started | `P3`: Batch `processWaitlist` operations to remove per-student sequential validation/update round trips. |
+| R4-T2e | ✅ Completed | `P3`: Refactored `processWaitlist` to validate candidate entries in parallel and promote eligible enrollments through a single bulk update (no per-student sequential write loop). |
 | R4-T2f | ⏸ Not Started | `P4`: Parallelize per-line-item tax rate fetches in invoice create/update paths. |
 | R4-T2g | ⏸ Not Started | `P5`: Batch line-item tax association inserts (single batch/RPC path). |
 | R4-T2h | ⏸ Not Started | `P6`: Batch student validity/lookup queries in event registration loader/action path. |

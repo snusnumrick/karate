@@ -745,34 +745,41 @@ export async function processWaitlist(
     return 0; // No one on waitlist
   }
 
-  let promoted = 0;
+  // Re-validate waitlist entries in parallel and promote in a single batch update.
+  const validationResults = await Promise.all(
+    waitlistStudents.map(async (enrollment) => ({
+      enrollmentId: enrollment.id,
+      validation: await validateEnrollment(
+        classId,
+        enrollment.student_id,
+        supabase
+      ),
+    }))
+  );
 
-  // Promote students from waitlist
-  for (const enrollment of waitlistStudents) {
-    // Re-validate enrollment (in case circumstances changed)
-    const validation = await validateEnrollment(
-      classId,
-      enrollment.student_id,
-      supabase
-    );
+  const promotableEnrollmentIds = validationResults
+    .filter(({ validation }) => validation.capacity_available && validation.meets_eligibility)
+    .map(({ enrollmentId }) => enrollmentId)
+    .slice(0, availableSpots);
 
-    if (validation.capacity_available && validation.meets_eligibility) {
-      const { error: updateError } = await supabase
-        .from('enrollments')
-        .update({ 
-          status: 'active',
-          updated_at: new Date().toISOString(),
-          notes: 'Promoted from waitlist'
-        })
-        .eq('id', enrollment.id);
-
-      if (!updateError) {
-        promoted++;
-      }
-    }
+  if (promotableEnrollmentIds.length === 0) {
+    return 0;
   }
 
-  return promoted;
+  const { error: updateError } = await supabase
+    .from('enrollments')
+    .update({
+      status: 'active',
+      updated_at: new Date().toISOString(),
+      notes: 'Promoted from waitlist',
+    })
+    .in('id', promotableEnrollmentIds);
+
+  if (updateError) {
+    throw new Error(`Failed to promote waitlist entries: ${updateError.message}`);
+  }
+
+  return promotableEnrollmentIds.length;
 }
 
 /**
