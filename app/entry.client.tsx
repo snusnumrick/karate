@@ -17,6 +17,7 @@ import {RemixBrowser, useLocation, useMatches} from "@remix-run/react";
 import {startTransition, StrictMode, useEffect} from "react";
 import {hydrateRoot} from "react-dom/client";
 import * as Sentry from "@sentry/remix";
+import { isChunkLoadError, shouldAttemptChunkReload } from "~/utils/chunk-recovery";
 
 // Only set dev tools in development (check for window to ensure client-side)
 if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
@@ -86,6 +87,38 @@ if (typeof window !== 'undefined' && window.ENV?.SENTRY_DSN) {
 }
 
 // Add error handling for hydration
+function attemptChunkRecovery(source: string, error: unknown): boolean {
+    if (typeof window === "undefined" || !isChunkLoadError(error)) {
+        return false;
+    }
+
+    Sentry.captureException(error, {
+        tags: {
+            component: "entry.client",
+            error_type: "chunk_load_failure",
+            source,
+        },
+        contexts: {
+            chunkRecovery: {
+                href: window.location.href,
+                userAgent: navigator.userAgent,
+            },
+        },
+        level: "error",
+    });
+
+    try {
+        if (!shouldAttemptChunkReload(window.sessionStorage, window.location.href)) {
+            return false;
+        }
+    } catch {
+        return false;
+    }
+
+    window.location.reload();
+    return true;
+}
+
 function hydrate() {
     try {
         startTransition(() => {
@@ -103,9 +136,24 @@ function hydrate() {
         });
     } catch (error) {
         console.error("Hydration failed:", error);
-        // Fallback: force a full page reload if hydration fails
-        window.location.reload();
+        if (!attemptChunkRecovery("hydrate", error)) {
+            // Fallback: force a full page reload if hydration fails for non-chunk reasons
+            window.location.reload();
+        }
     }
+}
+
+if (typeof window !== "undefined") {
+    window.addEventListener("error", (event) => {
+        const candidateError = event.error ?? event.message;
+        attemptChunkRecovery("window.error", candidateError);
+    });
+
+    window.addEventListener("unhandledrejection", (event) => {
+        if (attemptChunkRecovery("window.unhandledrejection", event.reason)) {
+            event.preventDefault();
+        }
+    });
 }
 
 // Ensure DOM is ready before hydrating

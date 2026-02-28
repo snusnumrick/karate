@@ -96,12 +96,21 @@ function getLoadContext(args) {
   return { nonce };
 }
 
+const remixHandler = createRequestHandler({
+  build,
+  getLoadContext,
+});
+
 app.all(
   "*",
-  createRequestHandler({
-    build,
-    getLoadContext,
-  })
+  (req, res, next) => {
+    // Always serve document requests as non-cacheable to avoid stale HTML shells after deploy.
+    if (req.method === "GET" && req.accepts("html")) {
+      res.setHeader("Cache-Control", "no-store, max-age=0, must-revalidate");
+    }
+
+    return remixHandler(req, res, next);
+  }
 );
 
 const port = process.env.PORT || 3000;

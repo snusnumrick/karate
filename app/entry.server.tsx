@@ -274,6 +274,7 @@ export default function handleRequest(
 
     const csp = generateCsp(nonce);
     responseHeaders.set("Content-Security-Policy", csp);
+    responseHeaders.set("Cache-Control", "no-store, max-age=0, must-revalidate");
     
     responseHeaders.set("X-Frame-Options", "DENY");
     responseHeaders.set("X-Content-Type-Options", "nosniff");

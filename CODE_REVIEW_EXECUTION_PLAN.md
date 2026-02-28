@@ -30,7 +30,7 @@ Last updated: **2026-02-28**
 | R3-T6b | ✅ Completed | `SE-4`: Added route-level graceful loader fallbacks and ErrorBoundary UX for family receipt/student detail flows so upstream fetch/network failures degrade to non-crashing, user-safe states. |
 | R3-T6c | ✅ Completed | `SE-8`: Added `toErrorMessage` + structured error logging helper and replaced object-stringification paths in registration loader/action/error boundary to avoid `[object Object]` user output. |
 | R3-T6d | ✅ Completed | `SE-9`: Added `toCentsFromUnknown` money-boundary coercion utility and hardened payment/store purchase paths to safely handle Money, serialized, and raw-cent values without `getAmount` crashes. |
-| R3-T6e | ⏸ Not Started | `SE-10`: chunk loading failure mitigation after deploy (cache/reload strategy). |
+| R3-T6e | ✅ Completed | `SE-10`: Added guarded one-time chunk-load recovery in `entry.client` and enforced no-store HTML caching in server response paths to reduce stale-shell deploy mismatches. |
 | R4-T1 | ✅ Completed | Cached admin Supabase client in `getSupabaseAdminClient()` with config-aware singleton reuse to avoid repeated client creation overhead. Commit: `c049549` |
 | R4-T2 | 🔄 In Progress | Parent tracking item for high-cost loader/service parallelization (enrollment, payment eligibility, discounts, admin payments). |
 | R4-T2a | ✅ Completed | Parallelized and batched `getAllDiscountCodes` by running creator and usage queries concurrently and using map-based joins. Commit: `5fe8fff` |
