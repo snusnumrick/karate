@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { toCents } from '~/utils/money';
-import { DiscountService } from '../discount.server';
+import { DiscountService, getAllDiscountCodes, getFamilyDiscountUsage, getStudentDiscountUsage } from '../discount.server';
 
 const mockSupabaseAdmin = {
   from: vi.fn(),
@@ -146,7 +146,7 @@ describe('DiscountService.getAllDiscountCodes', () => {
       throw new Error(`Unexpected table: ${table}`);
     });
 
-    const result = await DiscountService.getAllDiscountCodes();
+    const result = await getAllDiscountCodes();
 
     expect(result).toHaveLength(2);
     expect(result[0].creator?.full_name).toBe('Jane Owner');
@@ -216,7 +216,7 @@ describe('DiscountService usage history queries', () => {
       throw new Error(`Unexpected table: ${table}`);
     });
 
-    const result = await DiscountService.getFamilyDiscountUsage('fam-1');
+    const result = await getFamilyDiscountUsage('fam-1');
 
     expect(eq).toHaveBeenCalledWith('family_id', 'fam-1');
     expect(result).toHaveLength(1);
@@ -273,11 +273,44 @@ describe('DiscountService usage history queries', () => {
       throw new Error(`Unexpected table: ${table}`);
     });
 
-    const result = await DiscountService.getStudentDiscountUsage('stu-1');
+    const result = await getStudentDiscountUsage('stu-1');
 
     expect(eq).toHaveBeenCalledWith('student_id', 'stu-1');
     expect(result).toHaveLength(1);
     expect(toCents(result[0].discount_amount)).toBe(300);
     expect(result[0].discount_codes?.code).toBe('SPRING5');
+  });
+
+  it('keeps class-based API compatibility shim', async () => {
+    const usageRows = [
+      {
+        id: 'usage-3',
+        discount_code_id: 'dc-3',
+        payment_id: 'pay-3',
+        family_id: 'fam-1',
+        student_id: 'stu-1',
+        discount_amount: 200,
+        original_amount: 4000,
+        final_amount: 3800,
+        used_at: '2026-02-20T00:00:00.000Z',
+        discount_codes: null,
+      },
+    ];
+
+    const order = vi.fn().mockResolvedValue({ data: usageRows, error: null });
+    const eq = vi.fn(() => ({ order }));
+    const select = vi.fn(() => ({ eq }));
+
+    mockSupabaseAdmin.from.mockImplementation((table: string) => {
+      if (table === 'discount_code_usage') {
+        return { select };
+      }
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    const result = await DiscountService.getStudentDiscountUsage('stu-1');
+
+    expect(result).toHaveLength(1);
+    expect(toCents(result[0].discount_amount)).toBe(200);
   });
 });

@@ -53,7 +53,7 @@ Last updated: **2026-02-28**
 | R4-T3i | ✅ Completed | `D8`: Consolidated `centsFromRow`/`moneyFromRow` to a single implementation (`utils/database-money`) and kept server-module compatibility wrappers (with regression tests). |
 | R4-T3j | ✅ Completed | `D9`: Standardized service-role Supabase client naming/injection in enrollment flows (`supabaseAdmin` convention), including shared helper and downstream enrollment service paths. |
 | R4-T3k | ✅ Completed | `D10`: Added shared app error-envelope helper (`{ code, message, details? }`) and standardized webhook route error responses to this shape. |
-| R4-T3l | ⏸ Not Started | `D11`: Normalize discount domain API style (`DiscountService` class vs function modules) and choose one pattern. |
+| R4-T3l | ✅ Completed | `D11`: Added function-first discount service exports as canonical API and retained `DiscountService` as a compatibility shim (verified in service tests). |
 | R4-T4 | 🔄 In Progress | Parent tracking item for hygiene backlog (dead code/log cleanup, naming consistency, `updatePaymentStatus` parameter object refactor). |
 | R4-T4a | ✅ Completed | Removed misplaced `calculateCompletionPercentage` helper from `money.ts` (non-money concern, unused export). |
 | R4-T4b | ⏸ Not Started | `H3`: Replace broad `console.log/warn/error` usage with structured logging approach. |

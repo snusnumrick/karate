@@ -117,6 +117,7 @@ const fetchDiscountUsageByScope = async (
     return mapDiscountUsageRows(rawUsage);
 };
 
+// Compatibility shim: prefer the exported function-first API below for new callers.
 export class DiscountService {
     private static getSupabase() {
         return getSupabaseAdminClient();
@@ -641,3 +642,101 @@ export class DiscountService {
         });
     }
 }
+
+export async function getActiveDiscountCodes() {
+    return DiscountService.getActiveDiscountCodes();
+}
+
+export async function getAllDiscountCodes() {
+    return DiscountService.getAllDiscountCodes();
+}
+
+export async function getDiscountCodeById(id: string) {
+    return DiscountService.getDiscountCodeById(id);
+}
+
+export async function getDiscountCodeByCode(code: string) {
+    return DiscountService.getDiscountCodeByCode(code);
+}
+
+export async function createDiscountCode(discountData: CreateDiscountCodeData, createdBy?: string) {
+    return DiscountService.createDiscountCode(discountData, createdBy);
+}
+
+export async function updateDiscountCode(id: string, updates: UpdateDiscountCodeData) {
+    return DiscountService.updateDiscountCode(id, updates);
+}
+
+export async function deactivateDiscountCode(id: string) {
+    return DiscountService.deactivateDiscountCode(id);
+}
+
+export async function activateDiscountCode(id: string) {
+    return DiscountService.activateDiscountCode(id);
+}
+
+export async function deleteDiscountCode(id: string) {
+    return DiscountService.deleteDiscountCode(id);
+}
+
+export async function validateDiscountCode(request: ApplyDiscountRequest) {
+    return DiscountService.validateDiscountCode(request);
+}
+
+export async function applyDiscountCode(
+    discountCodeId: string,
+    paymentId: string,
+    familyId: string,
+    discountAmount: Money,
+    studentId?: string
+) {
+    return DiscountService.applyDiscountCode(discountCodeId, paymentId, familyId, discountAmount, studentId);
+}
+
+export async function getFamilyDiscountUsage(familyId: string) {
+    return DiscountService.getFamilyDiscountUsage(familyId);
+}
+
+export async function getStudentDiscountUsage(studentId: string) {
+    return DiscountService.getStudentDiscountUsage(studentId);
+}
+
+export async function generateUniqueCode(prefix?: string, length?: number) {
+    return DiscountService.generateUniqueCode(prefix, length);
+}
+
+export async function createAutomaticDiscountCode(
+    name: string,
+    discountType: 'fixed_amount' | 'percentage',
+    discountValue: Money,
+    applicableTo?: ApplicableTo,
+    scope?: 'per_student' | 'per_family',
+    validUntil?: string
+) {
+    return DiscountService.createAutomaticDiscountCode(
+        name,
+        discountType,
+        discountValue,
+        applicableTo,
+        scope,
+        validUntil
+    );
+}
+
+export const discountService = {
+    getActiveDiscountCodes,
+    getAllDiscountCodes,
+    getDiscountCodeById,
+    getDiscountCodeByCode,
+    createDiscountCode,
+    updateDiscountCode,
+    deactivateDiscountCode,
+    activateDiscountCode,
+    deleteDiscountCode,
+    validateDiscountCode,
+    applyDiscountCode,
+    getFamilyDiscountUsage,
+    getStudentDiscountUsage,
+    generateUniqueCode,
+    createAutomaticDiscountCode,
+};
