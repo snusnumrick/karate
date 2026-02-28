@@ -9,6 +9,7 @@ import * as Sentry from "@sentry/remix";
 import {
     formatMoney,
     toCents,
+    toCentsFromUnknown,
     serializeMoney,
     deserializeMoney,
     type Money,
@@ -280,8 +281,9 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
             const unitAmountCents = resolveIndividualAmountCents();
             if (unitAmountCents && unitAmountCents > 0) {
                 individualSessionUnitAmountCents = unitAmountCents;
-                if (payment.subtotal_amount) {
-                    individualSessionQuantity = Math.round(payment.subtotal_amount / unitAmountCents);
+                const subtotalCents = toCentsFromUnknown(payment.subtotal_amount, { numberUnit: 'cents' });
+                if (subtotalCents > 0) {
+                    individualSessionQuantity = Math.round(subtotalCents / unitAmountCents);
                     console.log(`[Payment Loader] Calculated quantity for payment ${paymentId}: ${individualSessionQuantity} sessions`);
                 }
             } else {
@@ -368,9 +370,9 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
                         paymentWithDerived.type, // type
                         paymentWithDerived.family_id, // familyId
                         undefined, // quantity (will be fetched if needed)
-                        toCents(paymentWithDerived.subtotal_amount), // subtotalAmountFromMeta
+                        toCentsFromUnknown(paymentWithDerived.subtotal_amount, { numberUnit: 'cents' }), // subtotalAmountFromMeta
                         undefined, // taxAmountFromMeta (calculated as total - subtotal)
-                        toCents(paymentWithDerived.total_amount), // totalAmountFromMeta
+                        toCentsFromUnknown(paymentWithDerived.total_amount, { numberUnit: 'cents' }), // totalAmountFromMeta
                         cardLast4
                     );
 
@@ -392,9 +394,9 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
                         paymentWithDerived.type, // type
                         paymentWithDerived.family_id, // familyId
                         undefined, // quantity
-                        toCents(paymentWithDerived.subtotal_amount),
+                        toCentsFromUnknown(paymentWithDerived.subtotal_amount, { numberUnit: 'cents' }),
                         undefined,
-                        toCents(paymentWithDerived.total_amount),
+                        toCentsFromUnknown(paymentWithDerived.total_amount, { numberUnit: 'cents' }),
                         null // cardLast4
                     );
                     console.log(`[Loader] Successfully updated payment ${paymentId} to failed via updatePaymentStatus`);
@@ -605,8 +607,10 @@ export default function PaymentPage() {
             formData.append('supabasePaymentId', payment.id); // Pass Supabase ID for linking/update
 
             // The database now stores the discounted subtotal, so use it directly
-            formData.append('subtotalAmount', toCents(payment.subtotal_amount).toString());
-            formData.append('totalAmount', toCents(payment.total_amount).toString());
+            const subtotalCents = toCentsFromUnknown(payment.subtotal_amount, { numberUnit: 'cents' });
+            const totalCents = toCentsFromUnknown(payment.total_amount, { numberUnit: 'cents' });
+            formData.append('subtotalAmount', subtotalCents.toString());
+            formData.append('totalAmount', totalCents.toString());
 
 
             // Determine paymentOption, priceId, quantity, studentIds based on payment.payment_type
@@ -638,7 +642,7 @@ export default function PaymentPage() {
                     if (payment.individualSessionQuantity && payment.individualSessionQuantity > 0) {
                         quantity = payment.individualSessionQuantity.toString();
                     } else if (payment.individualSessionUnitAmountCents && payment.individualSessionUnitAmountCents > 0) {
-                        const subtotalCents = toCents(payment.subtotal_amount);
+                        const subtotalCents = toCentsFromUnknown(payment.subtotal_amount, { numberUnit: 'cents' });
                         if (subtotalCents > 0) {
                             const calculatedQuantity = Math.round(subtotalCents / payment.individualSessionUnitAmountCents);
                             quantity = calculatedQuantity > 0 ? calculatedQuantity.toString() : '1';
@@ -726,18 +730,20 @@ export default function PaymentPage() {
                 // Verify amounts match as a sanity check (compare subtotal, tax, and total)
                 if (payment) {
                     let mismatch = false;
+                    const dbSubtotalCents = toCentsFromUnknown(payment.subtotal_amount, { numberUnit: 'cents' });
+                    const dbTotalTax = toCentsFromUnknown(payment.tax_amount, { numberUnit: 'cents' });
+                    const dbTotalCents = toCentsFromUnknown(payment.total_amount, { numberUnit: 'cents' });
                     // The database now stores the discounted subtotal, so compare directly
-                    if (paymentIntentFetcher.data.subtotalAmount !== toCents(payment.subtotal_amount)) {
-                        console.error(`Subtotal Amount mismatch! DB record: ${toCents(payment.subtotal_amount)}, Intent created: ${paymentIntentFetcher.data.subtotalAmount}`);
+                    if (paymentIntentFetcher.data.subtotalAmount !== dbSubtotalCents) {
+                        console.error(`Subtotal Amount mismatch! DB record: ${dbSubtotalCents}, Intent created: ${paymentIntentFetcher.data.subtotalAmount}`);
                         mismatch = true;
                     }
-                    const dbTotalTax = toCents(payment.tax_amount);
                     if (paymentIntentFetcher.data.taxAmount !== dbTotalTax) {
                         console.error(`Total Tax Amount mismatch! DB record sum: ${dbTotalTax}, Intent created: ${paymentIntentFetcher.data.taxAmount}`);
                         mismatch = true;
                     }
-                    if (paymentIntentFetcher.data.totalAmount !== toCents(payment.total_amount)) {
-                        console.error(`Total Amount mismatch! DB record: ${toCents(payment.total_amount)}, Intent created: ${paymentIntentFetcher.data.totalAmount}`);
+                    if (paymentIntentFetcher.data.totalAmount !== dbTotalCents) {
+                        console.error(`Total Amount mismatch! DB record: ${dbTotalCents}, Intent created: ${paymentIntentFetcher.data.totalAmount}`);
                         mismatch = true;
                     }
                     if (mismatch) {

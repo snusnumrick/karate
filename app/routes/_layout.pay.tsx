@@ -22,6 +22,7 @@ import type { Database } from "~/types/database.types";
 import {
   formatMoney,
   toCents,
+  toCentsFromUnknown,
   serializeMoney,
   deserializeMoney,
   type Money,
@@ -148,12 +149,15 @@ type ActionErrorResponse = {
 type ApiActionResponse = ActionSuccessResponse | ActionErrorResponse;
 
 function getPaymentIntentFormData(payment: PaymentWithDetails) {
+  const subtotalCents = toCentsFromUnknown(payment.subtotal_amount, { numberUnit: "cents" });
+  const totalCents = toCentsFromUnknown(payment.total_amount, { numberUnit: "cents" });
+
   const formData = new FormData();
   formData.append("familyId", payment.family_id);
   formData.append("familyName", payment.family?.name ?? "Unknown Family");
   formData.append("supabasePaymentId", payment.id);
-  formData.append("subtotalAmount", toCents(payment.subtotal_amount).toString());
-  formData.append("totalAmount", toCents(payment.total_amount).toString());
+  formData.append("subtotalAmount", subtotalCents.toString());
+  formData.append("totalAmount", totalCents.toString());
 
   let paymentOption:
     | "monthly"
@@ -179,7 +183,6 @@ function getPaymentIntentFormData(payment: PaymentWithDetails) {
       if (payment.individualSessionQuantity && payment.individualSessionQuantity > 0) {
         quantity = payment.individualSessionQuantity.toString();
       } else if (payment.individualSessionUnitAmountCents && payment.individualSessionUnitAmountCents > 0) {
-        const subtotalCents = toCents(payment.subtotal_amount);
         if (subtotalCents > 0) {
           const calculatedQuantity = Math.round(
             subtotalCents / payment.individualSessionUnitAmountCents,

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { fromCents, fromDollars, toCents, toDollars, formatMoney, addMoney, subtractMoney, compareMoney, sumMoney } from '~/utils/money';
+import { fromCents, fromDollars, toCents, toDollars, formatMoney, addMoney, subtractMoney, compareMoney, sumMoney, toCentsFromUnknown } from '~/utils/money';
 
 describe('money utils', () => {
   it('converts dollars to cents and back', () => {
@@ -34,5 +34,20 @@ describe('money utils', () => {
     const total = sumMoney([fromCents(1), fromCents(2), fromCents(3)]);
     expect(toCents(total)).toBe(6);
   });
-});
 
+  it('coerces MoneyJSON and Money objects to cents safely', () => {
+    const money = fromCents(4321);
+    expect(toCentsFromUnknown(money)).toBe(4321);
+    expect(toCentsFromUnknown({ amount: 987, currency: 'CAD' })).toBe(987);
+  });
+
+  it('can treat numeric values as cents at DB boundaries', () => {
+    expect(toCentsFromUnknown(2500, { numberUnit: 'cents' })).toBe(2500);
+    expect(toCentsFromUnknown('2500', { numberUnit: 'cents' })).toBe(2500);
+  });
+
+  it('falls back safely for invalid unknown values', () => {
+    expect(toCentsFromUnknown({ no: 'money' }, { fallbackCents: 77 })).toBe(77);
+    expect(toCentsFromUnknown('not-a-number', { fallbackCents: 13 })).toBe(13);
+  });
+});

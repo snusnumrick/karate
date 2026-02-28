@@ -29,7 +29,7 @@ Last updated: **2026-02-28**
 | R3-T6a | ⏸ Not Started | `SE-3`: Square tokenization failures (CSP and client flow hardening) in payment flow. |
 | R3-T6b | ⏸ Not Started | `SE-4`: Safari fetch-load failures with resilient UI fallback/error-boundary handling on affected routes. |
 | R3-T6c | ✅ Completed | `SE-8`: Added `toErrorMessage` + structured error logging helper and replaced object-stringification paths in registration loader/action/error boundary to avoid `[object Object]` user output. |
-| R3-T6d | ⏸ Not Started | `SE-9`: `money.getAmount is not a function` crash fix in store purchase/payment path. |
+| R3-T6d | ✅ Completed | `SE-9`: Added `toCentsFromUnknown` money-boundary coercion utility and hardened payment/store purchase paths to safely handle Money, serialized, and raw-cent values without `getAmount` crashes. |
 | R3-T6e | ⏸ Not Started | `SE-10`: chunk loading failure mitigation after deploy (cache/reload strategy). |
 | R4-T1 | ✅ Completed | Cached admin Supabase client in `getSupabaseAdminClient()` with config-aware singleton reuse to avoid repeated client creation overhead. Commit: `c049549` |
 | R4-T2 | 🔄 In Progress | Parent tracking item for high-cost loader/service parallelization (enrollment, payment eligibility, discounts, admin payments). |

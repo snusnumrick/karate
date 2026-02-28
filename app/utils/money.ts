@@ -11,6 +11,7 @@ export type Money = Dinero.Dinero;
 export type MoneyInput = number | string | Money | null;
 export type MoneyJSON = { amount: number; currency: string; precision?: number };
 export type MoneyLike = Money | MoneyJSON | number | string;
+type NumberUnit = 'cents' | 'dollars';
 
 /**
  * Create a Money object from various input types
@@ -133,6 +134,61 @@ export function toMoney(value: MoneyLike | unknown): Money {
     return value as Money;
   }
   throw new Error('Invalid value for toMoney');
+}
+
+/**
+ * Safely coerce unknown monetary input into integer cents.
+ * Useful for route boundaries where serialized JSON or raw DB numbers may appear.
+ */
+export function toCentsFromUnknown(
+  value: unknown,
+  options: { numberUnit?: NumberUnit; fallbackCents?: number } = {}
+): number {
+  const { numberUnit = 'dollars', fallbackCents = 0 } = options;
+
+  if (value === null || value === undefined) {
+    return fallbackCents;
+  }
+
+  if (typeof value === 'object' && value && 'getAmount' in (value as Record<string, unknown>)) {
+    return toCents(value as Money);
+  }
+
+  if (isMoneyJSON(value)) {
+    return toCents(deserializeMoney(value));
+  }
+
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) return fallbackCents;
+    return numberUnit === 'cents' ? Math.round(value) : Math.round(value * 100);
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return fallbackCents;
+
+    if (trimmed.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (isMoneyJSON(parsed)) {
+          return toCents(deserializeMoney(parsed));
+        }
+      } catch {
+        // Fall through to numeric parsing.
+      }
+    }
+
+    const num = Number(trimmed);
+    if (Number.isFinite(num)) {
+      return numberUnit === 'cents' ? Math.round(num) : Math.round(num * 100);
+    }
+  }
+
+  try {
+    return toCents(toMoney(value));
+  } catch {
+    return fallbackCents;
+  }
 }
 
 /**

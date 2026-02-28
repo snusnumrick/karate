@@ -13,7 +13,7 @@ import { Label } from "~/components/ui/label";
 import { Separator } from "~/components/ui/separator";
 import type { Database, Tables, TablesInsert } from "~/types/database.types";
 import type { TaxRate } from "~/types/invoice";
-import { fromCents, formatMoney, toCents, toMoney, type Money } from "~/utils/money"; // dinero.js currency formatter
+import { fromCents, formatMoney, toCents, toCentsFromUnknown, type Money } from "~/utils/money"; // dinero.js currency formatter
 import { getCurrentDateTimeInTimezone } from "~/utils/misc";
 // For tax calculation consistency
 import { Info } from 'lucide-react'; // Added Info icon
@@ -560,9 +560,8 @@ export default function PurchaseGiPage() {
         let discount = 0;
         if (appliedDiscount?.discount_amount) {
             try {
-                // Convert from serialized JSON to Money object, then to cents
-                const discountMoney = toMoney(appliedDiscount.discount_amount);
-                discount = toCents(discountMoney);
+                // Discount payload may arrive as serialized JSON, number, or Money.
+                discount = toCentsFromUnknown(appliedDiscount.discount_amount, { numberUnit: 'cents' });
             } catch (error) {
                 console.error('Error converting discount amount:', error);
                 discount = 0;
