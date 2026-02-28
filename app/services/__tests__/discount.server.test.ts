@@ -161,3 +161,123 @@ describe('DiscountService.getAllDiscountCodes', () => {
     expect(usageIn).toHaveBeenCalledWith('discount_code_id', ['dc-1', 'dc-2']);
   });
 });
+
+describe('DiscountService usage history queries', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('fetches and maps family discount usage via shared query helper', async () => {
+    const usageRows = [
+      {
+        id: 'usage-1',
+        discount_code_id: 'dc-1',
+        payment_id: 'pay-1',
+        family_id: 'fam-1',
+        student_id: null,
+        discount_amount: 500,
+        original_amount: 10000,
+        final_amount: 9500,
+        used_at: '2026-02-18T00:00:00.000Z',
+        discount_codes: {
+          id: 'dc-1',
+          code: 'WELCOME10',
+          name: 'Welcome',
+          description: null,
+          discount_type: 'fixed_amount',
+          discount_value: 10,
+          discount_value_cents: 1000,
+          usage_type: 'one_time',
+          max_uses: null,
+          current_uses: 1,
+          applicable_to: ['monthly_group'],
+          scope: 'per_family',
+          family_id: 'fam-1',
+          student_id: null,
+          is_active: true,
+          valid_from: '2026-01-01T00:00:00.000Z',
+          valid_until: null,
+          created_by: null,
+          created_automatically: true,
+          created_at: '2026-01-01T00:00:00.000Z',
+          updated_at: '2026-01-01T00:00:00.000Z',
+        },
+      },
+    ];
+
+    const order = vi.fn().mockResolvedValue({ data: usageRows, error: null });
+    const eq = vi.fn(() => ({ order }));
+    const select = vi.fn(() => ({ eq }));
+
+    mockSupabaseAdmin.from.mockImplementation((table: string) => {
+      if (table === 'discount_code_usage') {
+        return { select };
+      }
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    const result = await DiscountService.getFamilyDiscountUsage('fam-1');
+
+    expect(eq).toHaveBeenCalledWith('family_id', 'fam-1');
+    expect(result).toHaveLength(1);
+    expect(toCents(result[0].discount_amount)).toBe(500);
+    expect(result[0].discount_codes?.code).toBe('WELCOME10');
+  });
+
+  it('fetches and maps student discount usage via shared query helper', async () => {
+    const usageRows = [
+      {
+        id: 'usage-2',
+        discount_code_id: 'dc-2',
+        payment_id: 'pay-2',
+        family_id: 'fam-1',
+        student_id: 'stu-1',
+        discount_amount: 300,
+        original_amount: 5000,
+        final_amount: 4700,
+        used_at: '2026-02-19T00:00:00.000Z',
+        discount_codes: {
+          id: 'dc-2',
+          code: 'SPRING5',
+          name: 'Spring',
+          description: null,
+          discount_type: 'fixed_amount',
+          discount_value: 5,
+          discount_value_cents: 500,
+          usage_type: 'one_time',
+          max_uses: null,
+          current_uses: 1,
+          applicable_to: ['monthly_group'],
+          scope: 'per_student',
+          family_id: null,
+          student_id: 'stu-1',
+          is_active: true,
+          valid_from: '2026-01-01T00:00:00.000Z',
+          valid_until: null,
+          created_by: null,
+          created_automatically: true,
+          created_at: '2026-01-01T00:00:00.000Z',
+          updated_at: '2026-01-01T00:00:00.000Z',
+        },
+      },
+    ];
+
+    const order = vi.fn().mockResolvedValue({ data: usageRows, error: null });
+    const eq = vi.fn(() => ({ order }));
+    const select = vi.fn(() => ({ eq }));
+
+    mockSupabaseAdmin.from.mockImplementation((table: string) => {
+      if (table === 'discount_code_usage') {
+        return { select };
+      }
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    const result = await DiscountService.getStudentDiscountUsage('stu-1');
+
+    expect(eq).toHaveBeenCalledWith('student_id', 'stu-1');
+    expect(result).toHaveLength(1);
+    expect(toCents(result[0].discount_amount)).toBe(300);
+    expect(result[0].discount_codes?.code).toBe('SPRING5');
+  });
+});

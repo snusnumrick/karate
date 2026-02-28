@@ -79,6 +79,44 @@ const normalizeDiscountUsageJoin = (
     return normalizeDiscountCodeRow(joinedDiscount as DiscountCodeRow);
 };
 
+const mapDiscountUsageRows = (rawUsage: unknown[]): DiscountCodeUsage[] => {
+    const usageRows = rawUsage.filter((usage): usage is DiscountUsageRowWithCode => {
+        return typeof usage === 'object' && usage !== null && 'discount_code_id' in usage;
+    });
+
+    return usageRows.map((usageRow) => ({
+        ...usageRow,
+        discount_amount: moneyFromRow('discount_code_usage', 'discount_amount', usageRow),
+        original_amount: moneyFromRow('discount_code_usage', 'original_amount', usageRow),
+        final_amount: moneyFromRow('discount_code_usage', 'final_amount', usageRow),
+        discount_codes: normalizeDiscountUsageJoin(usageRow.discount_codes)
+    }) as DiscountCodeUsage);
+};
+
+const fetchDiscountUsageByScope = async (
+    supabase: ExtendedSupabaseClient,
+    scopeField: 'family_id' | 'student_id',
+    scopeId: string,
+    scopeLabel: 'family' | 'student'
+): Promise<DiscountCodeUsage[]> => {
+    const {data, error} = await supabase
+        .from('discount_code_usage')
+        .select(`
+        *,
+        discount_codes(*)
+      `)
+        .eq(scopeField, scopeId)
+        .order('used_at', {ascending: false});
+
+    if (error) {
+        console.error(`Error fetching ${scopeLabel} discount usage:`, error);
+        throw new Error(`Failed to fetch ${scopeLabel} discount usage`);
+    }
+
+    const rawUsage = Array.isArray(data) ? (data as unknown[]) : [];
+    return mapDiscountUsageRows(rawUsage);
+};
+
 export class DiscountService {
     private static getSupabase() {
         return getSupabaseAdminClient();
@@ -525,64 +563,24 @@ export class DiscountService {
      * Get discount usage history for a family
      */
     static async getFamilyDiscountUsage(familyId: string): Promise<DiscountCodeUsage[]> {
-        const {data, error} = await (this.getSupabase() as ExtendedSupabaseClient)
-            .from('discount_code_usage')
-            .select(`
-        *,
-        discount_codes(*)
-      `)
-            .eq('family_id', familyId)
-            .order('used_at', {ascending: false});
-
-        if (error) {
-            console.error('Error fetching family discount usage:', error);
-            throw new Error('Failed to fetch family discount usage');
-        }
-
-        const rawUsage = Array.isArray(data) ? (data as unknown[]) : [];
-        const usageRows = rawUsage.filter((usage): usage is DiscountUsageRowWithCode => {
-            return typeof usage === 'object' && usage !== null && 'discount_code_id' in usage;
-        });
-
-        return usageRows.map((usageRow) => ({
-            ...usageRow,
-            discount_amount: moneyFromRow('discount_code_usage', 'discount_amount', usageRow),
-            original_amount: moneyFromRow('discount_code_usage', 'original_amount', usageRow),
-            final_amount: moneyFromRow('discount_code_usage', 'final_amount', usageRow),
-            discount_codes: normalizeDiscountUsageJoin(usageRow.discount_codes)
-        }) as DiscountCodeUsage);
+        return fetchDiscountUsageByScope(
+            this.getSupabase() as ExtendedSupabaseClient,
+            'family_id',
+            familyId,
+            'family'
+        );
     }
 
     /**
      * Get discount usage history for a student
      */
     static async getStudentDiscountUsage(studentId: string): Promise<DiscountCodeUsage[]> {
-        const {data, error} = await (this.getSupabase() as ExtendedSupabaseClient)
-            .from('discount_code_usage')
-            .select(`
-        *,
-        discount_codes(*)
-      `)
-            .eq('student_id', studentId)
-            .order('used_at', {ascending: false});
-
-        if (error) {
-            console.error('Error fetching student discount usage:', error);
-            throw new Error('Failed to fetch student discount usage');
-        }
-
-        const rawUsage = Array.isArray(data) ? (data as unknown[]) : [];
-        const usageRows = rawUsage.filter((usage): usage is DiscountUsageRowWithCode => {
-            return typeof usage === 'object' && usage !== null && 'discount_code_id' in usage;
-        });
-
-        return usageRows.map((usageRow) => ({
-            ...usageRow,
-            discount_amount: moneyFromRow('discount_code_usage', 'discount_amount', usageRow),
-            original_amount: moneyFromRow('discount_code_usage', 'original_amount', usageRow),
-            final_amount: moneyFromRow('discount_code_usage', 'final_amount', usageRow),
-            discount_codes: normalizeDiscountUsageJoin(usageRow.discount_codes)
-        }) as DiscountCodeUsage);
+        return fetchDiscountUsageByScope(
+            this.getSupabase() as ExtendedSupabaseClient,
+            'student_id',
+            studentId,
+            'student'
+        );
     }
 
     /**
