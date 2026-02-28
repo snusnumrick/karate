@@ -27,6 +27,20 @@ type SerializedEventWithRegistrationInfo = Omit<EventWithRegistrationInfo, 'regi
 };
 
 type StudentInsert = TablesInsert<'students'>;
+type RegistrationStudentInput = {
+  existingStudentId?: string;
+  id?: string;
+  firstName: string;
+  lastName: string;
+  dateOfBirth: string;
+  gender?: string;
+  school?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  emergencyContactRelation?: string;
+  allergies?: string;
+  medicalConditions?: string;
+};
 
 export const action = async ({ request, params }: ActionFunctionArgs) => {
   const eventId = params.eventId;
@@ -55,7 +69,9 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
   
   try {
     // Parse registration data
-    const registrationData = JSON.parse(formData.get("registrationData") as string);
+    const registrationData = JSON.parse(formData.get("registrationData") as string) as {
+      students: RegistrationStudentInput[];
+    };
     const { students } = registrationData;
 
     // Get user session
@@ -88,16 +104,43 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
     }
 
     // Create student records for guest users or use existing for authenticated users
-    const studentIds = [];
+    const studentIdsByIndex: Array<string | null> = Array(students.length).fill(null);
     const emergencyContacts: Map<string, string> = new Map(); // studentId -> emergency contact JSON
 
-    for (const student of students) {
-      if (student.existingStudentId || student.id) {
-        // Use existing student - update medical info and emergency contact if needed
-        const studentId = student.existingStudentId || student.id;
-        studentIds.push(studentId);
+    const existingStudents = students
+      .map((student, index) => ({
+        student,
+        index,
+        studentId: student.existingStudentId || student.id,
+      }))
+      .filter((entry): entry is { student: (typeof students)[number]; index: number; studentId: string } => Boolean(entry.studentId));
 
-        // Prepare emergency contact data for event_registrations
+    const newStudents = students
+      .map((student, index) => ({ student, index }))
+      .filter(({ student }) => !student.existingStudentId && !student.id);
+
+    // Batch-read existing student phone data for conditional emergency phone updates.
+    const existingStudentIds = existingStudents.map((entry) => entry.studentId);
+    const existingStudentsById = new Map<string, { cell_phone: string | null }>();
+    if (existingStudentIds.length > 0) {
+      const { data: existingStudentRows, error: existingStudentsError } = await supabaseServer
+        .from('students')
+        .select('id, cell_phone')
+        .in('id', existingStudentIds);
+
+      if (existingStudentsError) {
+        console.error('Error fetching existing students for event registration updates:', existingStudentsError);
+      }
+
+      (existingStudentRows || []).forEach((row) => {
+        existingStudentsById.set(row.id, { cell_phone: row.cell_phone });
+      });
+    }
+
+    // Build and apply student medical/contact updates in parallel.
+    const updateOperations = existingStudents.reduce<Array<PromiseLike<{ error: unknown }>>>((operations, { student, studentId, index }) => {
+        studentIdsByIndex[index] = studentId;
+
         const emergencyContactData = JSON.stringify({
           name: student.emergencyContactName,
           phone: student.emergencyContactPhone,
@@ -105,7 +148,6 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
         });
         emergencyContacts.set(studentId, emergencyContactData);
 
-        // Update medical info (allergies, medications) in students table
         const studentUpdates: Partial<Database['public']['Tables']['students']['Update']> = {};
 
         if (student.allergies) {
@@ -116,67 +158,75 @@ async function handleEventRegistration(formData: FormData, eventId: string, requ
           studentUpdates.medications = student.medicalConditions;
         }
 
-        // If student has no cell_phone, save emergency contact phone
-        const { data: existingStudent } = await supabaseServer
-          .from('students')
-          .select('cell_phone')
-          .eq('id', studentId)
-          .single();
-
+        const existingStudent = existingStudentsById.get(studentId);
         if (existingStudent && !existingStudent.cell_phone && student.emergencyContactPhone) {
           studentUpdates.cell_phone = student.emergencyContactPhone;
         }
 
-        // Apply updates if we have any
-        if (Object.keys(studentUpdates).length > 0) {
-          const { error: updateError } = await supabaseServer
+        if (Object.keys(studentUpdates).length === 0) {
+          return operations;
+        }
+
+        operations.push(
+          supabaseServer
             .from('students')
             .update(studentUpdates)
-            .eq('id', studentId);
+            .eq('id', studentId)
+            .then(({ error }) => ({ error })),
+        );
 
-          if (updateError) {
-            console.error('Error updating student medical info:', updateError);
-            // Don't fail the registration, just log the error
-          }
+        return operations;
+      }, []);
+
+    if (updateOperations.length > 0) {
+      const updateResults = await Promise.all(updateOperations);
+      updateResults.forEach(({ error: updateError }) => {
+        if (updateError) {
+          console.error('Error updating student medical info:', updateError);
         }
-      } else {
-        // Create new student
-        const studentData: StudentInsert = {
-            family_id: familyId,
-            first_name: student.firstName,
-            last_name: student.lastName,
-            birth_date: student.dateOfBirth,
-            gender: student.gender || 'other',
-            school: student.school || 'Not specified',
-            cell_phone: student.emergencyContactPhone || null,
-            t_shirt_size: 'AM' as Database['public']['Enums']['t_shirt_size_enum'],
-            allergies: student.allergies || null,
-            medications: student.medicalConditions || null,
-            email: student.emergencyContactName || null
-          };
+      });
+    }
 
-        const { data: newStudent, error: studentError } = await supabaseServer
-          .from('students')
-          .insert(studentData)
-          .select('id')
-          .single();
+    // Batch-create new students in one insert call.
+    if (newStudents.length > 0) {
+      const newStudentRows: StudentInsert[] = newStudents.map(({ student }) => ({
+        family_id: familyId,
+        first_name: student.firstName,
+        last_name: student.lastName,
+        birth_date: student.dateOfBirth,
+        gender: student.gender || 'other',
+        school: student.school || 'Not specified',
+        cell_phone: student.emergencyContactPhone || null,
+        t_shirt_size: 'AM' as Database['public']['Enums']['t_shirt_size_enum'],
+        allergies: student.allergies || null,
+        medications: student.medicalConditions || null,
+        email: student.emergencyContactName || null
+      }));
 
-        if (studentError) {
-          console.error('Error creating student:', studentError);
-          return json({ error: 'Failed to create student record' }, { status: 500 });
-        }
+      const { data: insertedStudents, error: insertStudentsError } = await supabaseServer
+        .from('students')
+        .insert(newStudentRows)
+        .select('id');
 
-        studentIds.push(newStudent.id);
+      if (insertStudentsError || !insertedStudents || insertedStudents.length !== newStudents.length) {
+        console.error('Error creating student records:', insertStudentsError);
+        return json({ error: 'Failed to create student record' }, { status: 500 });
+      }
 
-        // Prepare emergency contact data for event_registrations
+      insertedStudents.forEach((newStudent, insertIndex) => {
+        const { student, index } = newStudents[insertIndex];
+        studentIdsByIndex[index] = newStudent.id;
+
         const emergencyContactData = JSON.stringify({
           name: student.emergencyContactName,
           phone: student.emergencyContactPhone,
           relation: student.emergencyContactRelation
         });
         emergencyContacts.set(newStudent.id, emergencyContactData);
-      }
+      });
     }
+
+    const studentIds = studentIdsByIndex.filter((id): id is string => Boolean(id));
 
     // Validate waiver signatures if event has required waivers
     const { data: requiredWaivers } = await supabaseServer
