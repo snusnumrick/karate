@@ -1,6 +1,6 @@
 import {useEffect, useState} from "react";
 import {type ActionFunctionArgs, json, type LoaderFunctionArgs, redirect, TypedResponse} from "@remix-run/node";
-import {Form, Link, useActionData, useLoaderData, useNavigation, useSubmit} from "@remix-run/react";
+import {Form, Link, useActionData, useLoaderData, useNavigation, useRouteError, useSubmit} from "@remix-run/react";
 import {csrf} from "~/utils/csrf.server";
 import {getSupabaseServerClient, getSupabaseAdminClient} from "~/utils/supabase.server";
 import { getStudentPaymentOptions, type StudentPaymentOptions } from '~/services/enrollment-payment.server';
@@ -24,6 +24,7 @@ import {formatDate} from '~/utils/misc'; // Import the new formatDate utility
 import {beltColorMap} from "~/utils/constants";
 import { StudentPaymentSection } from '~/components/StudentPaymentSection';
 import { AppBreadcrumb, breadcrumbPatterns } from '~/components/AppBreadcrumb';
+import { logStructuredError, toErrorMessage } from "~/utils/errors";
 
 // Define types based on updated Supabase schema
 type BeltRankEnum = Database['public']['Enums']['belt_rank_enum'];
@@ -45,14 +46,15 @@ type EnrollmentWithDetails = EnrollmentRow & {
 
 // Extend loader data type to include derived current belt and enrollments
 type LoaderData = {
-    student: StudentRow;
+    student: StudentRow | null;
     beltAwards: BeltAwardRow[];
     currentBeltRank: BeltRankEnum | null; // Add derived current belt rank
     enrollments: EnrollmentWithDetails[]; // Add enrollments
     paymentOptions: StudentPaymentOptions | null; // Add payment options
     individualSessions: IndividualSessionInfo | null; // Add individual session info
     paymentEligibilityData: PaymentEligibilityData | null; // Add payment eligibility data
-    csrfToken: string; // Add CSRF token
+    csrfToken: string | null; // Add CSRF token
+    error?: string;
 };
 
 // Define potential action data structure
@@ -63,136 +65,161 @@ type ActionData = {
     fieldErrors?: { [key: string]: string };
 };
 
+function createLoaderErrorPayload(message: string): LoaderData {
+    return {
+        student: null,
+        beltAwards: [],
+        currentBeltRank: null,
+        enrollments: [],
+        paymentOptions: null,
+        individualSessions: null,
+        paymentEligibilityData: null,
+        csrfToken: null,
+        error: message,
+    };
+}
+
 
 export async function loader({request, params}: LoaderFunctionArgs) {
     const studentId = params.studentId;
+    const fallbackHeaders = new Headers();
+
     if (!studentId) {
-        throw new Response("Student ID is required", {status: 400});
+        return json(createLoaderErrorPayload("Student ID is required."), {status: 400, headers: fallbackHeaders});
     }
 
     const {supabaseServer, response} = getSupabaseServerClient(request);
     const headers = response.headers;
-    const {data: {user}} = await supabaseServer.auth.getUser();
 
-    if (!user) {
-        // Redirect to login if user is not authenticated
-        return redirect("/login?redirectTo=/family", {headers});
-    }
+    try {
+        const {data: {user}} = await supabaseServer.auth.getUser();
 
-    // Fetch the student data
-    const {data: studentData, error: studentError} = await supabaseServer
-        .from('students')
-        .select('*') // Select all student fields
-        .eq('id', studentId)
-        .single();
+        if (!user) {
+            // Redirect to login if user is not authenticated
+            return redirect("/login?redirectTo=/family", {headers});
+        }
 
-    if (studentError || !studentData) {
-        console.error("Error fetching student data:", studentError?.message);
-        // Throw a 404 if student not found
-        throw new Response("Student not found", {status: 404});
-    }
+        // Fetch the student data
+        const {data: studentData, error: studentError} = await supabaseServer
+            .from('students')
+            .select('*')
+            .eq('id', studentId)
+            .single();
 
-    // Verify the logged-in user belongs to the same family as the student
-    const {data: profileData, error: profileError} = await supabaseServer
-        .from('profiles')
-        .select('family_id')
-        .eq('id', user.id)
-        .single();
+        if (studentError || !studentData) {
+            logStructuredError("[Student Loader] Failed to fetch student", studentError, {studentId, userId: user.id});
+            return json(createLoaderErrorPayload("Student not found."), {status: 404, headers});
+        }
 
-    if (profileError || !profileData || profileData.family_id !== studentData.family_id) {
-        console.error("Authorization error: User", user.id, "tried to access student", studentId, "from different family.");
-        // Throw a 403 Forbidden error if user is not part of the student's family
-        throw new Response("Forbidden: You do not have permission to view this student.", {status: 403});
-    }
+        // Verify the logged-in user belongs to the same family as the student
+        const {data: profileData, error: profileError} = await supabaseServer
+            .from('profiles')
+            .select('family_id')
+            .eq('id', user.id)
+            .single();
 
-    // Fetch the student's belt awards (assuming table renamed)
-    const {data, error: beltAwardsError} = await supabaseServer
-        .from('belt_awards') // Renamed from 'achievements'
-        .select('*')
-        .eq('student_id', studentId)
-        .order('awarded_date', {ascending: false});
-    let beltAwardsData = data;
+        if (profileError || !profileData || profileData.family_id !== studentData.family_id) {
+            logStructuredError("[Student Loader] Authorization failed", profileError, {
+                studentId,
+                userId: user.id,
+                studentFamilyId: studentData.family_id
+            });
+            return json(createLoaderErrorPayload("You do not have permission to view this student."), {status: 403, headers});
+        }
 
-    if (beltAwardsError) {
-        console.error("Error fetching student belt awards:", beltAwardsError?.message);
-        // Don't fail the whole page load, just return an empty array or handle gracefully
-        beltAwardsData = [];
-    }
+        // Fetch the student's belt awards (assuming table renamed)
+        const {data, error: beltAwardsError} = await supabaseServer
+            .from('belt_awards')
+            .select('*')
+            .eq('student_id', studentId)
+            .order('awarded_date', {ascending: false});
+        let beltAwardsData = data;
 
-    // Determine the current belt rank from the fetched awards
-    const currentBeltRank = beltAwardsData && beltAwardsData.length > 0
-        ? beltAwardsData[0].type // Assuming awards are sorted descending by date
-        : null;
+        if (beltAwardsError) {
+            logStructuredError("[Student Loader] Failed to fetch belt awards", beltAwardsError, {studentId, userId: user.id});
+            beltAwardsData = [];
+        }
 
-    // Fetch the student's enrollments
-    const {data: enrollmentsData, error: enrollmentsError} = await supabaseServer
-        .from('enrollments')
-        .select(`
-            *,
-            classes (
-                id,
-                name,
-                program_id,
-                programs (
-                    name
+        // Determine the current belt rank from the fetched awards
+        const currentBeltRank = beltAwardsData && beltAwardsData.length > 0
+            ? beltAwardsData[0].type
+            : null;
+
+        // Fetch the student's enrollments
+        const {data: enrollmentsData, error: enrollmentsError} = await supabaseServer
+            .from('enrollments')
+            .select(`
+                *,
+                classes (
+                    id,
+                    name,
+                    program_id,
+                    programs (
+                        name
+                    )
                 )
-            )
-        `)
-        .eq('student_id', studentId)
-        .order('enrolled_at', {ascending: false});
+            `)
+            .eq('student_id', studentId)
+            .order('enrolled_at', {ascending: false});
 
-    if (enrollmentsError) {
-        console.error("Error fetching student enrollments:", enrollmentsError?.message);
-        // Don't fail the whole page load, just return an empty array
-    }
+        if (enrollmentsError) {
+            logStructuredError("[Student Loader] Failed to fetch enrollments", enrollmentsError, {studentId, userId: user.id});
+        }
 
-    const enrollments = enrollmentsData as EnrollmentWithDetails[] || [];
+        const enrollments = enrollmentsData as EnrollmentWithDetails[] || [];
 
-    // Fetch payment options for the student
-    let paymentOptions: StudentPaymentOptions | null = null;
-    try {
-        paymentOptions = await getStudentPaymentOptions(studentId, supabaseServer);
+        // Fetch payment options for the student
+        let paymentOptions: StudentPaymentOptions | null = null;
+        try {
+            paymentOptions = await getStudentPaymentOptions(studentId, supabaseServer);
+        } catch (error) {
+            logStructuredError("[Student Loader] Failed to fetch payment options", error, {studentId, userId: user.id});
+        }
+
+        // Fetch individual session information for the family
+        let individualSessions: IndividualSessionInfo | null = null;
+        try {
+            individualSessions = await getFamilyIndividualSessions(studentData.family_id, supabaseServer);
+        } catch (error) {
+            logStructuredError("[Student Loader] Failed to fetch individual sessions", error, {
+                studentId,
+                familyId: studentData.family_id,
+                userId: user.id
+            });
+        }
+
+        // Fetch payment eligibility data for the student
+        let paymentEligibilityData: PaymentEligibilityData | null = null;
+        try {
+            paymentEligibilityData = await getStudentPaymentEligibilityData(studentId, supabaseServer);
+        } catch (error) {
+            logStructuredError("[Student Loader] Failed to fetch payment eligibility data", error, {studentId, userId: user.id});
+        }
+
+        // Generate CSRF token
+        const [csrfToken, csrfCookieHeader] = await csrf.commitToken(request);
+        if (csrfCookieHeader) {
+            headers.append('Set-Cookie', csrfCookieHeader);
+        }
+
+        // Return the student data, belt awards, derived current rank, enrollments, payment options, individual sessions, and payment eligibility data
+        return json({
+            student: studentData as StudentRow,
+            beltAwards: beltAwardsData as BeltAwardRow[],
+            currentBeltRank: currentBeltRank,
+            enrollments: enrollments,
+            paymentOptions: paymentOptions,
+            individualSessions: individualSessions,
+            paymentEligibilityData: paymentEligibilityData,
+            csrfToken: csrfToken
+        }, {headers});
     } catch (error) {
-        console.error('Error fetching payment options:', error);
-        // Don't fail the page load, just set to null
+        logStructuredError("[Student Loader] Unexpected route failure", error, {studentId});
+        return json(
+            createLoaderErrorPayload("We couldn't load this student page due to a temporary connection issue. Please refresh and try again."),
+            {status: 503, headers}
+        );
     }
-
-    // Fetch individual session information for the family
-    let individualSessions: IndividualSessionInfo | null = null;
-    try {
-        individualSessions = await getFamilyIndividualSessions(studentData.family_id, supabaseServer);
-    } catch (error) {
-        console.error('Error fetching individual sessions:', error);
-        // Don't fail the page load, just set to null
-    }
-
-    // Fetch payment eligibility data for the student
-    let paymentEligibilityData: PaymentEligibilityData | null = null;
-    try {
-        paymentEligibilityData = await getStudentPaymentEligibilityData(studentId, supabaseServer);
-    } catch (error) {
-        console.error('Error fetching payment eligibility data:', error);
-        // Don't fail the page load, just set to null
-    }
-    console.log('eligibility', paymentEligibilityData?.studentPaymentDetails[0]?.eligibility);
-
-    // Generate CSRF token
-    const [csrfToken, csrfCookieHeader] = await csrf.commitToken(request);
-    if (csrfCookieHeader) {
-        headers.append('Set-Cookie', csrfCookieHeader);
-    }
-
-    // Return the student data, belt awards, derived current rank, enrollments, payment options, individual sessions, and payment eligibility data
-    return json({
-        student: studentData as StudentRow,
-        beltAwards: beltAwardsData as BeltAwardRow[],
-        currentBeltRank: currentBeltRank,
-        enrollments: enrollments,
-        paymentOptions: paymentOptions,
-        individualSessions: individualSessions,
-        paymentEligibilityData: paymentEligibilityData,
-        csrfToken: csrfToken
-    }, {headers});
 }
 
 // Action function for handling form submissions (edit/delete)
@@ -341,7 +368,7 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
 
 export default function StudentDetailPage() {
     // Update to use the extended LoaderData type including currentBeltRank and enrollments
-    const {student, beltAwards, currentBeltRank, enrollments, paymentOptions, individualSessions, paymentEligibilityData, csrfToken} = useLoaderData<LoaderData>();
+    const {student, beltAwards, currentBeltRank, enrollments, paymentOptions, individualSessions, paymentEligibilityData, csrfToken, error} = useLoaderData<LoaderData>();
     const actionData = useActionData<typeof action>();
     const navigation = useNavigation();
     const submit = useSubmit(); // Get submit hook
@@ -397,6 +424,22 @@ export default function StudentDetailPage() {
             setHasJustSubmitted(false);
         }
     }, [actionData?.success, isEditing, hasJustSubmitted, navigation.state]);
+
+    if (error || !student || !csrfToken) {
+        return (
+            <div className="container mx-auto px-4 py-12 text-center">
+                <Alert variant="destructive">
+                    <AlertTitle>Unable to Load Student</AlertTitle>
+                    <AlertDescription>
+                        {error || "We couldn't load this student page right now. Please refresh and try again."}
+                    </AlertDescription>
+                </Alert>
+                <Link to="/family" className="mt-6 inline-block">
+                    <Button>Return to Family Dashboard</Button>
+                </Link>
+            </div>
+        );
+    }
 
     // Helper function to get payment section subtitle
     const getPaymentSubtitle = () => {
@@ -905,5 +948,24 @@ export default function StudentDetailPage() {
     );
 }
 
-// Add an ErrorBoundary specific to this route if needed
-// export function ErrorBoundary() { ... }
+export function ErrorBoundary() {
+    const error = useRouteError();
+    const errorMessage = toErrorMessage(
+        error,
+        "We couldn't load this student page due to a temporary issue. Please try again.",
+    );
+
+    logStructuredError("[StudentDetailPage ErrorBoundary] Route error", error);
+
+    return (
+        <div className="container mx-auto px-4 py-12 text-center">
+            <Alert variant="destructive">
+                <AlertTitle>Student Page Error</AlertTitle>
+                <AlertDescription>{errorMessage}</AlertDescription>
+            </Alert>
+            <Link to="/family" className="mt-6 inline-block">
+                <Button>Return to Family Dashboard</Button>
+            </Link>
+        </div>
+    );
+}

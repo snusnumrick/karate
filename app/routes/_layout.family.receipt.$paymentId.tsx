@@ -9,6 +9,7 @@ import { siteConfig } from "~/config/site"; // Import site config for business d
 import { formatDate } from "~/utils/misc"; // For formatting dates
 import { formatMoney, fromCents } from "~/utils/money";
 import { centsFromRow } from "~/utils/database-money";
+import { logStructuredError, toErrorMessage } from "~/utils/errors";
 
 // Define the types for the data needed for the receipt
 type PaymentTaxRow = Database['public']['Tables']['payment_taxes']['Row']; // Includes tax_description_snapshot now
@@ -79,102 +80,112 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 export async function loader({ request, params }: LoaderFunctionArgs): Promise<TypedResponse<LoaderData>> {
     const paymentId = params.paymentId;
     const { supabaseServer, response, supabaseClient } = getSupabaseServerClient(request);
+    const headers = response.headers;
 
     if (!paymentId) {
-        return json({ error: "Payment ID missing." }, { status: 400, headers: response.headers });
+        return json({ error: "Payment ID missing." }, { status: 400, headers });
     }
 
-    // Verify user is logged in
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    if (!session) {
-        // Although the _layout should handle this, double-check here for route-specific logic
-        return json({ error: "Not authenticated." }, { status: 401, headers: response.headers });
-    }
+    try {
+        // Verify user is logged in
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (!session) {
+            // Although the _layout should handle this, double-check here for route-specific logic
+            return json({ error: "Not authenticated." }, { status: 401, headers });
+        }
 
-    // Fetch payment details including related family, tax info, and card_last4
-    // Use supabaseServer (service role) for potentially broader access if needed,
-    // but rely on RLS check below for authorization.
-    const { data: paymentData, error: dbError } = await supabaseServer
-        .from('payments')
-        .select(`
-            *,
-            card_last4,
-            families ( name, email, address, city, province, postal_code ),
-            payment_taxes ( tax_name_snapshot, tax_description_snapshot, tax_amount, tax_rate_snapshot ),
-            one_on_one_sessions ( quantity_purchased ),
-            orders (
-                id,
-                order_items (
-                    *,
-                    product_variants (
-                        id,
-                        size,
-                        products ( id, name )
+        // Fetch payment details including related family, tax info, and card_last4
+        // Use supabaseServer (service role) for potentially broader access if needed,
+        // but rely on RLS check below for authorization.
+        const { data: paymentData, error: dbError } = await supabaseServer
+            .from('payments')
+            .select(`
+                *,
+                card_last4,
+                families ( name, email, address, city, province, postal_code ),
+                payment_taxes ( tax_name_snapshot, tax_description_snapshot, tax_amount, tax_rate_snapshot ),
+                one_on_one_sessions ( quantity_purchased ),
+                orders (
+                    id,
+                    order_items (
+                        *,
+                        product_variants (
+                            id,
+                            size,
+                            products ( id, name )
+                        )
                     )
                 )
-            )
-        `)
-        .eq('id', paymentId)
-        .maybeSingle(); // Use maybeSingle to handle not found case
-    // console.log('payment.payment_taxes: ', paymentData?.payment_taxes);
+            `)
+            .eq('id', paymentId)
+            .maybeSingle();
 
-    if (dbError) {
-        console.error(`[Receipt Loader] Error fetching payment ${paymentId}:`, dbError.message);
-        return json({ error: `Database error: ${dbError.message}` }, { status: 500, headers: response.headers });
+        if (dbError) {
+            logStructuredError("[Receipt Loader] Failed to fetch payment record", dbError, {paymentId, userId: session.user.id});
+            return json({ error: "Unable to load receipt details right now. Please try again." }, { status: 500, headers });
+        }
+
+        if (!paymentData) {
+            return json({ error: "Payment record not found." }, { status: 404, headers });
+        }
+
+        // Authorization Check: Ensure the logged-in user belongs to the family associated with the payment
+        // Fetch profile using the standard client which respects RLS based on the user's session
+        const { data: profileData, error: profileError } = await supabaseClient
+            .from('profiles')
+            .select('family_id')
+            .eq('id', session.user.id)
+            .single();
+
+        if (profileError) {
+            logStructuredError("[Receipt Loader] Failed to fetch profile for authorization check", profileError, {
+                paymentId,
+                userId: session.user.id
+            });
+            return json({ error: "Could not verify user authorization." }, { status: 500, headers });
+        }
+
+        if (!profileData || profileData.family_id !== paymentData.family_id) {
+            console.warn(`[Receipt Loader] Authorization failed for user ${session.user.id} trying to access payment ${paymentId} for family ${paymentData.family_id}`);
+            return json({ error: "You are not authorized to view this receipt." }, { status: 403, headers });
+        }
+
+        // Only return successful payments for receipts.
+        if (paymentData.status !== 'succeeded') {
+            console.warn(`[Receipt Loader] Attempt to access receipt for non-succeeded payment ${paymentId} with status ${paymentData.status}`);
+            return json({ error: "A receipt is only available for successfully completed payments." }, { status: 400, headers });
+        }
+
+        // Type assertion to help TypeScript understand that paymentData is valid at this point
+        const validPaymentData = paymentData as ReceiptPaymentData;
+
+        // Add business details from siteConfig
+        const businessName = siteConfig.name;
+        // Construct address string carefully, handling potential missing parts if needed
+        const addressParts = [
+            siteConfig.location.address,
+            siteConfig.location.locality,
+            siteConfig.location.region,
+            siteConfig.location.postalCode
+        ].filter(Boolean);
+        const businessAddress = addressParts.join(', ');
+        const businessPhone = siteConfig.contact.phone;
+        const businessEmail = siteConfig.contact.email;
+
+        return json({
+            payment: validPaymentData,
+            businessName,
+            businessAddress,
+            businessPhone,
+            businessEmail
+        }, { headers });
+    } catch (error) {
+        logStructuredError("[Receipt Loader] Unexpected route failure", error, {paymentId});
+        return json(
+            { error: "We couldn't load this receipt due to a temporary connection issue. Please refresh and try again." },
+            { status: 503, headers },
+        );
     }
-
-    if (!paymentData) {
-        return json({ error: "Payment record not found." }, { status: 404, headers: response.headers });
-    }
-
-    // Authorization Check: Ensure the logged-in user belongs to the family associated with the payment
-    // Fetch profile using the standard client which respects RLS based on the user's session
-    const { data: profileData, error: profileError } = await supabaseClient
-        .from('profiles')
-        .select('family_id')
-        .eq('id', session.user.id)
-        .single();
-
-    if (profileError) {
-         console.error(`[Receipt Loader] Error fetching profile for user ${session.user.id}:`, profileError.message);
-         return json({ error: "Could not verify user authorization." }, { status: 500, headers: response.headers });
-    }
-
-    if (!profileData || profileData.family_id !== paymentData.family_id) {
-        console.warn(`[Receipt Loader] Authorization failed for user ${session.user.id} trying to access payment ${paymentId} for family ${paymentData.family_id}`);
-        return json({ error: "You are not authorized to view this receipt." }, { status: 403, headers: response.headers });
-    }
-
-    // Only return successful payments for receipts.
-    if (paymentData.status !== 'succeeded') {
-         console.warn(`[Receipt Loader] Attempt to access receipt for non-succeeded payment ${paymentId} with status ${paymentData.status}`);
-         return json({ error: "A receipt is only available for successfully completed payments." }, { status: 400, headers: response.headers });
-    }
-
-    // Type assertion to help TypeScript understand that paymentData is valid at this point
-    const validPaymentData = paymentData as ReceiptPaymentData;
-
-    // Add business details from siteConfig
-    const businessName = siteConfig.name;
-    // Construct address string carefully, handling potential missing parts if needed
-    const addressParts = [
-        siteConfig.location.address, // Assuming address is a single string like "650 Allandale Rd Suite A101"
-        siteConfig.location.locality,
-        siteConfig.location.region,
-        siteConfig.location.postalCode
-    ].filter(Boolean); // Filter out any null/undefined/empty parts
-    const businessAddress = addressParts.join(', ');
-    const businessPhone = siteConfig.contact.phone;
-    const businessEmail = siteConfig.contact.email;
-
-
-    return json({
-        payment: validPaymentData,
-        businessName,
-        businessAddress,
-        businessPhone,
-        businessEmail
-    }, { headers: response.headers });
 }
 
 export default function PaymentReceiptPage() {
@@ -334,24 +345,11 @@ export default function PaymentReceiptPage() {
 // Basic ErrorBoundary for the receipt page
 export function ErrorBoundary() {
     const error = useRouteError();
-    console.error("[PaymentReceiptPage ErrorBoundary] Caught error:", error);
-
-    let errorMessage = "Sorry, something went wrong while loading the receipt.";
-    // Attempt to extract a meaningful message from the error
-    if (error instanceof Error) {
-        errorMessage = error.message;
-    } else if (typeof error === 'string') {
-        errorMessage = error;
-    } else if (error && typeof error === 'object') {
-        if ('statusText' in error && typeof error.statusText === 'string') {
-             errorMessage = `Error: ${error.statusText}`;
-        } else if ('message' in error && typeof error.message === 'string') {
-             errorMessage = error.message; // For generic objects with a message
-        } else if ('error' in error && typeof error.error === 'string') {
-             errorMessage = error.error; // If error is { error: "message" }
-        }
-    }
-
+    logStructuredError("[PaymentReceiptPage ErrorBoundary] Caught error", error);
+    const errorMessage = toErrorMessage(
+        error,
+        "Sorry, something went wrong while loading the receipt.",
+    );
 
     return (
         <div className="container mx-auto px-4 py-12 text-center">

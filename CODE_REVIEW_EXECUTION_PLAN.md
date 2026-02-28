@@ -27,7 +27,7 @@ Last updated: **2026-02-28**
 | R3-T5 | ✅ Completed | Added defensive root `action` that throws `405 Method Not Allowed` with `Allow: GET`. Commit: `3c8d64f` |
 | R3-T6 | 🔄 In Progress | Remaining unresolved Sentry issues from updated review (`SE-3`, `SE-4`, `SE-8`, `SE-9`, `SE-10`). |
 | R3-T6a | ✅ Completed | `SE-3`: Hardened Square SDK load/init/tokenization failure handling with actionable remediation messaging + structured Sentry context, and expanded Square CSP domains in provider/server pipeline coverage. |
-| R3-T6b | ⏸ Not Started | `SE-4`: Safari fetch-load failures with resilient UI fallback/error-boundary handling on affected routes. |
+| R3-T6b | ✅ Completed | `SE-4`: Added route-level graceful loader fallbacks and ErrorBoundary UX for family receipt/student detail flows so upstream fetch/network failures degrade to non-crashing, user-safe states. |
 | R3-T6c | ✅ Completed | `SE-8`: Added `toErrorMessage` + structured error logging helper and replaced object-stringification paths in registration loader/action/error boundary to avoid `[object Object]` user output. |
 | R3-T6d | ✅ Completed | `SE-9`: Added `toCentsFromUnknown` money-boundary coercion utility and hardened payment/store purchase paths to safely handle Money, serialized, and raw-cent values without `getAmount` crashes. |
 | R3-T6e | ⏸ Not Started | `SE-10`: chunk loading failure mitigation after deploy (cache/reload strategy). |
