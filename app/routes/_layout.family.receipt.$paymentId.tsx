@@ -79,7 +79,7 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 
 export async function loader({ request, params }: LoaderFunctionArgs): Promise<TypedResponse<LoaderData>> {
     const paymentId = params.paymentId;
-    const { supabaseServer, response, supabaseClient } = getSupabaseServerClient(request);
+    const { serviceRoleClient, requestClient, response } = getSupabaseServerClient(request);
     const headers = response.headers;
 
     if (!paymentId) {
@@ -88,16 +88,16 @@ export async function loader({ request, params }: LoaderFunctionArgs): Promise<T
 
     try {
         // Verify user is logged in
-        const { data: { session } } = await supabaseClient.auth.getSession();
+        const { data: { session } } = await requestClient.auth.getSession();
         if (!session) {
             // Although the _layout should handle this, double-check here for route-specific logic
             return json({ error: "Not authenticated." }, { status: 401, headers });
         }
 
         // Fetch payment details including related family, tax info, and card_last4
-        // Use supabaseServer (service role) for potentially broader access if needed,
+        // Use serviceRoleClient for potentially broader access if needed,
         // but rely on RLS check below for authorization.
-        const { data: paymentData, error: dbError } = await supabaseServer
+        const { data: paymentData, error: dbError } = await serviceRoleClient
             .from('payments')
             .select(`
                 *,
@@ -130,8 +130,8 @@ export async function loader({ request, params }: LoaderFunctionArgs): Promise<T
         }
 
         // Authorization Check: Ensure the logged-in user belongs to the family associated with the payment
-        // Fetch profile using the standard client which respects RLS based on the user's session
-        const { data: profileData, error: profileError } = await supabaseClient
+        // Fetch profile using the request-scoped client which respects RLS based on the user's session
+        const { data: profileData, error: profileError } = await requestClient
             .from('profiles')
             .select('family_id')
             .eq('id', session.user.id)

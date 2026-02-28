@@ -58,6 +58,9 @@ export function getSupabaseAdminClient() {
 
 type TypedSupabaseClient = SupabaseClientType<Database>;
 type SupabaseServerClientReturn = {
+    serviceRoleClient: TypedSupabaseClient,
+    requestClient: TypedSupabaseClient,
+    // Backward-compatible aliases (to be migrated off incrementally)
     supabaseServer: TypedSupabaseClient,
     supabaseClient: TypedSupabaseClient,
     response: Response,
@@ -107,7 +110,15 @@ export function getSupabaseServerClient(request: Request): SupabaseServerClientR
         // DO NOT PASS SERVICE ROLE KEY TO CLIENT - Security risk
     }
 
-    return {supabaseServer, supabaseClient, response, ENV};
+    return {
+        serviceRoleClient: supabaseServer,
+        requestClient: supabaseClient,
+        // Backward-compatible aliases
+        supabaseServer,
+        supabaseClient,
+        response,
+        ENV
+    };
 }
 
 export async function getUserRole(userId: string): Promise<UserRole | null> {
