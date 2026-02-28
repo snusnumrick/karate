@@ -5,6 +5,7 @@
 
 import { getSupabaseAdminClient } from '~/utils/supabase.server';
 import type { PaymentProviderId } from './types.server';
+import { logger } from '~/utils/logger';
 
 export interface WebhookEventData {
   provider: PaymentProviderId;
@@ -53,12 +54,12 @@ export async function checkWebhookIdempotency(
       // No rows returned - not a duplicate
       return { isDuplicate: false };
     }
-    console.error(`[WebhookEventService] Error checking idempotency:`, error.message);
+    logger.error(`[WebhookEventService] Error checking idempotency:`, error.message);
     return { isDuplicate: false };
   }
 
   // Event already exists
-  console.warn(
+  logger.warn(
     `[WebhookEventService] Duplicate webhook detected: provider=${provider} ` +
     `eventId=${eventId} status=${existingEvent.status} processedAt=${existingEvent.processed_at}`
   );
@@ -96,10 +97,10 @@ export async function createWebhookEvent(data: WebhookEventData): Promise<string
   if (error) {
     // Check if it's a unique constraint violation (duplicate event_id)
     if (error.code === '23505') {
-      console.warn(`[WebhookEventService] Duplicate event detected during insert: ${data.eventId}`);
+      logger.warn(`[WebhookEventService] Duplicate event detected during insert: ${data.eventId}`);
       throw new Error('DUPLICATE_EVENT');
     }
-    console.error(`[WebhookEventService] Failed to create webhook event:`, error.message);
+    logger.error(`[WebhookEventService] Failed to create webhook event:`, error.message);
     throw new Error(`Failed to create webhook event: ${error.message}`);
   }
 
@@ -131,7 +132,7 @@ export async function markWebhookEventSucceeded(
     .eq('id', webhookEventId);
 
   if (error) {
-    console.error(`[WebhookEventService] Failed to mark webhook succeeded:`, error.message);
+    logger.error(`[WebhookEventService] Failed to mark webhook succeeded:`, error.message);
   }
 }
 
@@ -162,7 +163,7 @@ export async function markWebhookEventFailed(
     .eq('id', webhookEventId);
 
   if (error) {
-    console.error(`[WebhookEventService] Failed to mark webhook failed:`, error.message);
+    logger.error(`[WebhookEventService] Failed to mark webhook failed:`, error.message);
   }
 }
 
@@ -181,7 +182,7 @@ export async function markWebhookEventDuplicate(webhookEventId: string): Promise
     .eq('id', webhookEventId);
 
   if (error) {
-    console.error(`[WebhookEventService] Failed to mark webhook duplicate:`, error.message);
+    logger.error(`[WebhookEventService] Failed to mark webhook duplicate:`, error.message);
   }
 }
 
@@ -207,7 +208,7 @@ export async function incrementWebhookRetryCount(webhookEventId: string): Promis
       .eq('id', webhookEventId);
 
     if (error) {
-      console.error(`[WebhookEventService] Failed to increment retry count:`, error.message);
+      logger.error(`[WebhookEventService] Failed to increment retry count:`, error.message);
     }
   }
 }

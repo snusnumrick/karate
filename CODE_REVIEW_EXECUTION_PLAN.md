@@ -56,7 +56,7 @@ Last updated: **2026-02-28**
 | R4-T3l | ✅ Completed | `D11`: Added function-first discount service exports as canonical API and retained `DiscountService` as a compatibility shim (verified in service tests). |
 | R4-T4 | 🔄 In Progress | Parent tracking item for hygiene backlog (dead code/log cleanup, naming consistency, `updatePaymentStatus` parameter object refactor). |
 | R4-T4a | ✅ Completed | Removed misplaced `calculateCompletionPercentage` helper from `money.ts` (non-money concern, unused export). |
-| R4-T4b | ⏸ Not Started | `H3`: Replace broad `console.log/warn/error` usage with structured logging approach. |
+| R4-T4b | ✅ Completed | `H3`: Added shared structured logger utility and migrated webhook/payment critical paths away from raw `console.*`; added ESLint `no-console` guard on those critical webhook route/service files. |
 | R4-T4c | ⏸ Not Started | `H4`: Refactor `updatePaymentStatus` positional-argument API to options object. |
 | R4-T4d | ⏸ Not Started | `H5`: Replace dynamic runtime imports/requires with static imports where safe. |
 | R4-T4e | ⏸ Not Started | `H6`: Naming convention sweep (`supabaseServer`/`supabaseAdmin` semantics). |

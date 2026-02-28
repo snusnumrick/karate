@@ -84,5 +84,19 @@ module.exports = {
         node: true,
       },
     },
+
+    // Structured logging guard for webhook/payment critical paths
+    {
+      files: [
+        "app/services/payments/webhook.server.ts",
+        "app/services/payments/webhook-events.server.ts",
+        "app/services/payments/webhook-route.server.ts",
+        "app/routes/api.webhooks.stripe.ts",
+        "app/routes/api.webhooks.square.ts",
+      ],
+      rules: {
+        "no-console": "error",
+      },
+    },
   ],
 };

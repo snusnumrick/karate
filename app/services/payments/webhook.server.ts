@@ -1,6 +1,7 @@
 import type { Database } from '~/types/database.types';
 import { updatePaymentStatus, getSupabaseAdminClient } from '~/utils/supabase.server';
 import { toCents } from '~/utils/money';
+import { logger } from '~/utils/logger';
 import type { PaymentProvider, ParsedWebhookEvent } from './types.server';
 import {
   createWebhookEvent,
@@ -34,7 +35,7 @@ export async function handlePaymentWebhook(
       metadata = await squareProvider.enrichWebhookMetadata(metadata, intent.id);
     }
 
-    console.log(
+    logger.info(
       `[Webhook ${provider.id}] Parsed event eventId=${eventId} rawType=${event.rawType} mappedType=${event.type} intent=${intent.id} ` +
       `metadataKeys=${Object.keys(metadata).length ? Object.keys(metadata).join(',') : 'none'}`
     );
@@ -59,14 +60,14 @@ export async function handlePaymentWebhook(
         sourceIp: sourceIp || undefined,
       });
 
-      console.log(`[Webhook ${provider.id}] Created webhook event record: ${webhookEventId}`);
+      logger.info(`[Webhook ${provider.id}] Created webhook event record: ${webhookEventId}`);
     } catch (createError) {
       if (createError instanceof Error && createError.message === 'DUPLICATE_EVENT') {
-        console.warn(`[Webhook ${provider.id}] Duplicate provider event ${eventId} ignored`);
+        logger.warn(`[Webhook ${provider.id}] Duplicate provider event ${eventId} ignored`);
         return { success: true, isDuplicate: true };
       }
       // Non-fatal - log and continue
-      console.error(`[Webhook ${provider.id}] Failed to create webhook event record:`, createError);
+      logger.error(`[Webhook ${provider.id}] Failed to create webhook event record:`, createError);
     }
 
     // Process the webhook based on event type
@@ -77,13 +78,13 @@ export async function handlePaymentWebhook(
     } else if (event.type === 'payment.failed') {
       result = await handlePaymentFailure(provider, event, metadata);
     } else if (event.type === 'payment.processing') {
-      console.log(`[Webhook ${provider.id}] Received processing event (${event.rawType}) for intent ${intent.id}. No action taken.`);
+      logger.info(`[Webhook ${provider.id}] Received processing event (${event.rawType}) for intent ${intent.id}. No action taken.`);
       result = { success: true };
     } else if (['mandate.updated', 'charge.succeeded', 'charge.updated'].includes(event.rawType)) {
-      console.log(`[Webhook ${provider.id}] Received ${event.rawType} event. No action required - acknowledged.`);
+      logger.info(`[Webhook ${provider.id}] Received ${event.rawType} event. No action required - acknowledged.`);
       result = { success: true };
     } else {
-      console.log(`[Webhook ${provider.id}] Unhandled event type: ${event.rawType}`);
+      logger.info(`[Webhook ${provider.id}] Unhandled event type: ${event.rawType}`);
       result = { success: true };
     }
 
@@ -108,7 +109,7 @@ export async function handlePaymentWebhook(
     return result;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error(`[Webhook ${provider.id}] Error processing webhook:`, errorMessage);
+    logger.error(`[Webhook ${provider.id}] Error processing webhook:`, errorMessage);
 
     // Mark webhook event as failed
     if (webhookEventId) {
@@ -146,7 +147,7 @@ async function handlePaymentSuccess(
   }
 
   if (!supabasePaymentId || !type || !familyId || subtotalAmountFromMeta === null || taxAmountFromMeta === null || totalAmountFromMeta === null || (type === 'store_purchase' && !orderId)) {
-    console.error(`[Webhook ${provider.id}] CRITICAL: Missing required metadata in success event ${intent.id}. Metadata:`, metadata);
+    logger.error(`[Webhook ${provider.id}] CRITICAL: Missing required metadata in success event ${intent.id}. Metadata:`, metadata);
     return { success: false, error: "Missing critical payment metadata" };
   }
 
@@ -159,7 +160,7 @@ async function handlePaymentSuccess(
   const isTestPayment = intent.id.startsWith('test-');
 
   if (isTestPayment && process.env.NODE_ENV === 'development') {
-    console.warn(`[Webhook ${provider.id}] Test payment detected (${intent.id}), skipping provider verification`);
+    logger.warn(`[Webhook ${provider.id}] Test payment detected (${intent.id}), skipping provider verification`);
     totalAmountCharged = totalAmountFromMeta; // Use metadata amount for test payments
   } else {
     try {
@@ -172,17 +173,17 @@ async function handlePaymentSuccess(
       cardLast4 = enrichedIntent.cardLast4 ?? null;
       totalAmountCharged = toCents(enrichedIntent.amount);
     } catch (retrieveError) {
-      console.error(`[Webhook ${provider.id}] Failed to retrieve payment intent ${intent.id} details:`, retrieveError instanceof Error ? retrieveError.message : retrieveError);
+      logger.error(`[Webhook ${provider.id}] Failed to retrieve payment intent ${intent.id} details:`, retrieveError instanceof Error ? retrieveError.message : retrieveError);
     }
 
     if (totalAmountCharged !== undefined && totalAmountCharged !== totalAmountFromMeta) {
-      console.error(`[Webhook ${provider.id}] CRITICAL: Amount mismatch! Provider charged ${totalAmountCharged}, but metadata total was ${totalAmountFromMeta} for intent ${intent.id}.`);
+      logger.error(`[Webhook ${provider.id}] CRITICAL: Amount mismatch! Provider charged ${totalAmountCharged}, but metadata total was ${totalAmountFromMeta} for intent ${intent.id}.`);
       return { success: false, error: "Amount mismatch detected" };
     }
   }
 
   try {
-    console.log(`[Webhook ${provider.id}] Calling updatePaymentStatus for paymentId: ${supabasePaymentId}`);
+    logger.info(`[Webhook ${provider.id}] Calling updatePaymentStatus for paymentId: ${supabasePaymentId}`);
     await updatePaymentStatus(
       supabasePaymentId,
       "succeeded",
@@ -197,7 +198,7 @@ async function handlePaymentSuccess(
       totalAmountFromMeta,
       cardLast4
     );
-    console.log(`[Webhook ${provider.id}] updatePaymentStatus finished successfully for paymentId: ${supabasePaymentId}`);
+    logger.info(`[Webhook ${provider.id}] updatePaymentStatus finished successfully for paymentId: ${supabasePaymentId}`);
 
     if (type === 'store_purchase' && orderId) {
       await handleStorePurchaseSuccess(provider.id, orderId);
@@ -209,7 +210,7 @@ async function handlePaymentSuccess(
 
     return { success: true };
   } catch (updateError) {
-    console.error(`[Webhook ${provider.id}] Failed during post-payment processing for Supabase payment ${supabasePaymentId}:`, updateError instanceof Error ? updateError.message : updateError);
+    logger.error(`[Webhook ${provider.id}] Failed during post-payment processing for Supabase payment ${supabasePaymentId}:`, updateError instanceof Error ? updateError.message : updateError);
     return { success: false, error: "Database update or post-processing failed" };
   }
 }
@@ -220,14 +221,14 @@ async function handlePaymentFailure(
   metadata: Record<string, string>
 ): Promise<{ success: boolean; error?: string }> {
   const { intent } = event;
-  console.warn(`[Webhook ${provider.id}] Processing payment failure for intent: ${intent.id}`);
+  logger.warn(`[Webhook ${provider.id}] Processing payment failure for intent: ${intent.id}`);
 
   const supabasePaymentId = metadata.paymentId;
   const orderId = metadata.orderId;
   const type = metadata.type as Database['public']['Enums']['payment_type_enum'] | undefined;
 
   if (!supabasePaymentId) {
-    console.error(`[Webhook ${provider.id}] CRITICAL: Missing paymentId metadata in payment failure event ${intent.id}.`);
+    logger.error(`[Webhook ${provider.id}] CRITICAL: Missing paymentId metadata in payment failure event ${intent.id}.`);
     return { success: false, error: "Missing paymentId metadata" };
   }
 
@@ -239,7 +240,7 @@ async function handlePaymentFailure(
     failedPaymentMethodString = enrichedIntent.paymentMethodType ?? failedPaymentMethodString;
     failedCardLast4 = enrichedIntent.cardLast4 ?? null;
   } catch {
-    console.warn(`[Webhook ${provider.id}] Could not retrieve payment intent ${intent.id} to get card details for failed payment.`);
+    logger.warn(`[Webhook ${provider.id}] Could not retrieve payment intent ${intent.id} to get card details for failed payment.`);
   }
 
   try {
@@ -264,38 +265,38 @@ async function handlePaymentFailure(
 
     return { success: true };
   } catch (updateError) {
-    console.error(`[Webhook ${provider.id}] Failed during post-payment processing for Supabase payment ${supabasePaymentId}:`, updateError instanceof Error ? updateError.message : updateError);
+    logger.error(`[Webhook ${provider.id}] Failed during post-payment processing for Supabase payment ${supabasePaymentId}:`, updateError instanceof Error ? updateError.message : updateError);
     return { success: false, error: "Database update or post-processing failed" };
   }
 }
 
 async function handleStorePurchaseSuccess(providerId: string, orderId: string) {
-  console.log(`[Webhook ${providerId}] Processing successful store purchase for order ${orderId}`);
+  logger.info(`[Webhook ${providerId}] Processing successful store purchase for order ${orderId}`);
   const supabaseAdmin = getSupabaseAdminClient();
 
-  console.log(`[Webhook ${providerId}] Updating order status for orderId: ${orderId}`);
+  logger.info(`[Webhook ${providerId}] Updating order status for orderId: ${orderId}`);
   const { error: orderUpdateError } = await supabaseAdmin
     .from('orders')
     .update({ status: 'paid_pending_pickup', updated_at: new Date().toISOString() })
     .eq('id', orderId);
 
   if (orderUpdateError) {
-    console.error(`[Webhook ${providerId}] FAILED to update order ${orderId} status:`, orderUpdateError.message);
+    logger.error(`[Webhook ${providerId}] FAILED to update order ${orderId} status:`, orderUpdateError.message);
   } else {
-    console.log(`[Webhook ${providerId}] Successfully updated order ${orderId} status to paid_pending_pickup.`);
+    logger.info(`[Webhook ${providerId}] Successfully updated order ${orderId} status to paid_pending_pickup.`);
   }
 
-  console.log(`[Webhook ${providerId}] Decrementing stock for orderId: ${orderId}`);
+  logger.info(`[Webhook ${providerId}] Decrementing stock for orderId: ${orderId}`);
   const { data: orderItems, error: itemsError } = await supabaseAdmin
     .from('order_items')
     .select('product_variant_id, quantity')
     .eq('order_id', orderId);
 
   if (itemsError) {
-    console.error(`[Webhook ${providerId}] FAILED to fetch order items for order ${orderId} to decrement stock:`, itemsError.message);
+    logger.error(`[Webhook ${providerId}] FAILED to fetch order items for order ${orderId} to decrement stock:`, itemsError.message);
   } else if (orderItems) {
     for (const item of orderItems) {
-      console.log(`[Webhook ${providerId}] Decrementing stock for variant: ${item.product_variant_id} by ${item.quantity}`);
+      logger.info(`[Webhook ${providerId}] Decrementing stock for variant: ${item.product_variant_id} by ${item.quantity}`);
       const { error: stockDecrementError } = await supabaseAdmin.rpc('decrement_variant_stock', {
         variant_id: item.product_variant_id,
         decrement_quantity: item.quantity
@@ -303,20 +304,20 @@ async function handleStorePurchaseSuccess(providerId: string, orderId: string) {
 
       if (stockDecrementError) {
         if (stockDecrementError.code === '42883') {
-          console.error(`[Webhook ${providerId}] RPC function 'decrement_variant_stock' not found. Stock not decremented for variant ${item.product_variant_id}.`);
+          logger.error(`[Webhook ${providerId}] RPC function 'decrement_variant_stock' not found. Stock not decremented for variant ${item.product_variant_id}.`);
         } else {
-          console.error(`[Webhook ${providerId}] FAILED to decrement stock for variant ${item.product_variant_id} (Order ${orderId}):`, stockDecrementError.message);
+          logger.error(`[Webhook ${providerId}] FAILED to decrement stock for variant ${item.product_variant_id} (Order ${orderId}):`, stockDecrementError.message);
         }
       } else {
-        console.log(`[Webhook ${providerId}] Decremented stock for variant ${item.product_variant_id} by ${item.quantity} (Order ${orderId}).`);
+        logger.info(`[Webhook ${providerId}] Decremented stock for variant ${item.product_variant_id} by ${item.quantity} (Order ${orderId}).`);
       }
     }
-    console.log(`[Webhook ${providerId}] Stock decrement process finished for orderId: ${orderId}`);
+    logger.info(`[Webhook ${providerId}] Stock decrement process finished for orderId: ${orderId}`);
   }
 }
 
 async function handleStorePurchaseFailure(providerId: string, orderId: string) {
-  console.log(`[Webhook ${providerId}] Processing failed store purchase for order ${orderId}`);
+  logger.info(`[Webhook ${providerId}] Processing failed store purchase for order ${orderId}`);
   const supabaseAdmin = getSupabaseAdminClient();
   const { error: orderUpdateError } = await supabaseAdmin
     .from('orders')
@@ -324,28 +325,28 @@ async function handleStorePurchaseFailure(providerId: string, orderId: string) {
     .eq('id', orderId);
 
   if (orderUpdateError) {
-    console.error(`[Webhook ${providerId}] FAILED to update order ${orderId} status to cancelled:`, orderUpdateError.message);
+    logger.error(`[Webhook ${providerId}] FAILED to update order ${orderId} status to cancelled:`, orderUpdateError.message);
   } else {
-    console.log(`[Webhook ${providerId}] Successfully updated order ${orderId} status to cancelled.`);
+    logger.info(`[Webhook ${providerId}] Successfully updated order ${orderId} status to cancelled.`);
   }
 }
 
 async function handleEventRegistrationSuccess(providerId: string, paymentId: string) {
-  console.log(`[Webhook ${providerId}] Processing successful event registration payment for paymentId: ${paymentId}`);
+  logger.info(`[Webhook ${providerId}] Processing successful event registration payment for paymentId: ${paymentId}`);
   const supabaseAdmin = getSupabaseAdminClient();
 
-  console.log(`[Webhook ${providerId}] Checking for event registrations with paymentId: ${paymentId}`);
+  logger.info(`[Webhook ${providerId}] Checking for event registrations with paymentId: ${paymentId}`);
   const { data: existingRegistrations, error: checkError } = await supabaseAdmin
     .from('event_registrations')
     .select('id, registration_status')
     .eq('payment_id', paymentId);
 
   if (checkError) {
-    console.error(`[Webhook ${providerId}] ERROR checking event registrations for payment ${paymentId}:`, checkError.message);
+    logger.error(`[Webhook ${providerId}] ERROR checking event registrations for payment ${paymentId}:`, checkError.message);
   } else if (!existingRegistrations || existingRegistrations.length === 0) {
-    console.warn(`[Webhook ${providerId}] No event registrations found for payment ${paymentId}`);
+    logger.warn(`[Webhook ${providerId}] No event registrations found for payment ${paymentId}`);
   } else {
-    console.log(`[Webhook ${providerId}] Found ${existingRegistrations.length} event registration(s) for payment ${paymentId}:`, existingRegistrations);
+    logger.info(`[Webhook ${providerId}] Found ${existingRegistrations.length} event registration(s) for payment ${paymentId}:`, existingRegistrations);
 
     const { error: updateRegistrationError } = await supabaseAdmin
       .from('event_registrations')
@@ -356,9 +357,9 @@ async function handleEventRegistrationSuccess(providerId: string, paymentId: str
       .eq('payment_id', paymentId);
 
     if (updateRegistrationError) {
-      console.error(`[Webhook ${providerId}] Failed to update event registrations for payment ${paymentId}:`, updateRegistrationError.message);
+      logger.error(`[Webhook ${providerId}] Failed to update event registrations for payment ${paymentId}:`, updateRegistrationError.message);
     } else {
-      console.log(`[Webhook ${providerId}] Updated event registrations to confirmed for payment ${paymentId}.`);
+      logger.info(`[Webhook ${providerId}] Updated event registrations to confirmed for payment ${paymentId}.`);
     }
   }
 }

@@ -2,6 +2,7 @@ import { json } from "@vercel/remix";
 import { getPaymentProvider } from '~/services/payments/index.server';
 import { handlePaymentWebhook } from '~/services/payments/webhook.server';
 import { buildAppError } from '~/utils/errors';
+import { logger } from '~/utils/logger';
 
 type RouteWebhookProvider = 'stripe' | 'square';
 
@@ -34,7 +35,7 @@ function getSignatureLogContext(provider: RouteWebhookProvider, headers: Headers
 
 export async function handleWebhookLoader(provider: RouteWebhookProvider, request: Request) {
   const providerLabel = getProviderLabel(provider);
-  console.warn(`[${providerLabel} Webhook] Received ${request.method} request. Only POST is supported.`);
+  logger.warn(`[${providerLabel} Webhook] Received ${request.method} request. Only POST is supported.`);
   return json(
     { error: buildAppError('METHOD_NOT_ALLOWED', 'Method not allowed') },
     { status: 405, headers: { Allow: 'POST' } },
@@ -61,20 +62,20 @@ export async function handleWebhook(provider: RouteWebhookProvider, request: Req
     ? `signatureHeader=${signatureHeaderName} signature=${signature ? `${signature.slice(0, 8)}...` : 'missing'}`
     : `signature=${signature ? `${signature.slice(0, 8)}...` : 'missing'}`;
 
-  console.log(
+  logger.info(
     `[${providerLabel} Webhook] ${method} ${url.pathname} (reqId=${requestId ?? 'n/a'}) from ${ipHeader}. ` +
     `content-type=${contentType ?? 'n/a'} user-agent=${userAgent ?? 'n/a'} ${signatureLogContext}`,
   );
 
   if (method !== 'POST') {
-    console.warn(`[${providerLabel} Webhook] Rejecting ${method} request. Only POST is supported.`);
+    logger.warn(`[${providerLabel} Webhook] Rejecting ${method} request. Only POST is supported.`);
     return json({ error: buildAppError('METHOD_NOT_ALLOWED', 'Method not allowed') }, { status: 405 });
   }
 
   const paymentProvider = getPaymentProvider();
 
   if (paymentProvider.id !== provider) {
-    console.error(`[${providerLabel} Webhook] Received ${providerLabel} webhook but configured provider is '${paymentProvider.id}'.`);
+    logger.error(`[${providerLabel} Webhook] Received ${providerLabel} webhook but configured provider is '${paymentProvider.id}'.`);
     return json(
       { error: buildAppError('PAYMENT_PROVIDER_MISMATCH', "Payment provider mismatch.") },
       { status: 400 },
@@ -83,19 +84,19 @@ export async function handleWebhook(provider: RouteWebhookProvider, request: Req
 
   const payload = await request.text();
   const payloadPreview = payload.substring(0, 200);
-  console.log(
+  logger.info(
     `[${providerLabel} Webhook] Payload length=${payload.length}. Preview=${payloadPreview}${payload.length > 200 ? '...' : ''}`,
   );
 
   const result = await handlePaymentWebhook(paymentProvider, payload, request.headers, request.url);
 
   if (result.isDuplicate) {
-    console.log(`[${providerLabel} Webhook] Duplicate event acknowledged`);
+    logger.info(`[${providerLabel} Webhook] Duplicate event acknowledged`);
     return json({ received: true, duplicate: true }, { status: 200 });
   }
 
   if (!result.success) {
-    console.error(`[${providerLabel} Webhook] Processing failed:`, result.error);
+    logger.error(`[${providerLabel} Webhook] Processing failed:`, result.error);
     return json(
       {
         error: buildAppError(
@@ -108,6 +109,6 @@ export async function handleWebhook(provider: RouteWebhookProvider, request: Req
     );
   }
 
-  console.log(`[${providerLabel} Webhook] Successfully processed webhook`);
+  logger.info(`[${providerLabel} Webhook] Successfully processed webhook`);
   return json({ received: true }, { status: 200 });
 }
