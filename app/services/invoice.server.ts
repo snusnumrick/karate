@@ -16,6 +16,7 @@ import type {
   InvoiceStatus,
   TaxRate,
   InvoiceLineItemTax,
+  InvoicePaymentTax,
 } from "~/types/invoice";
 import {
   calculateLineItemDiscount,
@@ -32,6 +33,10 @@ import { getTodayLocalDateString } from "~/utils/misc";
 
 type InvoiceEntityRow = Database['public']['Tables']['invoice_entities']['Row'] & Record<string, unknown>;
 type InvoiceLineItemRow = Database['public']['Tables']['invoice_line_items']['Row'];
+type InvoicePaymentRow = Database['public']['Tables']['invoice_payments']['Row'] & {
+  payment_intent_id?: string | null;
+  stripe_payment_intent_id?: string | null;
+};
 
 /**
  * Calculate invoice totals from line items
@@ -276,6 +281,47 @@ function mapLineItem(
   };
 }
 
+function resolvePaymentIntentId(payment: InvoicePaymentRow): string | undefined {
+  const rawPaymentIntentId = payment.payment_intent_id ?? payment.stripe_payment_intent_id ?? null;
+
+  return rawPaymentIntentId ?? undefined;
+}
+
+function mapPayment(
+  payment: InvoicePaymentRow,
+  options: {
+    paymentTaxesByPaymentId?: Record<string, Database['public']['Tables']['payment_taxes']['Row'][]>;
+  } = {},
+): InvoiceWithDetails['payments'][number] {
+  const taxes = options.paymentTaxesByPaymentId?.[payment.id];
+  const convertedPayment = convertRowToMoney('invoice_payments', payment) as Record<string, unknown>;
+  const mappedTaxes = taxes?.map((tax) => ({
+    ...tax,
+    tax_amount: moneyFromRow('payment_taxes', 'tax_amount', tax as unknown as Record<string, unknown>),
+  })) as InvoicePaymentTax[] | undefined;
+
+  return {
+    ...(convertedPayment as object),
+    id: payment.id,
+    invoice_id: payment.invoice_id,
+    amount: (convertedPayment['amount'] as Money) ?? ZERO_MONEY,
+    payment_date: payment.payment_date,
+    payment_method: payment.payment_method as InvoiceWithDetails['payments'][number]['payment_method'],
+    reference_number: payment.reference_number ?? undefined,
+    notes: payment.notes ?? undefined,
+    payment_intent_id: resolvePaymentIntentId(payment),
+    created_at: payment.created_at || new Date().toISOString(),
+    updated_at: payment.updated_at || new Date().toISOString(),
+    ...(mappedTaxes ? {
+      taxes: mappedTaxes,
+      total_tax_amount: mappedTaxes.reduce(
+        (sum: Money, tax) => addMoney(sum, tax.tax_amount),
+        ZERO_MONEY,
+      ),
+    } : {}),
+  };
+}
+
 /**
  * Generate a unique invoice number
  */
@@ -499,6 +545,14 @@ export async function getInvoiceById(
     .select('*')
     .in('payment_id', (invoice.invoice_payments || []).map(p => p.id));
 
+  const paymentTaxesByPaymentId = (paymentTaxes_db || []).reduce((acc, tax) => {
+    if (!acc[tax.payment_id]) {
+      acc[tax.payment_id] = [];
+    }
+    acc[tax.payment_id].push(tax);
+    return acc;
+  }, {} as Record<string, Database['public']['Tables']['payment_taxes']['Row'][]>);
+
   // Convert main invoice money fields
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const convertedInvoice = convertRowToMoney('invoices', invoice as any) as any;
@@ -537,22 +591,9 @@ export async function getInvoiceById(
       taxRatesByLineItem,
       taxesByLineItem,
     })),
-    payments: (invoice.invoice_payments || []).map(payment => {
-      const taxes_db = (paymentTaxes_db || []).filter(tax => tax.payment_id === payment.id);
-      const rawPaymentIntentId = 'payment_intent_id' in payment
-        ? (payment as { payment_intent_id: string | null }).payment_intent_id
-        : (payment as { stripe_payment_intent_id?: string | null }).stripe_payment_intent_id ?? null;
-      return {
-        ...payment,
-        reference_number: payment.reference_number || undefined,
-        notes: payment.notes || undefined,
-        payment_intent_id: rawPaymentIntentId || undefined, // Generic payment intent ID
-        created_at: payment.created_at || new Date().toISOString(),
-        updated_at: payment.updated_at || new Date().toISOString(),
-        taxes: taxes_db,
-        total_tax_amount: taxes_db.reduce((sum: Money, tax) => addMoney(sum, moneyFromRow('payment_taxes', 'tax_amount', tax as unknown as Record<string, unknown>)), ZERO_MONEY),
-      };
-    }),
+    payments: (invoice.invoice_payments || []).map((payment) => mapPayment(payment, {
+      paymentTaxesByPaymentId,
+    })),
     status_history: invoice.invoice_status_history || [],
   } as InvoiceWithDetails;
 }
@@ -756,19 +797,7 @@ export async function getInvoices(
       line_items: (invoice.invoice_line_items || []).map((item) => mapLineItem(item, {
         taxesByLineItem,
       })),
-      payments: (invoice.invoice_payments || []).map((payment) => {
-        const rawPaymentIntentId = 'payment_intent_id' in payment
-          ? (payment as { payment_intent_id: string | null }).payment_intent_id
-          : (payment as { stripe_payment_intent_id?: string | null }).stripe_payment_intent_id ?? null;
-        return {
-          ...payment,
-          reference_number: payment.reference_number || undefined,
-          notes: payment.notes || undefined,
-          payment_intent_id: rawPaymentIntentId || undefined, // Generic payment intent ID
-          created_at: payment.created_at || new Date().toISOString(),
-          updated_at: payment.updated_at || new Date().toISOString(),
-        };
-      }),
+      payments: (invoice.invoice_payments || []).map((payment) => mapPayment(payment)),
       status_history: [],
     } as unknown as InvoiceWithDetails;
   });
