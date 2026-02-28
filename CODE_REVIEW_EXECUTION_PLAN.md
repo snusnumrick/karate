@@ -62,7 +62,7 @@ Last updated: **2026-02-28**
 | R4-T4e | ✅ Completed | `H6`: Added canonical `serviceRoleClient`/`requestClient` names to `getSupabaseServerClient` (with backward-compatible aliases) and migrated receipt-route usage to the canonical naming pattern. |
 | R4-T4f | ✅ Completed | `H7`: Audited touched payment/webhook paths and replaced unsafe falsy coalescing with nullish coalescing where `0`/empty-string values must be preserved. |
 | R4-T4g | ✅ Completed | `H8`: Standardized internal payment status spelling to `cancelled`; provider-specific `canceled` is now confined to adapter boundary mapping logic. |
-| R4-T4h | ⏸ Not Started | `H9`: Remove remaining push notification debug `console.log` paths in production code. |
+| R4-T4h | ✅ Completed | `H9`: Removed remaining push-notification debug `console.log` traces from `notifications.client` and `push-notifications.client` while preserving warning/error diagnostics. |
 | R4-T4i | ⏸ Not Started | `H12`: Merge/clarify overlapping notification services (`notification` vs `push`) responsibilities. |
 
 ## Schedule

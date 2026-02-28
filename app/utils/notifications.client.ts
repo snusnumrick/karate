@@ -57,15 +57,10 @@ class NotificationService {
    * Initialize push notification service
    */
   private async initializePushNotifications(): Promise<void> {
-    console.log('🚀 Initializing push notification service...');
     try {
-      console.log('📡 Initializing push notification service core...');
       await pushNotificationService.initialize();
-      
-      console.log('🎧 Setting up push notification message listener...');
+
       pushNotificationService.setupMessageListener();
-      
-      console.log('✅ Push notification service initialized successfully');
     } catch (error) {
       console.error('❌ Failed to initialize push notifications:', error);
     }
@@ -159,8 +154,6 @@ class NotificationService {
    * Show a browser notification
    */
   public async showNotification(options: NotificationOptions): Promise<Notification | null> {
-    console.log('🔔 showNotification called with options:', options);
-    
     if (!this.isSupported || this.permission !== 'granted') {
       console.warn('❌ Notifications not supported or permission not granted', {
         isSupported: this.isSupported,
@@ -170,7 +163,6 @@ class NotificationService {
     }
 
     try {
-      console.log('✅ Creating notification...');
       const notification = new Notification(options.title, {
         body: options.body,
         icon: options.icon || '/icon.svg',
@@ -181,25 +173,13 @@ class NotificationService {
         silent: options.silent || false,
       });
 
-      console.log('🎉 Notification created successfully:', notification);
-
-      // Add event listeners for debugging
-      notification.onshow = () => {
-        console.log('📱 Notification shown');
-      };
-      
       notification.onerror = (error) => {
         console.error('❌ Notification error:', error);
-      };
-      
-      notification.onclose = () => {
-        console.log('🔒 Notification closed');
       };
 
       // Auto-close notification after 5 seconds unless requireInteraction is true
       if (!options.requireInteraction) {
         setTimeout(() => {
-          console.log('⏰ Auto-closing notification after 5 seconds');
           notification.close();
         }, 5000);
       }
@@ -237,7 +217,6 @@ class NotificationService {
       },
       requireInteraction: true,
     };
-    console.log('[showMessageNotification] options:', options);
 
     const notification = await this.showNotification(options);
 
@@ -260,9 +239,7 @@ class NotificationService {
         const conversationPath = isAdmin 
           ? `/admin/messages/${data.conversationId}`
           : `/family/messages/${data.conversationId}`;
-        
-        console.log('[Notification Click] Navigating to:', conversationPath);
-        
+
         // Navigate to the conversation
         window.location.href = conversationPath;
         notification.close();

@@ -104,25 +104,13 @@ class PushNotificationService {
    */
   private async checkExistingSubscription(): Promise<void> {
     try {
-      console.log('🔍 Checking for existing push subscription...');
-      console.log('🔧 Waiting for service worker to be ready...');
-      
       const registration = await navigator.serviceWorker.ready;
-      console.log('✅ Service worker is ready:', registration);
-      console.log('   - Scope:', registration.scope);
-      console.log('   - Active worker:', !!registration.active);
-      console.log('   - Installing worker:', !!registration.installing);
-      console.log('   - Waiting worker:', !!registration.waiting);
-      
+
       this.subscription = await registration.pushManager.getSubscription();
-      
+
       if (this.subscription) {
-        console.log('✅ Existing push subscription found');
-        console.log('   - Endpoint:', this.subscription.endpoint);
         // Verify subscription is still valid with server
         await this.verifySubscriptionWithServer();
-      } else {
-        console.log('ℹ️ No existing push subscription found');
       }
     } catch (error) {
       console.error('❌ Error checking existing subscription:', error);
@@ -160,8 +148,7 @@ class PushNotificationService {
       
       // Send subscription to server
       await this.sendSubscriptionToServer(subscription);
-      
-      console.log('Successfully subscribed to push notifications');
+
       return subscription;
     } catch (error) {
       console.error('Failed to subscribe to push notifications:', error);
@@ -186,7 +173,6 @@ class PushNotificationService {
       
       if (success) {
         this.subscription = null;
-        console.log('Successfully unsubscribed from push notifications');
       }
       
       return success;
@@ -295,9 +281,7 @@ class PushNotificationService {
     // Detect Android for platform-specific handling
     const isAndroid = /Android/i.test(navigator.userAgent);
     const isHTTPS = window.location.protocol === 'https:';
-    
-    console.log(`🔍 Testing push notification - Android: ${isAndroid}, HTTPS: ${isHTTPS}`);
-    
+
     // Android-specific checks
     if (isAndroid && !isHTTPS && window.location.hostname !== 'localhost') {
       console.error('❌ Android requires HTTPS for push notifications');
@@ -316,8 +300,6 @@ class PushNotificationService {
           throw new Error('Push subscription lost. Please refresh the page and try again.');
         }
       }
-
-      console.log('📤 Sending test push notification request...');
       
       const response = await fetch('/api/push/test', {
         method: 'POST',
@@ -332,13 +314,7 @@ class PushNotificationService {
       });
 
       if (response.ok) {
-        const result = await response.json().catch(() => ({}));
-        console.log('✅ Test push notification sent successfully:', result);
-        
-        if (isAndroid) {
-          console.log('📱 Android: Switch to another app to see the notification');
-        }
-        
+        await response.json().catch(() => ({}));
         return true;
       } else {
         const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
@@ -374,8 +350,6 @@ class PushNotificationService {
    */
   private async handleExpiredSubscription(): Promise<void> {
     try {
-      console.log('🔄 Handling expired subscription...');
-      
       // Unsubscribe the old subscription
       if (this.subscription) {
         await this.subscription.unsubscribe();
@@ -384,8 +358,6 @@ class PushNotificationService {
       
       // Create new subscription
       await this.subscribe();
-      
-      console.log('✅ Successfully resubscribed after expiration');
     } catch (error) {
       console.error('❌ Failed to handle expired subscription:', error);
     }
@@ -398,8 +370,6 @@ class PushNotificationService {
     const isAndroid = /Android/i.test(navigator.userAgent);
     
     if (isAndroid) {
-      console.log('📱 Using Android-optimized subscription flow');
-      
       // Check for Android-specific requirements
       if (!('serviceWorker' in navigator)) {
         throw new Error('Service Workers not supported on this Android device');
