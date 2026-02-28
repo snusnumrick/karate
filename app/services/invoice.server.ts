@@ -65,10 +65,29 @@ export async function createLineItemTaxAssociations(
     return;
   }
 
-  const client = supabaseAdmin ?? getSupabaseAdminClient();
+  const taxAssociations_db = buildLineItemTaxAssociationsPayload(
+    lineItemId,
+    taxRateIds,
+    lineItemData,
+    taxRates,
+  );
+
+  await insertLineItemTaxAssociations(taxAssociations_db, supabaseAdmin);
+}
+
+function buildLineItemTaxAssociationsPayload(
+  lineItemId: string,
+  taxRateIds: string[],
+  lineItemData: CreateInvoiceLineItemData,
+  taxRates: TaxRate[],
+): Database['public']['Tables']['invoice_line_item_taxes']['Insert'][] {
+  if (!taxRateIds || taxRateIds.length === 0) {
+    return [];
+  }
+
   const taxBreakdown = getLineItemTaxBreakdown(lineItemData, taxRates);
 
-  const taxAssociations_db = taxRateIds.map(taxRateId => {
+  return taxRateIds.map(taxRateId => {
     const taxRate = taxRates.find(tr => tr.id === taxRateId);
     const breakdown = taxBreakdown.find(tb => tb.taxRate.id === taxRateId);
     
@@ -87,12 +106,22 @@ export async function createLineItemTaxAssociations(
       tax_amount_cents: toCents(breakdown.amount)
     };
   });
+}
 
-  console.log('[Service/createLineItemTaxAssociations] Tax associations prepared:', taxAssociations_db);
+async function insertLineItemTaxAssociations(
+  taxAssociations: Database['public']['Tables']['invoice_line_item_taxes']['Insert'][],
+  supabaseAdmin?: SupabaseClient<Database>,
+): Promise<void> {
+  if (taxAssociations.length === 0) {
+    return;
+  }
+
+  const client = supabaseAdmin ?? getSupabaseAdminClient();
+  console.log('[Service/createLineItemTaxAssociations] Tax associations prepared:', taxAssociations);
   
   const { error } = await client
     .from('invoice_line_item_taxes')
-    .insert(taxAssociations_db);
+    .insert(taxAssociations);
 
   if (error) {
     console.error('[Service/createLineItemTaxAssociations] Error creating tax associations:', error);
@@ -100,6 +129,27 @@ export async function createLineItemTaxAssociations(
   }
   
   console.log('[Service/createLineItemTaxAssociations] Tax associations saved successfully');
+}
+
+async function createLineItemTaxAssociationsBatch(
+  associations: Array<{
+    lineItemId: string;
+    taxRateIds: string[];
+    lineItemData: CreateInvoiceLineItemData;
+    taxRates: TaxRate[];
+  }>,
+  supabaseAdmin?: SupabaseClient<Database>,
+): Promise<void> {
+  const payload = associations.flatMap((association) =>
+    buildLineItemTaxAssociationsPayload(
+      association.lineItemId,
+      association.taxRateIds,
+      association.lineItemData,
+      association.taxRates,
+    ),
+  );
+
+  await insertLineItemTaxAssociations(payload, supabaseAdmin);
 }
 
 /**
@@ -268,21 +318,28 @@ export async function createInvoice(
 
   // Create tax associations for each line item
   if (insertedLineItems) {
-    for (let i = 0; i < insertedLineItems.length; i++) {
-      const lineItem = insertedLineItems[i];
-      const originalItem = invoiceData.line_items[i];
-      
-      if (originalItem.tax_rate_ids && originalItem.tax_rate_ids.length > 0) {
-        const applicableTaxRates = taxRatesByItemType[originalItem.item_type];
-        await createLineItemTaxAssociations(
-          lineItem.id,
-          originalItem.tax_rate_ids,
-          originalItem,
-          applicableTaxRates,
-          client
-        );
-      }
-    }
+    const taxAssociations = insertedLineItems
+      .map((lineItem, i) => {
+        const originalItem = invoiceData.line_items[i];
+        if (!originalItem.tax_rate_ids || originalItem.tax_rate_ids.length === 0) {
+          return null;
+        }
+
+        return {
+          lineItemId: lineItem.id,
+          taxRateIds: originalItem.tax_rate_ids,
+          lineItemData: originalItem,
+          taxRates: taxRatesByItemType[originalItem.item_type],
+        };
+      })
+      .filter((association): association is {
+        lineItemId: string;
+        taxRateIds: string[];
+        lineItemData: CreateInvoiceLineItemData;
+        taxRates: TaxRate[];
+      } => Boolean(association));
+
+    await createLineItemTaxAssociationsBatch(taxAssociations, client);
   }
 
   // Denormalization of totals onto invoices for easy querying and legacy compatibility is done by DB trigger
@@ -781,6 +838,8 @@ export async function updateInvoice(
 
   // Update line items if provided
   if (invoiceData.line_items) {
+    const lineItemsInput = invoiceData.line_items;
+
     // Delete existing line items and their tax associations
     const { error: deleteError } = await client
       .from('invoice_line_items')
@@ -794,12 +853,12 @@ export async function updateInvoice(
 
     // Pre-fetch applicable tax rates for all item types to avoid multiple DB calls
     const taxRatesByItemType = await getTaxRatesByItemType(
-      invoiceData.line_items.map((item) => item.item_type),
+      lineItemsInput.map((item) => item.item_type),
       client,
     );
 
     // Create new line items with calculated totals using pre-fetched tax rates
-    const lineItemsWithTotals = invoiceData.line_items.map((item, index) => {
+    const lineItemsWithTotals = lineItemsInput.map((item, index) => {
       // Use pre-fetched applicable tax rates based on item type
       const applicableTaxRates = taxRatesByItemType[item.item_type];
       
@@ -848,21 +907,28 @@ export async function updateInvoice(
 
     // Create tax associations for each line item
     if (insertedLineItems) {
-      for (let i = 0; i < insertedLineItems.length; i++) {
-        const lineItem = insertedLineItems[i];
-        const originalItem = invoiceData.line_items[i];
-        
-        if (originalItem.tax_rate_ids && originalItem.tax_rate_ids.length > 0) {
-          const applicableTaxRates = taxRatesByItemType[originalItem.item_type];
-          await createLineItemTaxAssociations(
-            lineItem.id,
-            originalItem.tax_rate_ids,
-            originalItem,
-            applicableTaxRates,
-            client
-          );
-        }
-      }
+      const taxAssociations = insertedLineItems
+        .map((lineItem, i) => {
+          const originalItem = lineItemsInput[i];
+          if (!originalItem.tax_rate_ids || originalItem.tax_rate_ids.length === 0) {
+            return null;
+          }
+
+          return {
+            lineItemId: lineItem.id,
+            taxRateIds: originalItem.tax_rate_ids,
+            lineItemData: originalItem,
+            taxRates: taxRatesByItemType[originalItem.item_type],
+          };
+        })
+        .filter((association): association is {
+          lineItemId: string;
+          taxRateIds: string[];
+          lineItemData: CreateInvoiceLineItemData;
+          taxRates: TaxRate[];
+        } => Boolean(association));
+
+      await createLineItemTaxAssociationsBatch(taxAssociations, client);
     }
 
     // Denormalization of totals after replacement is done by DB trigger
