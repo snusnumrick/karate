@@ -361,20 +361,20 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
                 const cardLast4 = providerIntent.cardLast4 ?? null;
 
                 try {
-                    await updatePaymentStatus(
+                    await updatePaymentStatus({
                         paymentId,
-                        'succeeded',
-                        receiptUrl,
+                        status: 'succeeded',
+                        providerReceiptUrl: receiptUrl,
                         paymentMethod,
-                        providerIntent.id, // paymentIntentId
-                        paymentWithDerived.type, // type
-                        paymentWithDerived.family_id, // familyId
-                        undefined, // quantity (will be fetched if needed)
-                        toCentsFromUnknown(paymentWithDerived.subtotal_amount, { numberUnit: 'cents' }), // subtotalAmountFromMeta
-                        undefined, // taxAmountFromMeta (calculated as total - subtotal)
-                        toCentsFromUnknown(paymentWithDerived.total_amount, { numberUnit: 'cents' }), // totalAmountFromMeta
+                        paymentIntentId: providerIntent.id,
+                        type: paymentWithDerived.type,
+                        familyId: paymentWithDerived.family_id,
+                        amountMeta: {
+                            subtotalAmountFromMeta: toCentsFromUnknown(paymentWithDerived.subtotal_amount, { numberUnit: 'cents' }),
+                            totalAmountFromMeta: toCentsFromUnknown(paymentWithDerived.total_amount, { numberUnit: 'cents' }),
+                        },
                         cardLast4
-                    );
+                    });
 
                     console.log(`[Loader] Successfully updated payment ${paymentId} to succeeded via updatePaymentStatus`);
                     throw redirect(`/payment/success?payment_intent=${providerIntent.id}`, { headers: response.headers });
@@ -385,20 +385,20 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
                 console.log(`[Loader] Provider intent ${providerIntent.id} status is terminal failure. Calling updatePaymentStatus for ${paymentId}.`);
 
                 try {
-                    await updatePaymentStatus(
+                    await updatePaymentStatus({
                         paymentId,
-                        'failed',
-                        null, // receiptUrl
-                        providerIntent.paymentMethodType ?? null,
-                        providerIntent.id, // paymentIntentId
-                        paymentWithDerived.type, // type
-                        paymentWithDerived.family_id, // familyId
-                        undefined, // quantity
-                        toCentsFromUnknown(paymentWithDerived.subtotal_amount, { numberUnit: 'cents' }),
-                        undefined,
-                        toCentsFromUnknown(paymentWithDerived.total_amount, { numberUnit: 'cents' }),
-                        null // cardLast4
-                    );
+                        status: 'failed',
+                        providerReceiptUrl: null,
+                        paymentMethod: providerIntent.paymentMethodType ?? null,
+                        paymentIntentId: providerIntent.id,
+                        type: paymentWithDerived.type,
+                        familyId: paymentWithDerived.family_id,
+                        amountMeta: {
+                            subtotalAmountFromMeta: toCentsFromUnknown(paymentWithDerived.subtotal_amount, { numberUnit: 'cents' }),
+                            totalAmountFromMeta: toCentsFromUnknown(paymentWithDerived.total_amount, { numberUnit: 'cents' }),
+                        },
+                        cardLast4: null
+                    });
                     console.log(`[Loader] Successfully updated payment ${paymentId} to failed via updatePaymentStatus`);
                 } catch (updateError) {
                     console.error(`[Loader] Failed to update payment ${paymentId} to failed:`, updateError instanceof Error ? updateError.message : updateError);

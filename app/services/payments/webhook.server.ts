@@ -184,20 +184,22 @@ async function handlePaymentSuccess(
 
   try {
     logger.info(`[Webhook ${provider.id}] Calling updatePaymentStatus for paymentId: ${supabasePaymentId}`);
-    await updatePaymentStatus(
-      supabasePaymentId,
-      "succeeded",
-      receiptUrl,
-      paymentMethodString,
-      intent.id,
+    await updatePaymentStatus({
+      paymentId: supabasePaymentId,
+      status: "succeeded",
+      providerReceiptUrl: receiptUrl,
+      paymentMethod: paymentMethodString,
+      paymentIntentId: intent.id,
       type,
       familyId,
       quantity,
-      subtotalAmountFromMeta,
-      taxAmountFromMeta,
-      totalAmountFromMeta,
-      cardLast4
-    );
+      amountMeta: {
+        subtotalAmountFromMeta,
+        taxAmountFromMeta,
+        totalAmountFromMeta,
+      },
+      cardLast4,
+    });
     logger.info(`[Webhook ${provider.id}] updatePaymentStatus finished successfully for paymentId: ${supabasePaymentId}`);
 
     if (type === 'store_purchase' && orderId) {
@@ -244,20 +246,14 @@ async function handlePaymentFailure(
   }
 
   try {
-    await updatePaymentStatus(
-      supabasePaymentId,
-      "failed",
-      null,
-      failedPaymentMethodString,
-      intent.id,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      failedCardLast4
-    );
+    await updatePaymentStatus({
+      paymentId: supabasePaymentId,
+      status: "failed",
+      providerReceiptUrl: null,
+      paymentMethod: failedPaymentMethodString,
+      paymentIntentId: intent.id,
+      cardLast4: failedCardLast4,
+    });
 
     if (type === 'store_purchase' && orderId) {
       await handleStorePurchaseFailure(provider.id, orderId);

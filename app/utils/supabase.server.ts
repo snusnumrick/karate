@@ -475,21 +475,36 @@ function getSiteUrl(): string {
 
 
 export async function updatePaymentStatus(
-    supabasePaymentId: string, // Use Supabase Payment ID (from metadata) to find the record
-    status: "pending" | "succeeded" | "failed", // Use the specific enum values
-    _providerReceiptUrl?: string | null, // Provider receipt URL - not stored directly
-    paymentMethod?: string | null, // Added parameter for payment method
-    paymentIntentId?: string | null, // Optional: Store the payment intent ID
-    type?: Database['public']['Enums']['payment_type_enum'] | null, // Use 'type' parameter
-    familyId?: string | null, // Added: Needed for individual session insert
-    quantity?: number | null, // Added: Needed for individual session insert
-    // Add amounts from metadata for verification/logging if needed
-    subtotalAmountFromMeta?: number | null,
-    taxAmountFromMeta?: number | null,
-    totalAmountFromMeta?: number | null,
-    // Add card last 4
-    cardLast4?: string | null
+    {
+        paymentId: supabasePaymentId,
+        status,
+        providerReceiptUrl: _providerReceiptUrl,
+        paymentMethod,
+        paymentIntentId,
+        type,
+        familyId,
+        quantity,
+        amountMeta,
+        cardLast4,
+    }: {
+        paymentId: string;
+        status: "pending" | "succeeded" | "failed";
+        providerReceiptUrl?: string | null;
+        paymentMethod?: string | null;
+        paymentIntentId?: string | null;
+        type?: Database['public']['Enums']['payment_type_enum'] | null;
+        familyId?: string | null;
+        quantity?: number | null;
+        amountMeta?: {
+            subtotalAmountFromMeta?: number | null;
+            taxAmountFromMeta?: number | null;
+            totalAmountFromMeta?: number | null;
+        };
+        cardLast4?: string | null;
+    }
 ) {
+    void _providerReceiptUrl;
+    void amountMeta;
     // Use the centralized admin client function
     const supabaseAdmin = getSupabaseAdminClient();
 

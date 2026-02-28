@@ -29,20 +29,17 @@ export async function action({ request }: ActionFunctionArgs) {
   console.log(`[Test Webhook] Manually triggering updatePaymentStatus for payment ${paymentId}`);
 
   try {
-    await updatePaymentStatus(
+    await updatePaymentStatus({
       paymentId,
-      status as 'pending' | 'succeeded' | 'failed',
-      null, // receiptUrl
-      'test_card', // paymentMethod
-      'test-intent-' + Date.now(), // paymentIntentId
-      type as Database['public']['Enums']['payment_type_enum'], // type
+      status: status as 'pending' | 'succeeded' | 'failed',
+      providerReceiptUrl: null,
+      paymentMethod: 'test_card',
+      paymentIntentId: 'test-intent-' + Date.now(),
+      type: type as Database['public']['Enums']['payment_type_enum'],
       familyId,
-      students.length > 0 ? students.length : undefined,
-      undefined, // subtotalAmountFromMeta
-      undefined, // taxAmountFromMeta
-      undefined, // totalAmountFromMeta
-      '4242' // cardLast4
-    );
+      quantity: students.length > 0 ? students.length : undefined,
+      cardLast4: '4242',
+    });
 
     console.log(`[Test Webhook] Successfully updated payment ${paymentId} to ${status}`);
 

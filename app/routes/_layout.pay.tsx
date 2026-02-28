@@ -420,13 +420,13 @@ export async function loader({ request, params }: LoaderFunctionArgs): Promise<T
       );
 
       if (providerIntent.status === "succeeded") {
-        await updatePaymentStatus(
-          paymentWithDerived.id,
-          "succeeded",
-          providerIntent.receiptUrl ?? null,
-          providerIntent.paymentMethodType ?? null,
-          providerIntent.id,
-        );
+        await updatePaymentStatus({
+          paymentId: paymentWithDerived.id,
+          status: "succeeded",
+          providerReceiptUrl: providerIntent.receiptUrl ?? null,
+          paymentMethod: providerIntent.paymentMethodType ?? null,
+          paymentIntentId: providerIntent.id,
+        });
         throw redirect(
           `/payment/success?payment_intent=${providerIntent.id}`,
           { headers: response.headers },
@@ -434,7 +434,13 @@ export async function loader({ request, params }: LoaderFunctionArgs): Promise<T
       }
 
       if (providerIntent.status === "canceled") {
-        await updatePaymentStatus(paymentWithDerived.id, "failed", null, providerIntent.paymentMethodType ?? null, providerIntent.id);
+        await updatePaymentStatus({
+          paymentId: paymentWithDerived.id,
+          status: "failed",
+          providerReceiptUrl: null,
+          paymentMethod: providerIntent.paymentMethodType ?? null,
+          paymentIntentId: providerIntent.id,
+        });
       }
     } catch (providerError) {
       console.error(
