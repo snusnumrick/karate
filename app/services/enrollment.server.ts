@@ -28,7 +28,7 @@ type ValidateAndPrepareEnrollmentDeps = {
 export async function validateAndPrepareEnrollment(
   enrollmentData: Pick<CreateEnrollmentData, 'class_id' | 'student_id' | 'program_id' | 'status'>,
   operation: EnrollmentOperation,
-  supabase = getSupabaseAdminClient(),
+  supabaseAdmin = getSupabaseAdminClient(),
   deps: ValidateAndPrepareEnrollmentDeps = {}
 ): Promise<{ enrollmentStatus: EnrollmentStatus }> {
   const {
@@ -46,14 +46,14 @@ export async function validateAndPrepareEnrollment(
     validateEnrollmentFn(
       enrollmentData.class_id,
       enrollmentData.student_id,
-      supabase
+      supabaseAdmin
     ),
     checkScheduleConflictsFn(
       enrollmentData.student_id,
       enrollmentData.class_id,
-      supabase
+      supabaseAdmin
     ),
-    supabase
+    supabaseAdmin
       .from('students')
       .select('family_id')
       .eq('id', enrollmentData.student_id)
@@ -76,7 +76,7 @@ export async function validateAndPrepareEnrollment(
   }
 
   const [{ data: familyProfile }, registrationWaiverStatus] = await Promise.all([
-    supabase
+    supabaseAdmin
       .from('profiles')
       .select('id')
       .eq('family_id', student.family_id)
@@ -84,7 +84,7 @@ export async function validateAndPrepareEnrollment(
       .single(),
     getFamilyRegistrationWaiverStatusFn(
       student.family_id,
-      supabase
+      supabaseAdmin
     ),
   ]);
 
@@ -109,7 +109,7 @@ export async function validateAndPrepareEnrollment(
       familyProfile.id,
       enrollmentData.program_id,
       'active',
-      supabase
+      supabaseAdmin
     );
 
     if (!programWaiverStatus.is_complete) {
@@ -125,10 +125,10 @@ export async function validateAndPrepareEnrollment(
  */
 export async function enrollStudent(
   enrollmentData: CreateEnrollmentData,
-  supabase = getSupabaseAdminClient()
+  supabaseAdmin = getSupabaseAdminClient()
 ): Promise<ClassEnrollment> {
   // Check if student has an existing enrollment for this class
-  const { data: existingEnrollment } = await supabase
+  const { data: existingEnrollment } = await supabaseAdmin
     .from('enrollments')
     .select('id, status')
     .eq('class_id', enrollmentData.class_id)
@@ -140,7 +140,7 @@ export async function enrollStudent(
     const { enrollmentStatus } = await validateAndPrepareEnrollment(
       enrollmentData,
       're-enrollment',
-      supabase
+      supabaseAdmin
     );
 
     // Update existing enrollment
@@ -148,7 +148,7 @@ export async function enrollStudent(
        ? `Re-enrolled: ${enrollmentData.notes}` 
        : 'Re-enrolled';
      
-     const { data, error } = await supabase
+     const { data, error } = await supabaseAdmin
        .from('enrollments')
        .update({
          status: enrollmentStatus,
@@ -181,7 +181,7 @@ export async function enrollStudent(
 
     // If enrolled as active, check if we can promote anyone from waitlist
     if (enrollmentStatus === 'active') {
-      await processWaitlist(enrollmentData.class_id, supabase);
+      await processWaitlist(enrollmentData.class_id, supabaseAdmin);
     }
 
     // Record student enrollment event for automatic discount processing
@@ -206,10 +206,10 @@ export async function enrollStudent(
   const { enrollmentStatus } = await validateAndPrepareEnrollment(
     enrollmentData,
     'enrollment',
-    supabase
+    supabaseAdmin
   );
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('enrollments')
     .insert({
       class_id: enrollmentData.class_id,
@@ -240,7 +240,7 @@ export async function enrollStudent(
 
   // If enrolled as active, check if we can promote anyone from waitlist
   if (enrollmentStatus === 'active') {
-    await processWaitlist(enrollmentData.class_id, supabase);
+    await processWaitlist(enrollmentData.class_id, supabaseAdmin);
   }
 
   // Record student enrollment event for automatic discount processing
@@ -293,7 +293,7 @@ export async function enrollStudent(
 export async function updateEnrollment(
   id: string,
   updates: Partial<UpdateEnrollmentData>,
-  supabase = getSupabaseAdminClient()
+  supabaseAdmin = getSupabaseAdminClient()
 ): Promise<ClassEnrollment> {
   const updateData: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
@@ -306,7 +306,7 @@ export async function updateEnrollment(
 
   console.log('updateEnrollment', updateData);
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('enrollments')
     .update(updateData)
     .eq('id', id)
@@ -332,7 +332,7 @@ export async function updateEnrollment(
 
   // If status changed to dropped or completed, process waitlist
   if (updates.status && ['dropped', 'completed'].includes(updates.status)) {
-    await processWaitlist(data.class_id, supabase);
+    await processWaitlist(data.class_id, supabaseAdmin);
   }
 
   return {
@@ -380,11 +380,11 @@ export async function updateEnrollment(
 export async function dropStudent(
   enrollmentId: string,
   reason?: string,
-  supabase = getSupabaseAdminClient()
+  supabaseAdmin = getSupabaseAdminClient()
 ): Promise<void> {
   const notes = reason ? `Dropped: ${reason}` : 'Dropped';
   
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('enrollments')
     .update({ 
       status: 'dropped', 
@@ -401,7 +401,7 @@ export async function dropStudent(
 
   // Process waitlist to see if anyone can be promoted
   if (data) {
-    await processWaitlist(data.class_id, supabase);
+    await processWaitlist(data.class_id, supabaseAdmin);
   }
 }
 
@@ -410,9 +410,9 @@ export async function dropStudent(
  */
 export async function getEnrollments(
   filters: EnrollmentFilters = {},
-  supabase = getSupabaseAdminClient()
+  supabaseAdmin = getSupabaseAdminClient()
 ): Promise<ClassEnrollment[]> {
-  let query = supabase
+  let query = supabaseAdmin
     .from('enrollments')
     .select(`
       *,
@@ -481,9 +481,9 @@ export async function getEnrollments(
  */
 export async function getEnrollmentsByClass(
   classId: string,
-  supabase = getSupabaseAdminClient()
+  supabaseAdmin = getSupabaseAdminClient()
 ): Promise<ClassEnrollment[]> {
-  return getEnrollments({ class_id: classId }, supabase);
+  return getEnrollments({ class_id: classId }, supabaseAdmin);
 }
 
 /**
@@ -491,9 +491,9 @@ export async function getEnrollmentsByClass(
  */
 export async function getEnrollmentsByStudent(
   studentId: string,
-  supabase = getSupabaseAdminClient()
+  supabaseAdmin = getSupabaseAdminClient()
 ): Promise<ClassEnrollment[]> {
-  return getEnrollments({ student_id: studentId }, supabase);
+  return getEnrollments({ student_id: studentId }, supabaseAdmin);
 }
 
 /**
@@ -501,9 +501,9 @@ export async function getEnrollmentsByStudent(
  */
 export async function getEnrollmentsByFamily(
   familyId: string,
-  supabase = getSupabaseAdminClient()
+  supabaseAdmin = getSupabaseAdminClient()
 ): Promise<ClassEnrollment[]> {
-  return getEnrollments({ family_id: familyId }, supabase);
+  return getEnrollments({ family_id: familyId }, supabaseAdmin);
 }
 
 /**
@@ -512,7 +512,7 @@ export async function getEnrollmentsByFamily(
 export async function validateEnrollment(
   classId: string,
   studentId: string,
-  supabase = getSupabaseAdminClient()
+  supabaseAdmin = getSupabaseAdminClient()
 ): Promise<EnrollmentValidation> {
   const errors: string[] = [];
   const warnings: string[] = [];
@@ -523,7 +523,7 @@ export async function validateEnrollment(
 
   try {
     // Get class and program details
-    const { data: classData, error: classError } = await supabase
+    const { data: classData, error: classError } = await supabaseAdmin
       .from('classes')
       .select(`
         *,
@@ -551,7 +551,7 @@ export async function validateEnrollment(
     }
 
     // Check capacity
-    const { count: enrollmentCount } = await supabase
+    const { count: enrollmentCount } = await supabaseAdmin
     .from('enrollments')
     .select('id', { count: 'exact' })
     .eq('class_id', classId)
@@ -567,7 +567,7 @@ export async function validateEnrollment(
     }
 
     // Check if student is already enrolled
-    const { data: existingEnrollment } = await supabase
+    const { data: existingEnrollment } = await supabaseAdmin
       .from('enrollments')
       .select('id, status')
       .eq('class_id', classId)
@@ -590,7 +590,7 @@ export async function validateEnrollment(
       const eligibilityCheck = await checkProgramEligibility(
         classData.program.id,
         studentId,
-        supabase
+        supabaseAdmin
       );
       
       meetsEligibility = eligibilityCheck.eligible;
@@ -618,7 +618,7 @@ export async function validateEnrollment(
     const { hasConflicts, conflicts } = await checkScheduleConflicts(
       studentId,
       classId,
-      supabase
+      supabaseAdmin
     );
 
     if (hasConflicts) {
@@ -650,10 +650,10 @@ export async function validateEnrollment(
  */
 export async function processWaitlist(
   classId: string,
-  supabase = getSupabaseAdminClient()
+  supabaseAdmin = getSupabaseAdminClient()
 ): Promise<number> {
   // Get class capacity info
-  const { data: classData, error: classError } = await supabase
+  const { data: classData, error: classError } = await supabaseAdmin
     .from('classes')
     .select(`
       max_capacity,
@@ -667,7 +667,7 @@ export async function processWaitlist(
   }
 
   // Get current active enrollment count
-  const { count: enrollmentCount } = await supabase
+  const { count: enrollmentCount } = await supabaseAdmin
     .from('enrollments')
     .select('id', { count: 'exact' })
     .eq('class_id', classId)
@@ -682,7 +682,7 @@ export async function processWaitlist(
   }
 
   // Get waitlisted students in order of enrollment
-  const { data: waitlistStudents, error: waitlistError } = await supabase
+  const { data: waitlistStudents, error: waitlistError } = await supabaseAdmin
     .from('enrollments')
     .select('id, student_id, enrolled_at')
     .eq('class_id', classId)
@@ -705,7 +705,7 @@ export async function processWaitlist(
       validation: await validateEnrollment(
         classId,
         enrollment.student_id,
-        supabase
+        supabaseAdmin
       ),
     }))
   );
@@ -719,7 +719,7 @@ export async function processWaitlist(
     return 0;
   }
 
-  const { error: updateError } = await supabase
+  const { error: updateError } = await supabaseAdmin
     .from('enrollments')
     .update({
       status: 'active',
@@ -740,13 +740,13 @@ export async function processWaitlist(
  */
 export async function bulkEnrollStudents(
   data: BulkEnrollmentData,
-  supabase = getSupabaseAdminClient()
+  supabaseAdmin = getSupabaseAdminClient()
 ): Promise<{ successful: ClassEnrollment[]; failed: { studentId: string; error: string }[] }> {
   const successful: ClassEnrollment[] = [];
   const failed: { studentId: string; error: string }[] = [];
 
   // Get class data to find program_id
-  const { data: classData, error: classError } = await supabase
+  const { data: classData, error: classError } = await supabaseAdmin
     .from('classes')
     .select('program_id')
     .eq('id', data.class_id)
@@ -764,7 +764,7 @@ export async function bulkEnrollStudents(
         program_id: classData.program_id,
         status: data.enrollment_type,
         notes: data.notes,
-      }, supabase);
+      }, supabaseAdmin);
       
       successful.push(enrollment);
     } catch (error) {
@@ -783,9 +783,9 @@ export async function bulkEnrollStudents(
  */
 export async function getEnrollmentStats(
   classId: string,
-  supabase = getSupabaseAdminClient()
+  supabaseAdmin = getSupabaseAdminClient()
 ): Promise<EnrollmentStats> {
-  const { data: enrollments, error } = await supabase
+  const { data: enrollments, error } = await supabaseAdmin
     .from('enrollments')
     .select('status')
     .eq('class_id', classId);
@@ -820,9 +820,9 @@ export async function getEnrollmentStats(
  */
 export async function getEnrollmentById(
   id: string,
-  supabase = getSupabaseAdminClient()
+  supabaseAdmin = getSupabaseAdminClient()
 ): Promise<ClassEnrollment | null> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('enrollments')
     .select(`
       *,
