@@ -25,14 +25,14 @@ Last updated: **2026-02-28**
 | R3-T3 | ✅ Completed | Added `SIGNED_OUT` auth-state redirects to `/login` for protected/admin route contexts. Commit: `098f583` |
 | R3-T4 | ✅ Completed | Added idempotent push message listener setup/cleanup, restricted-context notification guards, and realtime reconnect scheduling for family/admin message channels. Commit: `10a4890` |
 | R3-T5 | ✅ Completed | Added defensive root `action` that throws `405 Method Not Allowed` with `Allow: GET`. Commit: `3c8d64f` |
-| R3-T6 | 🔄 In Progress | Remaining unresolved Sentry issues from updated review (`SE-3`, `SE-4`, `SE-8`, `SE-9`, `SE-10`). |
+| R3-T6 | ✅ Completed | Closed remaining unresolved Sentry issues from updated review (`SE-3`, `SE-4`, `SE-8`, `SE-9`, `SE-10`) via subtasks `R3-T6a`–`R3-T6e`. |
 | R3-T6a | ✅ Completed | `SE-3`: Hardened Square SDK load/init/tokenization failure handling with actionable remediation messaging + structured Sentry context, and expanded Square CSP domains in provider/server pipeline coverage. |
 | R3-T6b | ✅ Completed | `SE-4`: Added route-level graceful loader fallbacks and ErrorBoundary UX for family receipt/student detail flows so upstream fetch/network failures degrade to non-crashing, user-safe states. |
 | R3-T6c | ✅ Completed | `SE-8`: Added `toErrorMessage` + structured error logging helper and replaced object-stringification paths in registration loader/action/error boundary to avoid `[object Object]` user output. |
 | R3-T6d | ✅ Completed | `SE-9`: Added `toCentsFromUnknown` money-boundary coercion utility and hardened payment/store purchase paths to safely handle Money, serialized, and raw-cent values without `getAmount` crashes. |
 | R3-T6e | ✅ Completed | `SE-10`: Added guarded one-time chunk-load recovery in `entry.client` and enforced no-store HTML caching in server response paths to reduce stale-shell deploy mismatches. |
 | R4-T1 | ✅ Completed | Cached admin Supabase client in `getSupabaseAdminClient()` with config-aware singleton reuse to avoid repeated client creation overhead. Commit: `c049549` |
-| R4-T2 | 🔄 In Progress | Parent tracking item for high-cost loader/service parallelization (enrollment, payment eligibility, discounts, admin payments). |
+| R4-T2 | ✅ Completed | Completed high-cost loader/service parallelization and batching tasks (`R4-T2a`–`R4-T2h`) across enrollment, payment eligibility, discounts, invoices, and registration flows. |
 | R4-T2a | ✅ Completed | Parallelized and batched `getAllDiscountCodes` by running creator and usage queries concurrently and using map-based joins. Commit: `5fe8fff` |
 | R4-T2b | ✅ Completed | Parallelized `admin.payments.new` loader families/students/tax-rates/products fetches with `Promise.all` while preserving existing error semantics. Commit: `3825dc3` |
 | R4-T2c | ✅ Completed | Parallelized family payment eligibility data assembly (family/students fetch, pricing/payments/sessions/discounts fan-out, and per-student eligibility checks). Commit: `a7552ce` |
@@ -41,7 +41,7 @@ Last updated: **2026-02-28**
 | R4-T2f | ✅ Completed | `P4`: Added shared `getTaxRatesByItemType()` and parallelized applicable tax-rate lookups for invoice create/update flows (eliminated sequential per-item-type awaits). |
 | R4-T2g | ✅ Completed | `P5`: Added batched invoice line-item tax association insert path and switched create/update invoice flows from per-line-item inserts to single bulk insert payloads. |
 | R4-T2h | ✅ Completed | `P6`: Refactored event registration action to batch existing-student lookups, run student updates in parallel, and bulk-insert new students while preserving registration order and emergency-contact linkage. |
-| R4-T3 | 🔄 In Progress | Parent tracking item for DRY refactors (shared mappers, webhook extraction, service error model, API consistency). |
+| R4-T3 | ✅ Completed | Completed DRY/API consistency refactors (`R4-T3a`–`R4-T3l`) including shared mappers/helpers, webhook route extraction, and normalized service contracts. |
 | R4-T3a | ✅ Completed | Standardized CSRF validation API usage in `instructor.attendance.tsx` to use `csrf.validate(request)` with explicit user-facing 403 handling. Commit: `58f9518` |
 | R4-T3b | ✅ Completed | `D1`: Added canonical `mapProgram()`/`mapProgramFromRow()` in mapper utilities and replaced duplicated program mapping blocks in class/program services. |
 | R4-T3c | ✅ Completed | `D2`: Added shared `validateAndPrepareEnrollment()` helper and applied it to both enrollment and re-enrollment paths, with coverage for status derivation and waiver-message behavior. |
@@ -54,7 +54,7 @@ Last updated: **2026-02-28**
 | R4-T3j | ✅ Completed | `D9`: Standardized service-role Supabase client naming/injection in enrollment flows (`supabaseAdmin` convention), including shared helper and downstream enrollment service paths. |
 | R4-T3k | ✅ Completed | `D10`: Added shared app error-envelope helper (`{ code, message, details? }`) and standardized webhook route error responses to this shape. |
 | R4-T3l | ✅ Completed | `D11`: Added function-first discount service exports as canonical API and retained `DiscountService` as a compatibility shim (verified in service tests). |
-| R4-T4 | 🔄 In Progress | Parent tracking item for hygiene backlog (dead code/log cleanup, naming consistency, `updatePaymentStatus` parameter object refactor). |
+| R4-T4 | ✅ Completed | Completed hygiene backlog (`R4-T4a`–`R4-T4i`) including structured logging rollout, API signature cleanup, naming consistency, coalescing audit, and notification service consolidation. |
 | R4-T4a | ✅ Completed | Removed misplaced `calculateCompletionPercentage` helper from `money.ts` (non-money concern, unused export). |
 | R4-T4b | ✅ Completed | `H3`: Added shared structured logger utility and migrated webhook/payment critical paths away from raw `console.*`; added ESLint `no-console` guard on those critical webhook route/service files. |
 | R4-T4c | ✅ Completed | `H4`: Refactored `updatePaymentStatus` to an options-object contract and updated all current call sites (`_layout.pay*`, webhook handler, local webhook test route). |
@@ -63,7 +63,7 @@ Last updated: **2026-02-28**
 | R4-T4f | ✅ Completed | `H7`: Audited touched payment/webhook paths and replaced unsafe falsy coalescing with nullish coalescing where `0`/empty-string values must be preserved. |
 | R4-T4g | ✅ Completed | `H8`: Standardized internal payment status spelling to `cancelled`; provider-specific `canceled` is now confined to adapter boundary mapping logic. |
 | R4-T4h | ✅ Completed | `H9`: Removed remaining push-notification debug `console.log` traces from `notifications.client` and `push-notifications.client` while preserving warning/error diagnostics. |
-| R4-T4i | ⏸ Not Started | `H12`: Merge/clarify overlapping notification services (`notification` vs `push`) responsibilities. |
+| R4-T4i | ✅ Completed | `H12`: Consolidated notification startup ownership by introducing shared push-startup coordinator, wiring `push-notifications.client` + `notifications.client` through the shared startup path, and keeping legacy exported surfaces intact. |
 
 ## Schedule
 | Release | Window | Goal | Exit Gate |

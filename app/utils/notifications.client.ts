@@ -56,14 +56,20 @@ class NotificationService {
   /**
    * Initialize push notification service
    */
-  private async initializePushNotifications(): Promise<void> {
+  private async initializePushNotifications(): Promise<boolean> {
     try {
-      await pushNotificationService.initialize();
-
-      pushNotificationService.setupMessageListener();
+      return await pushNotificationService.start();
     } catch (error) {
       console.error('❌ Failed to initialize push notifications:', error);
+      return false;
     }
+  }
+
+  /**
+   * Public bootstrap for notification and push flows.
+   */
+  public async initialize(): Promise<boolean> {
+    return this.initializePushNotifications();
   }
 
   /**
@@ -123,6 +129,10 @@ class NotificationService {
     }
 
     try {
+      const initialized = await this.initializePushNotifications();
+      if (!initialized) {
+        return false;
+      }
       const subscription = await pushNotificationService.subscribe();
       return subscription !== null;
     } catch (error) {
@@ -253,6 +263,10 @@ class NotificationService {
    * Test push notification
    */
   public async testPushNotification(): Promise<boolean> {
+    const initialized = await this.initializePushNotifications();
+    if (!initialized) {
+      return false;
+    }
     return await pushNotificationService.testPushNotification();
   }
 
@@ -331,6 +345,12 @@ export const notificationService = NotificationService.getInstance();
 
 // Utility functions for easy access
 export const requestNotificationPermission = () => notificationService.requestPermission();
+export const initializePushNotifications = () => notificationService.initialize();
+export const subscribeToPushNotifications = () => notificationService.subscribeToPushNotifications();
+export const unsubscribeFromPushNotifications = () => notificationService.unsubscribeFromPushNotifications();
+export const isPushNotificationSupported = () => notificationService.isPushNotificationSupported();
+export const isPushNotificationSubscribed = () => notificationService.isPushNotificationSubscribed();
+export const testPushNotification = () => notificationService.testPushNotification();
 export const showMessageNotification = (data: MessageNotificationData) => 
   notificationService.showMessageNotification(data);
 export const areNotificationsSupported = () => notificationService.isNotificationSupported();

@@ -2,6 +2,7 @@
 // This service handles VAPID key management, subscription lifecycle, and server sync
 
 import { useState, useEffect, useCallback } from 'react';
+import { createPushStartup } from './notification-startup';
 
 export interface PushSubscriptionData {
   endpoint: string;
@@ -34,6 +35,9 @@ class PushNotificationService {
   private vapidPublicKey: string | null = null;
   private subscription: PushSubscription | null = null;
   private isSupported: boolean = false;
+  private isInitialized: boolean = false;
+  private initializationPromise: Promise<boolean> | null = null;
+  private readonly startPush: () => Promise<boolean>;
   private messageListener: ((event: MessageEvent) => void) | null = null;
 
   private constructor() {
@@ -44,6 +48,10 @@ class PushNotificationService {
         'serviceWorker' in navigator &&
         'PushManager' in window;
     }
+    this.startPush = createPushStartup({
+      initialize: () => this.initialize(),
+      setupMessageListener: () => this.setupMessageListener(),
+    });
   }
 
   public static getInstance(): PushNotificationService {
@@ -69,18 +77,37 @@ class PushNotificationService {
       return false;
     }
 
-    try {
-      // Get VAPID public key from server
-      await this.fetchVapidPublicKey();
-      
-      // Check for existing subscription
-      await this.checkExistingSubscription();
-      
+    if (this.isInitialized) {
       return true;
-    } catch (error) {
-      console.error('Failed to initialize push notification service:', error);
-      return false;
     }
+
+    if (!this.initializationPromise) {
+      this.initializationPromise = (async () => {
+        try {
+          // Get VAPID public key from server
+          await this.fetchVapidPublicKey();
+
+          // Check for existing subscription
+          await this.checkExistingSubscription();
+          this.isInitialized = true;
+          return true;
+        } catch (error) {
+          console.error('Failed to initialize push notification service:', error);
+          return false;
+        } finally {
+          this.initializationPromise = null;
+        }
+      })();
+    }
+
+    return this.initializationPromise;
+  }
+
+  /**
+   * Start push notifications by initializing service state and attaching listeners once.
+   */
+  public async start(): Promise<boolean> {
+    return this.startPush();
   }
 
   /**
@@ -465,7 +492,7 @@ class PushNotificationService {
 export const pushNotificationService = PushNotificationService.getInstance();
 
 // Convenience functions
-export const initializePushNotifications = () => pushNotificationService.initialize();
+export const initializePushNotifications = () => pushNotificationService.start();
 export const subscribeToPushNotifications = () => pushNotificationService.subscribe();
 export const unsubscribeFromPushNotifications = () => pushNotificationService.unsubscribe();
 export const isPushNotificationSupported = () => pushNotificationService.isPushSupported();
@@ -487,8 +514,8 @@ export function usePushNotifications() {
       if (typeof window !== 'undefined' && 'Notification' in window) {
         setPermission(Notification.permission);
       }
-      
-      await pushNotificationService.initialize();
+
+      await pushNotificationService.start();
       setIsSubscribed(pushNotificationService.isSubscribed());
     };
 
