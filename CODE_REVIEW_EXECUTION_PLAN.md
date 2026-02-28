@@ -26,7 +26,7 @@ Last updated: **2026-02-28**
 | R3-T4 | ✅ Completed | Added idempotent push message listener setup/cleanup, restricted-context notification guards, and realtime reconnect scheduling for family/admin message channels. Commit: `10a4890` |
 | R3-T5 | ✅ Completed | Added defensive root `action` that throws `405 Method Not Allowed` with `Allow: GET`. Commit: `3c8d64f` |
 | R3-T6 | 🔄 In Progress | Remaining unresolved Sentry issues from updated review (`SE-3`, `SE-4`, `SE-8`, `SE-9`, `SE-10`). |
-| R3-T6a | ⏸ Not Started | `SE-3`: Square tokenization failures (CSP and client flow hardening) in payment flow. |
+| R3-T6a | ✅ Completed | `SE-3`: Hardened Square SDK load/init/tokenization failure handling with actionable remediation messaging + structured Sentry context, and expanded Square CSP domains in provider/server pipeline coverage. |
 | R3-T6b | ⏸ Not Started | `SE-4`: Safari fetch-load failures with resilient UI fallback/error-boundary handling on affected routes. |
 | R3-T6c | ✅ Completed | `SE-8`: Added `toErrorMessage` + structured error logging helper and replaced object-stringification paths in registration loader/action/error boundary to avoid `[object Object]` user output. |
 | R3-T6d | ✅ Completed | `SE-9`: Added `toCentsFromUnknown` money-boundary coercion utility and hardened payment/store purchase paths to safely handle Money, serialized, and raw-cent values without `getAmount` crashes. |

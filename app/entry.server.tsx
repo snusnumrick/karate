@@ -20,6 +20,30 @@ interface ExtendedEntryContext extends EntryContext {
 
 const ABORT_DELAY = 5_000;
 
+type NormalizedProviderDomains = {
+    connectSrc: string[];
+    scriptSrc: string[];
+    frameSrc: string[];
+    styleSrc: string[];
+    fontSrc: string[];
+    imgSrc: string[];
+};
+
+function uniqueSources(sources: string[]): string[] {
+    return Array.from(new Set(sources.filter(Boolean)));
+}
+
+function normalizeProviderDomains(domains: Partial<NormalizedProviderDomains>): NormalizedProviderDomains {
+    return {
+        connectSrc: uniqueSources(domains.connectSrc ?? []),
+        scriptSrc: uniqueSources(domains.scriptSrc ?? []),
+        frameSrc: uniqueSources(domains.frameSrc ?? []),
+        styleSrc: uniqueSources(domains.styleSrc ?? []),
+        fontSrc: uniqueSources(domains.fontSrc ?? []),
+        imgSrc: uniqueSources(domains.imgSrc ?? []),
+    };
+}
+
 // Initialize Sentry for server-side error tracking
 if (process.env.SENTRY_DSN) {
     Sentry.init({
@@ -104,15 +128,34 @@ export function handleError(
 function getPaymentProviderDomains() {
     try {
         const provider = getPaymentProvider();
-        return provider.getCSPDomains();
+        const providerDomains = normalizeProviderDomains(provider.getCSPDomains());
+
+        // Square Web SDK may load browser/PCI endpoints that vary by environment.
+        if (provider.id === "square") {
+            providerDomains.connectSrc = uniqueSources([
+                ...providerDomains.connectSrc,
+                "https://connect.squareup.com",
+                "https://connect.squareupsandbox.com",
+                "https://pci-connect.squareup.com",
+                "https://pci-connect.squareupsandbox.com",
+            ]);
+            providerDomains.scriptSrc = uniqueSources([
+                ...providerDomains.scriptSrc,
+                "https://js.squareup.com",
+                "https://js.squareupsandbox.com",
+            ]);
+            providerDomains.frameSrc = uniqueSources([
+                ...providerDomains.frameSrc,
+                "https://js.squareup.com",
+                "https://js.squareupsandbox.com",
+            ]);
+        }
+
+        return providerDomains;
     } catch (error) {
         // If provider is not configured or fails, return empty domains
         console.warn('Failed to get payment provider CSP domains:', error);
-        return {
-            connectSrc: [],
-            scriptSrc: [],
-            frameSrc: [],
-        };
+        return normalizeProviderDomains({});
     }
 }
 
@@ -150,7 +193,7 @@ function generateCsp(nonce: string) {
         "https://*.google.com", // Google Ads and other Google services
         "https://stats.g.doubleclick.net",
         "https://www.google.ca",
-        ...(providerDomains.imgSrc || []), // Use provider-specific image domains
+        ...providerDomains.imgSrc, // Use provider-specific image domains
     ].filter(Boolean).join(" ");
 
     const styleSrc = isDevelopment
@@ -158,13 +201,13 @@ function generateCsp(nonce: string) {
             "'self'",
             "'unsafe-inline'",
             "https://fonts.googleapis.com",
-            ...(providerDomains.styleSrc || []), // Use provider-specific style domains
+            ...providerDomains.styleSrc, // Use provider-specific style domains
           ].join(" ")
         : [
             "'self'",
             `'nonce-${nonce}'`,
             "https://fonts.googleapis.com",
-            ...(providerDomains.styleSrc || []), // Use provider-specific style domains
+            ...providerDomains.styleSrc, // Use provider-specific style domains
           ].filter(Boolean).join(" ");
 
     const scriptSrc = isDevelopment
@@ -187,7 +230,7 @@ function generateCsp(nonce: string) {
     const fontSrc = [
         "'self'",
         "https://fonts.gstatic.com",
-        ...(providerDomains.fontSrc || []), // Use provider-specific font domains
+            ...providerDomains.fontSrc, // Use provider-specific font domains
         "data:",
     ].filter(Boolean).join(" ");
 

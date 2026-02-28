@@ -557,39 +557,49 @@ export class SquarePaymentProvider extends PaymentProvider {
   getCSPDomains(): CSPDomains {
     return {
       connectSrc: [
-        "https://connect.squareup.com", 
+        "https://connect.squareup.com",
+        "https://connect.squareupsandbox.com",
+        "https://pci-connect.squareupsandbox.com",
+        "https://pci-connect.squareup.com",
         "https://web.squarecdn.com",
         "https://sandbox.web.squarecdn.com",
         "https://production.web.squarecdn.com",
-        "https://pci-connect.squareupsandbox.com", // Sandbox PCI endpoint
-        "https://pci-connect.squareup.com"          // Production PCI endpoint
+        "https://*.squarecdn.com",
+        "https://*.squareupsandbox.com"
       ],
       scriptSrc: [
-        "https://js.squareup.com", 
+        "https://js.squareup.com",
+        "https://js.squareupsandbox.com",
         "https://web.squarecdn.com",
         "https://sandbox.web.squarecdn.com",
-        "https://production.web.squarecdn.com"
+        "https://production.web.squarecdn.com",
+        "https://*.squarecdn.com"
       ],
       frameSrc: [
         "https://js.squareup.com",
-        "https://web.squarecdn.com", 
+        "https://js.squareupsandbox.com",
+        "https://web.squarecdn.com",
         "https://sandbox.web.squarecdn.com",
-        "https://production.web.squarecdn.com"
+        "https://production.web.squarecdn.com",
+        "https://*.squarecdn.com"
       ],
       styleSrc: [
         "https://web.squarecdn.com",
-        "https://sandbox.web.squarecdn.com", 
-        "https://production.web.squarecdn.com"
+        "https://sandbox.web.squarecdn.com",
+        "https://production.web.squarecdn.com",
+        "https://*.squarecdn.com"
       ],
       fontSrc: [
         "https://square-fonts-production-f.squarecdn.com",
         "https://fonts.squarecdn.com",
-        "https://d1g145x70srn7h.cloudfront.net" // Square CloudFront font CDN
+        "https://d1g145x70srn7h.cloudfront.net",
+        "https://*.squarecdn.com"
       ],
       imgSrc: [
         "https://web.squarecdn.com",
         "https://sandbox.web.squarecdn.com",
-        "https://production.web.squarecdn.com"
+        "https://production.web.squarecdn.com",
+        "https://*.squarecdn.com"
       ],
     };
   }

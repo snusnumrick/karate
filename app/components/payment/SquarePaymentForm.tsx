@@ -5,7 +5,7 @@ import { isDarkThemeEnabled } from "~/utils/theme.client";
 import { useNonce } from "~/context/nonce";
 import { useFetcher } from "@remix-run/react";
 import type { ClientRenderConfig } from '~/services/payments/types.server';
-import { formatMoney, type Money } from "~/utils/money";
+import { formatMoney, toCents, type Money } from "~/utils/money";
 import * as Sentry from "@sentry/remix";
 
 // Import Square Web SDK from npm package
@@ -38,6 +38,30 @@ interface SquarePaymentFormProps {
   payment: PaymentWithDetails;
   providerConfig: ClientRenderConfig;
   onError?: (message: string) => void;
+}
+
+const TOKENIZATION_REMEDIATION_MESSAGE = "We couldn't securely process your card details. Please check the card information, disable content blockers, refresh, and try again. If this continues, try another browser or contact support.";
+
+function extractSquareTokenizationMessages(errors?: unknown[]): string[] {
+  if (!errors || errors.length === 0) {
+    return [];
+  }
+
+  return errors
+    .map((error) => {
+      if (!error || typeof error !== "object") {
+        return null;
+      }
+
+      const details = error as Record<string, unknown>;
+      const message = typeof details.message === "string" ? details.message : null;
+      const code = typeof details.code === "string" ? details.code : null;
+      const field = typeof details.field === "string" ? details.field : null;
+
+      const parts = [message, code, field].filter(Boolean);
+      return parts.length > 0 ? parts.join(" | ") : null;
+    })
+    .filter((message): message is string => Boolean(message));
 }
 
 export default function SquarePaymentForm({
@@ -174,10 +198,7 @@ export default function SquarePaymentForm({
     };
 
     loadSquareSDK();
-  // This effect should only run once on mount to load the SDK
-  // payment/providerConfig values are only used for error context, not logic
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [retryCount, payment.family_id, payment.id, providerConfig.applicationId, providerConfig.environment, providerConfig.locationId, onError]);
 
   // Initialize Square Web Payments SDK
   useEffect(() => {
@@ -209,7 +230,9 @@ export default function SquarePaymentForm({
         locationId: !!providerConfig.locationId,
         environment: providerConfig.environment
       });
-      onError?.('Square payment configuration is incomplete. Please contact support.');
+      const errorMessage = 'Square payment configuration is incomplete. Please contact support.';
+      setSdkError(errorMessage);
+      onError?.(errorMessage);
       return;
     }
 
@@ -336,9 +359,13 @@ export default function SquarePaymentForm({
         });
 
         if (error instanceof Error) {
-          onError?.(`Failed to initialize Square payment form: ${error.message}`);
+          const errorMessage = `Failed to initialize Square payment form: ${error.message}`;
+          setSdkError(errorMessage);
+          onError?.(errorMessage);
         } else {
-          onError?.('Failed to initialize Square payment form. Please try refreshing the page.');
+          const errorMessage = 'Failed to initialize Square payment form. Please try refreshing the page.';
+          setSdkError(errorMessage);
+          onError?.(errorMessage);
         }
       }
     }
@@ -392,11 +419,53 @@ export default function SquarePaymentForm({
           }
         );
       } else {
-        throw new Error('Failed to tokenize payment method');
+        const tokenizationErrors = extractSquareTokenizationMessages(result.errors);
+
+        Sentry.captureMessage('Square tokenization failed', {
+          level: 'error',
+          tags: {
+            component: 'SquarePaymentForm',
+            error_type: 'tokenization_failure',
+            payment_provider: 'square',
+            environment: providerConfig.environment || 'unknown',
+          },
+          contexts: {
+            payment: {
+              payment_id: payment.id,
+              family_id: payment.family_id,
+              total_cents: toCents(payment.total_amount),
+            },
+            tokenization: {
+              has_errors: tokenizationErrors.length > 0,
+              first_error: tokenizationErrors[0] ?? null,
+              error_count: tokenizationErrors.length,
+            },
+          },
+        });
+
+        const detail = tokenizationErrors[0] ? ` Details: ${tokenizationErrors[0]}.` : '';
+        throw new Error(`${TOKENIZATION_REMEDIATION_MESSAGE}${detail}`);
       }
     } catch (error) {
       console.error('Payment failed:', error);
       setIsLoading(false);
+
+      Sentry.captureException(error, {
+        tags: {
+          component: 'SquarePaymentForm',
+          error_type: 'tokenization_exception',
+          payment_provider: 'square',
+          environment: providerConfig.environment || 'unknown',
+        },
+        contexts: {
+          payment: {
+            payment_id: payment.id,
+            family_id: payment.family_id,
+            total_cents: toCents(payment.total_amount),
+          },
+        },
+        level: 'error',
+      });
       
       if (error instanceof Error) {
         onError?.(error.message);
@@ -431,6 +500,9 @@ export default function SquarePaymentForm({
       console.log(`Retrying Square SDK load (attempt ${retryCount + 1}/${maxRetries})...`);
       setRetryCount(retryCount + 1);
       setSdkError(null);
+      setSdkLoaded(false);
+      setPaymentForm(null);
+      setCard(null);
       loadAttempted.current = false;
       initAttempted.current = false;
       Square = null;
