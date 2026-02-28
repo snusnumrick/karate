@@ -38,7 +38,7 @@ Last updated: **2026-02-28**
 | R4-T2c | ✅ Completed | Parallelized family payment eligibility data assembly (family/students fetch, pricing/payments/sessions/discounts fan-out, and per-student eligibility checks). Commit: `a7552ce` |
 | R4-T2d | ✅ Completed | `P2`: Parallelized `enrollStudent` pre-validation prerequisites (`validateEnrollment`, schedule conflicts, student family lookup, family profile lookup, registration waiver check) while preserving existing authorization/decision semantics. |
 | R4-T2e | ✅ Completed | `P3`: Refactored `processWaitlist` to validate candidate entries in parallel and promote eligible enrollments through a single bulk update (no per-student sequential write loop). |
-| R4-T2f | ⏸ Not Started | `P4`: Parallelize per-line-item tax rate fetches in invoice create/update paths. |
+| R4-T2f | ✅ Completed | `P4`: Added shared `getTaxRatesByItemType()` and parallelized applicable tax-rate lookups for invoice create/update flows (eliminated sequential per-item-type awaits). |
 | R4-T2g | ⏸ Not Started | `P5`: Batch line-item tax association inserts (single batch/RPC path). |
 | R4-T2h | ⏸ Not Started | `P6`: Batch student validity/lookup queries in event registration loader/action path. |
 | R4-T3 | 🔄 In Progress | Parent tracking item for DRY refactors (shared mappers, webhook extraction, service error model, API consistency). |

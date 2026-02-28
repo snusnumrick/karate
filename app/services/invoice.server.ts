@@ -142,6 +142,21 @@ export function calculateLineItemTotalsWithRates(
   };
 }
 
+async function getTaxRatesByItemType(
+  itemTypes: Array<CreateInvoiceLineItemData["item_type"]>,
+  client: SupabaseClient<Database>
+): Promise<Record<string, TaxRate[]>> {
+  const uniqueItemTypes = [...new Set(itemTypes)];
+  const taxRateEntries = await Promise.all(
+    uniqueItemTypes.map(async (itemType) => ([
+      itemType,
+      await getApplicableTaxRates(itemType, client),
+    ] as const)),
+  );
+
+  return Object.fromEntries(taxRateEntries);
+}
+
 /**
  * Generate a unique invoice number
  */
@@ -198,12 +213,10 @@ export async function createInvoice(
   }
 
   // Pre-fetch applicable tax rates for all item types to avoid multiple DB calls
-  const uniqueItemTypes = [...new Set(invoiceData.line_items.map(item => item.item_type))];
-  const taxRatesByItemType: Record<string, TaxRate[]> = {};
-  
-  for (const itemType of uniqueItemTypes) {
-    taxRatesByItemType[itemType] = await getApplicableTaxRates(itemType, client);
-  }
+  const taxRatesByItemType = await getTaxRatesByItemType(
+    invoiceData.line_items.map((item) => item.item_type),
+    client,
+  );
 
   // Calculate line item totals with pre-fetched tax rates
   const lineItemsWithTotals_db = invoiceData.line_items.map((item, index) => {
@@ -780,12 +793,10 @@ export async function updateInvoice(
     }
 
     // Pre-fetch applicable tax rates for all item types to avoid multiple DB calls
-    const uniqueItemTypes = [...new Set(invoiceData.line_items.map(item => item.item_type))];
-    const taxRatesByItemType: Record<string, TaxRate[]> = {};
-    
-    for (const itemType of uniqueItemTypes) {
-      taxRatesByItemType[itemType] = await getApplicableTaxRates(itemType, client);
-    }
+    const taxRatesByItemType = await getTaxRatesByItemType(
+      invoiceData.line_items.map((item) => item.item_type),
+      client,
+    );
 
     // Create new line items with calculated totals using pre-fetched tax rates
     const lineItemsWithTotals = invoiceData.line_items.map((item, index) => {
