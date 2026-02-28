@@ -30,6 +30,8 @@ import { toCents, addMoney, subtractMoney, ZERO_MONEY, type Money } from "~/util
 import { convertRowToMoney, convertRowsToMoney, convertMoneyToRow, moneyFromRow } from "~/services/database-money.server";
 import { getTodayLocalDateString } from "~/utils/misc";
 
+type InvoiceEntityRow = Database['public']['Tables']['invoice_entities']['Row'] & Record<string, unknown>;
+
 /**
  * Calculate invoice totals from line items
  */
@@ -205,6 +207,33 @@ async function getTaxRatesByItemType(
   );
 
   return Object.fromEntries(taxRateEntries);
+}
+
+function mapInvoiceEntity(entityRow: InvoiceEntityRow): InvoiceWithDetails['entity'] {
+  const convertedEntity = convertRowToMoney('invoice_entities', entityRow) as Record<string, unknown>;
+
+  return {
+    ...(convertedEntity as object),
+    id: entityRow.id,
+    name: entityRow.name,
+    entity_type: entityRow.entity_type as EntityType,
+    contact_person: entityRow.contact_person ?? undefined,
+    email: entityRow.email ?? undefined,
+    phone: entityRow.phone ?? undefined,
+    address_line1: entityRow.address_line1 ?? undefined,
+    address_line2: entityRow.address_line2 ?? undefined,
+    city: entityRow.city ?? undefined,
+    state: entityRow.state ?? undefined,
+    postal_code: entityRow.postal_code ?? undefined,
+    country: entityRow.country ?? siteConfig.localization.country,
+    tax_id: entityRow.tax_id ?? undefined,
+    payment_terms: (entityRow.payment_terms as PaymentTerms) ?? 'Net 30',
+    credit_limit: (convertedEntity['credit_limit'] as Money | undefined) ?? undefined,
+    is_active: entityRow.is_active ?? true,
+    notes: entityRow.notes ?? undefined,
+    created_at: entityRow.created_at ?? new Date().toISOString(),
+    updated_at: entityRow.updated_at ?? new Date().toISOString(),
+  };
 }
 
 /**
@@ -461,25 +490,7 @@ export async function getInvoiceById(
     paid_at: invoice.paid_at || undefined,
     created_at: invoice.created_at || new Date().toISOString(),
     updated_at: invoice.updated_at || new Date().toISOString(),
-    entity: {
-      ...convertRowToMoney('invoice_entities', invoice.invoice_entities),
-      entity_type: invoice.invoice_entities.entity_type as EntityType,
-      contact_person: invoice.invoice_entities.contact_person || undefined,
-      email: invoice.invoice_entities.email || undefined,
-      phone: invoice.invoice_entities.phone || undefined,
-      address_line1: invoice.invoice_entities.address_line1 || undefined,
-      address_line2: invoice.invoice_entities.address_line2 || undefined,
-      city: invoice.invoice_entities.city || undefined,
-      state: invoice.invoice_entities.state || undefined,
-      postal_code: invoice.invoice_entities.postal_code || undefined,
-      country: invoice.invoice_entities.country || siteConfig.localization.country,
-      tax_id: invoice.invoice_entities.tax_id || undefined,
-      payment_terms: (invoice.invoice_entities.payment_terms as PaymentTerms) || 'Net 30',
-      is_active: invoice.invoice_entities.is_active ?? true,
-      notes: invoice.invoice_entities.notes || undefined,
-      created_at: invoice.invoice_entities.created_at || new Date().toISOString(),
-      updated_at: invoice.invoice_entities.updated_at || new Date().toISOString(),
-    },
+    entity: mapInvoiceEntity(invoice.invoice_entities as InvoiceEntityRow),
     family: invoice.families || undefined,
     family_id: invoice.family_id || undefined,
     line_items: (invoice.invoice_line_items || []).map(item => {
@@ -718,26 +729,7 @@ export async function getInvoices(
       paid_at: (invoice.paid_at as string | null) || undefined,
       created_at: (invoice.created_at as string | null) || new Date().toISOString(),
       updated_at: (invoice.updated_at as string | null) || new Date().toISOString(),
-      entity: {
-        ...(invoice.invoice_entities as object),
-        entity_type: invoice.invoice_entities.entity_type as EntityType,
-        contact_person: invoice.invoice_entities.contact_person || undefined,
-        email: invoice.invoice_entities.email || undefined,
-        phone: invoice.invoice_entities.phone || undefined,
-        address_line1: invoice.invoice_entities.address_line1 || undefined,
-        address_line2: invoice.invoice_entities.address_line2 || undefined,
-        city: invoice.invoice_entities.city || undefined,
-        state: invoice.invoice_entities.state || undefined,
-        postal_code: invoice.invoice_entities.postal_code || undefined,
-        country: invoice.invoice_entities.country || siteConfig.localization.country,
-        tax_id: invoice.invoice_entities.tax_id || undefined,
-        payment_terms: (invoice.invoice_entities.payment_terms as PaymentTerms) || 'Net 30',
-        credit_limit: (invoice.invoice_entities as unknown as { credit_limit?: unknown }).credit_limit || undefined,
-        is_active: (invoice.invoice_entities as unknown as { is_active?: boolean }).is_active ?? true,
-        notes: invoice.invoice_entities.notes || undefined,
-        created_at: invoice.invoice_entities.created_at || new Date().toISOString(),
-        updated_at: invoice.invoice_entities.updated_at || new Date().toISOString(),
-      },
+      entity: mapInvoiceEntity(invoice.invoice_entities as InvoiceEntityRow),
       family: invoice.families || undefined,
       family_id: (invoice.family_id as string | null) || undefined,
       line_items: (invoice.invoice_line_items || []).map((item) => {
