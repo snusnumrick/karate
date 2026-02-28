@@ -46,7 +46,7 @@ Last updated: **2026-02-28**
 | R4-T3b | ✅ Completed | `D1`: Added canonical `mapProgram()`/`mapProgramFromRow()` in mapper utilities and replaced duplicated program mapping blocks in class/program services. |
 | R4-T3c | ✅ Completed | `D2`: Added shared `validateAndPrepareEnrollment()` helper and applied it to both enrollment and re-enrollment paths, with coverage for status derivation and waiver-message behavior. |
 | R4-T3d | ✅ Completed | `D3`: Added shared `mapInvoiceEntity()` mapper and reused it across `getInvoiceById` and `getInvoices` entity projections. |
-| R4-T3e | ⏸ Not Started | `D4`: Extract shared `mapLineItem()` mapper in invoice service. |
+| R4-T3e | ✅ Completed | `D4`: Extracted shared `mapLineItem()` and replaced duplicated line-item mapping paths in invoice detail/list projections. |
 | R4-T3f | ⏸ Not Started | `D5`: Extract shared `mapPayment()` mapper and `payment_intent_id` normalization path. |
 | R4-T3g | ⏸ Not Started | `D6`: Extract reusable discount usage query helper (family/student variants). |
 | R4-T3h | ⏸ Not Started | `D7`: Extract shared webhook route handler (`handleWebhook(provider, request)`) for Stripe/Square routes. |

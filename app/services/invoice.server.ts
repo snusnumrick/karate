@@ -31,6 +31,7 @@ import { convertRowToMoney, convertRowsToMoney, convertMoneyToRow, moneyFromRow 
 import { getTodayLocalDateString } from "~/utils/misc";
 
 type InvoiceEntityRow = Database['public']['Tables']['invoice_entities']['Row'] & Record<string, unknown>;
+type InvoiceLineItemRow = Database['public']['Tables']['invoice_line_items']['Row'];
 
 /**
  * Calculate invoice totals from line items
@@ -233,6 +234,45 @@ function mapInvoiceEntity(entityRow: InvoiceEntityRow): InvoiceWithDetails['enti
     notes: entityRow.notes ?? undefined,
     created_at: entityRow.created_at ?? new Date().toISOString(),
     updated_at: entityRow.updated_at ?? new Date().toISOString(),
+  };
+}
+
+function mapLineItem(
+  item: InvoiceLineItemRow,
+  options: {
+    taxRatesByLineItem?: Record<string, string[]>;
+    taxesByLineItem?: Record<string, InvoiceLineItemTax[]>;
+  } = {},
+): InvoiceLineItem {
+  const convertedItem = convertRowToMoney('invoice_line_items', item) as Record<string, unknown>;
+  const taxes = options.taxesByLineItem?.[item.id] || [];
+  const totalTaxAmount = taxes.reduce(
+    (sum, tax) => addMoney(sum, tax.tax_amount || ZERO_MONEY),
+    ZERO_MONEY,
+  );
+
+  return {
+    ...(convertedItem as object),
+    id: item.id,
+    invoice_id: item.invoice_id,
+    item_type: item.item_type as InvoiceLineItem['item_type'],
+    description: item.description,
+    quantity: item.quantity,
+    unit_price: (convertedItem['unit_price'] as Money) ?? ZERO_MONEY,
+    line_total: (convertedItem['line_total'] as Money) ?? ZERO_MONEY,
+    tax_rate: (item.tax_rate ?? 0) * 100,
+    tax_amount: (convertedItem['tax_amount'] as Money) ?? ZERO_MONEY,
+    tax_rate_ids: options.taxRatesByLineItem?.[item.id] || [],
+    taxes,
+    total_tax_amount: totalTaxAmount,
+    discount_rate: (item.discount_rate ?? 0) * 100,
+    discount_amount: (convertedItem['discount_amount'] as Money) ?? ZERO_MONEY,
+    sort_order: item.sort_order ?? 0,
+    enrollment_id: item.enrollment_id || undefined,
+    product_id: item.product_id || undefined,
+    service_period_start: item.service_period_start || undefined,
+    service_period_end: item.service_period_end || undefined,
+    created_at: item.created_at || new Date().toISOString(),
   };
 }
 
@@ -493,29 +533,10 @@ export async function getInvoiceById(
     entity: mapInvoiceEntity(invoice.invoice_entities as InvoiceEntityRow),
     family: invoice.families || undefined,
     family_id: invoice.family_id || undefined,
-    line_items: (invoice.invoice_line_items || []).map(item => {
-      // Normalize monetary fields on the line item using centralized converter
-      const convertedItem = convertRowToMoney('invoice_line_items', item) as Record<string, unknown>;
-      const itemTaxes = taxesByLineItem[item.id] || [];
-      const totalTaxAmount = itemTaxes.reduce((sum, tax) => addMoney(sum, tax.tax_amount || ZERO_MONEY), ZERO_MONEY);
-      
-      return {
-        ...(convertedItem as object),
-        tax_rate: ((item.tax_rate ?? 0) as number) * 100, // Convert decimal back to percentage for frontend
-        tax_amount: (convertedItem['tax_amount'] as unknown) ?? ZERO_MONEY,
-        tax_rate_ids: taxRatesByLineItem[item.id] || [], // Include tax rate IDs from associations
-        taxes: itemTaxes, // Include actual tax data
-        total_tax_amount: totalTaxAmount, // Calculate total tax amount
-        discount_rate: ((item.discount_rate ?? 0) as number) * 100, // Convert decimal back to percentage for frontend
-        discount_amount: (convertedItem['discount_amount'] as unknown) ?? ZERO_MONEY,
-        sort_order: (item.sort_order ?? 0) as number,
-        enrollment_id: item.enrollment_id || undefined,
-        product_id: item.product_id || undefined,
-        service_period_start: item.service_period_start || undefined,
-        service_period_end: item.service_period_end || undefined,
-        created_at: item.created_at || new Date().toISOString(),
-      };
-    }),
+    line_items: (invoice.invoice_line_items || []).map((item) => mapLineItem(item, {
+      taxRatesByLineItem,
+      taxesByLineItem,
+    })),
     payments: (invoice.invoice_payments || []).map(payment => {
       const taxes_db = (paymentTaxes_db || []).filter(tax => tax.payment_id === payment.id);
       const rawPaymentIntentId = 'payment_intent_id' in payment
@@ -732,22 +753,9 @@ export async function getInvoices(
       entity: mapInvoiceEntity(invoice.invoice_entities as InvoiceEntityRow),
       family: invoice.families || undefined,
       family_id: (invoice.family_id as string | null) || undefined,
-      line_items: (invoice.invoice_line_items || []).map((item) => {
-        const convertedItem = convertRowToMoney('invoice_line_items', item) as Record<string, unknown>;
-        return {
-          ...(convertedItem as object),
-          tax_rate: ((item.tax_rate ?? 0) as number) * 100,
-          tax_amount: (item.tax_amount as unknown) ?? ZERO_MONEY,
-          discount_rate: ((item.discount_rate ?? 0) as number) * 100,
-          discount_amount: (item.discount_amount as unknown) ?? ZERO_MONEY,
-          sort_order: (item.sort_order ?? 0) as number,
-          enrollment_id: item.enrollment_id || undefined,
-          product_id: item.product_id || undefined,
-          service_period_start: item.service_period_start || undefined,
-          service_period_end: item.service_period_end || undefined,
-          created_at: item.created_at || new Date().toISOString(),
-        };
-      }),
+      line_items: (invoice.invoice_line_items || []).map((item) => mapLineItem(item, {
+        taxesByLineItem,
+      })),
       payments: (invoice.invoice_payments || []).map((payment) => {
         const rawPaymentIntentId = 'payment_intent_id' in payment
           ? (payment as { payment_intent_id: string | null }).payment_intent_id
