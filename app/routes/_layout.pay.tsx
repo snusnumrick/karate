@@ -433,7 +433,7 @@ export async function loader({ request, params }: LoaderFunctionArgs): Promise<T
         );
       }
 
-      if (providerIntent.status === "canceled") {
+      if (providerIntent.status === "cancelled") {
         await updatePaymentStatus({
           paymentId: paymentWithDerived.id,
           status: "failed",

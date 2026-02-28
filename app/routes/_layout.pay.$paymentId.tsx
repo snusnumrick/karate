@@ -381,7 +381,7 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
                 } catch (updateError) {
                     console.error(`[Loader] Failed to update payment ${paymentId} to succeeded:`, updateError instanceof Error ? updateError.message : updateError);
                 }
-            } else if (providerIntent.status === 'canceled') {
+            } else if (providerIntent.status === 'cancelled') {
                 console.log(`[Loader] Provider intent ${providerIntent.id} status is terminal failure. Calling updatePaymentStatus for ${paymentId}.`);
 
                 try {

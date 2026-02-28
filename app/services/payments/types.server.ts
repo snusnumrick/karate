@@ -3,7 +3,7 @@ import type { InvoicePaymentMethod } from '~/types/invoice';
 
 export type PaymentProviderId = 'stripe' | 'square' | 'mock';
 
-export type PaymentStatus = 'pending' | 'processing' | 'succeeded' | 'failed' | 'cancelled' | 'refunded' | 'canceled';
+export type PaymentStatus = 'pending' | 'processing' | 'succeeded' | 'failed' | 'cancelled' | 'refunded';
 
 export interface PaymentIntent {
   id: string;

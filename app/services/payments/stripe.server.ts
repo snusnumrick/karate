@@ -488,7 +488,7 @@ export class StripePaymentProvider extends PaymentProvider {
       case 'succeeded':
         return 'succeeded';
       case 'canceled':
-        return 'canceled';
+        return 'cancelled';
       case 'requires_capture':
         return 'pending';
       default:
