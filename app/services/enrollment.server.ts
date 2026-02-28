@@ -32,23 +32,32 @@ export async function enrollStudent(
 
   // If student has a dropped or completed enrollment, update it instead of creating new one
   if (existingEnrollment && ['dropped', 'completed'].includes(existingEnrollment.status)) {
-    // Validate enrollment first
-    const validation = await validateEnrollment(
-      enrollmentData.class_id,
-      enrollmentData.student_id,
+    // Validate enrollment and fetch family prerequisites in parallel.
+    const [
+      validation,
+      { hasConflicts, conflicts },
+      { data: student },
+    ] = await Promise.all([
+      validateEnrollment(
+        enrollmentData.class_id,
+        enrollmentData.student_id,
+        supabase
+      ),
+      checkScheduleConflicts(
+        enrollmentData.student_id,
+        enrollmentData.class_id,
+        supabase
+      ),
       supabase
-    );
+        .from('students')
+        .select('family_id')
+        .eq('id', enrollmentData.student_id)
+        .single(),
+    ]);
 
     if (!validation.is_valid) {
       throw new Error(`Enrollment validation failed: ${validation.errors.join(', ')}`);
     }
-
-    // Check for schedule conflicts
-    const { hasConflicts, conflicts } = await checkScheduleConflicts(
-      enrollmentData.student_id,
-      enrollmentData.class_id,
-      supabase
-    );
 
     if (hasConflicts) {
       const conflictMessages = conflicts.map(c =>
@@ -57,34 +66,27 @@ export async function enrollStudent(
       throw new Error(`Schedule conflicts detected: ${conflictMessages.join('; ')}`);
     }
 
-    // Check waiver requirements for re-enrollment
-    const { data: student } = await supabase
-      .from('students')
-      .select('family_id')
-      .eq('id', enrollmentData.student_id)
-      .single();
-
     if (!student?.family_id) {
       throw new Error('Student family information not found');
     }
 
-    // Get user ID for waiver checks
-    const { data: familyProfile } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('family_id', student.family_id)
-      .limit(1)
-      .single();
+    // Resolve profile and registration waivers in parallel.
+    const [{ data: familyProfile }, registrationWaiverStatus] = await Promise.all([
+      supabase
+        .from('profiles')
+        .select('id')
+        .eq('family_id', student.family_id)
+        .limit(1)
+        .single(),
+      getFamilyRegistrationWaiverStatus(
+        student.family_id,
+        supabase
+      ),
+    ]);
 
     if (!familyProfile) {
       throw new Error('Family profile not found');
     }
-
-    // Check registration waivers
-    const registrationWaiverStatus = await getFamilyRegistrationWaiverStatus(
-      student.family_id,
-      supabase
-    );
 
     if (!registrationWaiverStatus.is_complete) {
       throw new Error(
@@ -172,22 +174,31 @@ export async function enrollStudent(
   }
 
   // For new enrollments or existing active/waitlist enrollments, proceed with validation
-  const validation = await validateEnrollment(
-    enrollmentData.class_id,
-    enrollmentData.student_id,
+  const [
+    validation,
+    { hasConflicts, conflicts },
+    { data: student },
+  ] = await Promise.all([
+    validateEnrollment(
+      enrollmentData.class_id,
+      enrollmentData.student_id,
+      supabase
+    ),
+    checkScheduleConflicts(
+      enrollmentData.student_id,
+      enrollmentData.class_id,
+      supabase
+    ),
     supabase
-  );
+      .from('students')
+      .select('family_id')
+      .eq('id', enrollmentData.student_id)
+      .single(),
+  ]);
 
   if (!validation.is_valid) {
     throw new Error(`Enrollment validation failed: ${validation.errors.join(', ')}`);
   }
-
-  // Check for schedule conflicts
-  const { hasConflicts, conflicts } = await checkScheduleConflicts(
-    enrollmentData.student_id,
-    enrollmentData.class_id,
-    supabase
-  );
 
   if (hasConflicts) {
     const conflictMessages = conflicts.map(c =>
@@ -196,34 +207,27 @@ export async function enrollStudent(
     throw new Error(`Schedule conflicts detected: ${conflictMessages.join('; ')}`);
   }
 
-  // Check waiver requirements
-  const { data: student } = await supabase
-    .from('students')
-    .select('family_id')
-    .eq('id', enrollmentData.student_id)
-    .single();
-
   if (!student?.family_id) {
     throw new Error('Student family information not found');
   }
 
-  // Get user ID for waiver checks (first profile for the family)
-  const { data: familyProfile } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('family_id', student.family_id)
-    .limit(1)
-    .single();
+  // Resolve profile and registration waivers in parallel.
+  const [{ data: familyProfile }, registrationWaiverStatus] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('id')
+      .eq('family_id', student.family_id)
+      .limit(1)
+      .single(),
+    getFamilyRegistrationWaiverStatus(
+      student.family_id,
+      supabase
+    ),
+  ]);
 
   if (!familyProfile) {
     throw new Error('Family profile not found');
   }
-
-  // Check registration waivers (required for all enrollments including trials)
-  const registrationWaiverStatus = await getFamilyRegistrationWaiverStatus(
-    student.family_id,
-    supabase
-  );
 
   if (!registrationWaiverStatus.is_complete) {
     throw new Error(
