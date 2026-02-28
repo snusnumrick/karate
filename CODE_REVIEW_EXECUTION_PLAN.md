@@ -5,7 +5,7 @@ This plan executes the review in four releases with strict gates: `security firs
 Baseline on **2026-02-27** is green (`lint`, `typecheck`, `build`, targeted webhook unit tests), so we can implement incrementally with zero pre-existing gate failures.
 
 ## Execution Progress
-Last updated: **2026-02-27**
+Last updated: **2026-02-28**
 
 | Task ID | Status | Notes |
 |---|---|---|
@@ -25,15 +25,45 @@ Last updated: **2026-02-27**
 | R3-T3 | ✅ Completed | Added `SIGNED_OUT` auth-state redirects to `/login` for protected/admin route contexts. Commit: `098f583` |
 | R3-T4 | ✅ Completed | Added idempotent push message listener setup/cleanup, restricted-context notification guards, and realtime reconnect scheduling for family/admin message channels. Commit: `10a4890` |
 | R3-T5 | ✅ Completed | Added defensive root `action` that throws `405 Method Not Allowed` with `Allow: GET`. Commit: `3c8d64f` |
+| R3-T6 | 🔄 In Progress | Remaining unresolved Sentry issues from updated review (`SE-3`, `SE-4`, `SE-8`, `SE-9`, `SE-10`). |
+| R3-T6a | ⏸ Not Started | `SE-3`: Square tokenization failures (CSP and client flow hardening) in payment flow. |
+| R3-T6b | ⏸ Not Started | `SE-4`: Safari fetch-load failures with resilient UI fallback/error-boundary handling on affected routes. |
+| R3-T6c | ⏸ Not Started | `SE-8`: `[object Object]` error swallowing fix to preserve actionable error messages. |
+| R3-T6d | ⏸ Not Started | `SE-9`: `money.getAmount is not a function` crash fix in store purchase/payment path. |
+| R3-T6e | ⏸ Not Started | `SE-10`: chunk loading failure mitigation after deploy (cache/reload strategy). |
 | R4-T1 | ✅ Completed | Cached admin Supabase client in `getSupabaseAdminClient()` with config-aware singleton reuse to avoid repeated client creation overhead. Commit: `c049549` |
 | R4-T2 | 🔄 In Progress | Parent tracking item for high-cost loader/service parallelization (enrollment, payment eligibility, discounts, admin payments). |
 | R4-T2a | ✅ Completed | Parallelized and batched `getAllDiscountCodes` by running creator and usage queries concurrently and using map-based joins. Commit: `5fe8fff` |
 | R4-T2b | ✅ Completed | Parallelized `admin.payments.new` loader families/students/tax-rates/products fetches with `Promise.all` while preserving existing error semantics. Commit: `3825dc3` |
 | R4-T2c | ✅ Completed | Parallelized family payment eligibility data assembly (family/students fetch, pricing/payments/sessions/discounts fan-out, and per-student eligibility checks). Commit: `a7552ce` |
+| R4-T2d | ⏸ Not Started | `P2`: Parallelize `enrollStudent` pre-validation DB calls (`checkEnrollment` + class/student/profile prerequisites). |
+| R4-T2e | ⏸ Not Started | `P3`: Batch `processWaitlist` operations to remove per-student sequential validation/update round trips. |
+| R4-T2f | ⏸ Not Started | `P4`: Parallelize per-line-item tax rate fetches in invoice create/update paths. |
+| R4-T2g | ⏸ Not Started | `P5`: Batch line-item tax association inserts (single batch/RPC path). |
+| R4-T2h | ⏸ Not Started | `P6`: Batch student validity/lookup queries in event registration loader/action path. |
 | R4-T3 | 🔄 In Progress | Parent tracking item for DRY refactors (shared mappers, webhook extraction, service error model, API consistency). |
 | R4-T3a | ✅ Completed | Standardized CSRF validation API usage in `instructor.attendance.tsx` to use `csrf.validate(request)` with explicit user-facing 403 handling. Commit: `58f9518` |
+| R4-T3b | ⏸ Not Started | `D1`: Extract shared `mapProgram()` to remove duplicated program null/undefined coercion paths. |
+| R4-T3c | ⏸ Not Started | `D2`: Extract shared `validateAndPrepareEnrollment()` logic for enroll/re-enroll flows. |
+| R4-T3d | ⏸ Not Started | `D3`: Extract `mapInvoiceEntity()` shared mapper (`getInvoiceById` / `getInvoices`). |
+| R4-T3e | ⏸ Not Started | `D4`: Extract shared `mapLineItem()` mapper in invoice service. |
+| R4-T3f | ⏸ Not Started | `D5`: Extract shared `mapPayment()` mapper and `payment_intent_id` normalization path. |
+| R4-T3g | ⏸ Not Started | `D6`: Extract reusable discount usage query helper (family/student variants). |
+| R4-T3h | ⏸ Not Started | `D7`: Extract shared webhook route handler (`handleWebhook(provider, request)`) for Stripe/Square routes. |
+| R4-T3i | ⏸ Not Started | `D8`: Consolidate duplicated money-row conversion helpers across `database-money*` modules. |
+| R4-T3j | ⏸ Not Started | `D9`: Standardize Supabase client usage pattern (session/admin naming and injection) across services/routes. |
+| R4-T3k | ⏸ Not Started | `D10`: Standardize error response shape and throwing strategy across services/routes. |
+| R4-T3l | ⏸ Not Started | `D11`: Normalize discount domain API style (`DiscountService` class vs function modules) and choose one pattern. |
 | R4-T4 | 🔄 In Progress | Parent tracking item for hygiene backlog (dead code/log cleanup, naming consistency, `updatePaymentStatus` parameter object refactor). |
 | R4-T4a | ✅ Completed | Removed misplaced `calculateCompletionPercentage` helper from `money.ts` (non-money concern, unused export). |
+| R4-T4b | ⏸ Not Started | `H3`: Replace broad `console.log/warn/error` usage with structured logging approach. |
+| R4-T4c | ⏸ Not Started | `H4`: Refactor `updatePaymentStatus` positional-argument API to options object. |
+| R4-T4d | ⏸ Not Started | `H5`: Replace dynamic runtime imports/requires with static imports where safe. |
+| R4-T4e | ⏸ Not Started | `H6`: Naming convention sweep (`supabaseServer`/`supabaseAdmin` semantics). |
+| R4-T4f | ⏸ Not Started | `H7`: `||` to `??` coalescing audit to avoid falsy-value data bugs. |
+| R4-T4g | ⏸ Not Started | `H8`: Standardize `cancelled`/`canceled` spelling across schema/types/app code. |
+| R4-T4h | ⏸ Not Started | `H9`: Remove remaining push notification debug `console.log` paths in production code. |
+| R4-T4i | ⏸ Not Started | `H12`: Merge/clarify overlapping notification services (`notification` vs `push`) responsibilities. |
 
 ## Schedule
 | Release | Window | Goal | Exit Gate |
