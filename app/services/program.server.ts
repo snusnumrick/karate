@@ -4,7 +4,8 @@ import {
   CreateProgramData,
   UpdateProgramData,
 } from '~/types/multi-class';
-import { toCents, fromCents } from '~/utils/money';
+import { toCents } from '~/utils/money';
+import { mapProgramFromRow } from '~/utils/mappers';
 
 /**
  * Create a new program
@@ -56,28 +57,7 @@ export async function createProgram(
     throw new Error(`Failed to create program: ${error.message}`);
   }
 
-  return {
-    ...data,
-    description: data.description || undefined,
-    duration_minutes: data.duration_minutes || undefined,
-    max_capacity: data.max_capacity || undefined,
-    sessions_per_week: data.sessions_per_week || undefined,
-    min_sessions_per_week: data.min_sessions_per_week || undefined,
-    max_sessions_per_week: data.max_sessions_per_week || undefined,
-    min_belt_rank: data.min_belt_rank || undefined,
-    max_belt_rank: data.max_belt_rank || undefined,
-    belt_rank_required: data.belt_rank_required || undefined,
-    prerequisite_programs: data.prerequisite_programs || undefined,
-    min_age: data.min_age || undefined,
-    max_age: data.max_age || undefined,
-    gender_restriction: (data.gender_restriction as 'male' | 'female' | 'none') || undefined,
-    special_needs_support: data.special_needs_support || undefined,
-    // Convert cents back to Money objects
-    monthly_fee: data.monthly_fee_cents != null ? fromCents(data.monthly_fee_cents) : undefined,
-    registration_fee: data.registration_fee_cents != null ? fromCents(data.registration_fee_cents) : undefined,
-    yearly_fee: data.yearly_fee_cents != null ? fromCents(data.yearly_fee_cents) : undefined,
-    individual_session_fee: data.individual_session_fee_cents != null ? fromCents(data.individual_session_fee_cents) : undefined,
-  };
+  return mapProgramFromRow(data);
 }
 
 /**
@@ -132,28 +112,7 @@ export async function updateProgram(
     throw new Error(`Failed to update program: ${error.message}`);
   }
 
-  return {
-    ...data,
-    description: data.description || undefined,
-    duration_minutes: data.duration_minutes || undefined,
-    max_capacity: data.max_capacity || undefined,
-    sessions_per_week: data.sessions_per_week || undefined,
-    min_sessions_per_week: data.min_sessions_per_week || undefined,
-    max_sessions_per_week: data.max_sessions_per_week || undefined,
-    min_belt_rank: data.min_belt_rank || undefined,
-    max_belt_rank: data.max_belt_rank || undefined,
-    belt_rank_required: data.belt_rank_required || undefined,
-    prerequisite_programs: data.prerequisite_programs || undefined,
-    min_age: data.min_age || undefined,
-    max_age: data.max_age || undefined,
-    gender_restriction: (data.gender_restriction as 'male' | 'female' | 'none') || undefined,
-    special_needs_support: data.special_needs_support || undefined,
-    // Convert cents back to Money objects
-    monthly_fee: data.monthly_fee_cents != null ? fromCents(data.monthly_fee_cents) : undefined,
-    registration_fee: data.registration_fee_cents != null ? fromCents(data.registration_fee_cents) : undefined,
-    yearly_fee: data.yearly_fee_cents != null ? fromCents(data.yearly_fee_cents) : undefined,
-    individual_session_fee: data.individual_session_fee_cents != null ? fromCents(data.individual_session_fee_cents) : undefined,
-  };
+  return mapProgramFromRow(data);
 }
 
 
@@ -184,28 +143,7 @@ export async function getPrograms(
     throw new Error(`Failed to fetch programs: ${error.message}`);
   }
 
-  return (data || []).map(program => ({
-    ...program,
-    description: program.description || undefined,
-    duration_minutes: program.duration_minutes || undefined,
-    max_capacity: program.max_capacity || undefined,
-    sessions_per_week: program.sessions_per_week || undefined,
-    min_sessions_per_week: program.min_sessions_per_week || undefined,
-    max_sessions_per_week: program.max_sessions_per_week || undefined,
-    min_belt_rank: program.min_belt_rank || undefined,
-    max_belt_rank: program.max_belt_rank || undefined,
-    belt_rank_required: program.belt_rank_required || undefined,
-    prerequisite_programs: program.prerequisite_programs || undefined,
-    min_age: program.min_age || undefined,
-    max_age: program.max_age || undefined,
-    gender_restriction: (program.gender_restriction as 'male' | 'female' | 'none') || undefined,
-    special_needs_support: program.special_needs_support || undefined,
-    // Convert cents back to Money objects
-    monthly_fee: program.monthly_fee_cents != null ? fromCents(program.monthly_fee_cents) : undefined,
-    registration_fee: program.registration_fee_cents != null ? fromCents(program.registration_fee_cents) : undefined,
-    yearly_fee: program.yearly_fee_cents != null ? fromCents(program.yearly_fee_cents) : undefined,
-    individual_session_fee: program.individual_session_fee_cents != null ? fromCents(program.individual_session_fee_cents) : undefined,
-  }));
+  return (data || []).map(mapProgramFromRow);
 }
 
 /**
@@ -228,28 +166,7 @@ export async function getProgramById(
     throw new Error(`Failed to fetch program: ${error.message}`);
   }
 
-  return {
-    ...data,
-    description: data.description || undefined,
-    duration_minutes: data.duration_minutes || undefined,
-    max_capacity: data.max_capacity || undefined,
-    sessions_per_week: data.sessions_per_week || undefined,
-    min_sessions_per_week: data.min_sessions_per_week || undefined,
-    max_sessions_per_week: data.max_sessions_per_week || undefined,
-    min_belt_rank: data.min_belt_rank || undefined,
-    max_belt_rank: data.max_belt_rank || undefined,
-    belt_rank_required: data.belt_rank_required || undefined,
-    prerequisite_programs: data.prerequisite_programs || undefined,
-    min_age: data.min_age || undefined,
-    max_age: data.max_age || undefined,
-    gender_restriction: (data.gender_restriction as 'male' | 'female' | 'none') || undefined,
-    special_needs_support: data.special_needs_support || undefined,
-    // Convert cents back to Money objects
-    monthly_fee: data.monthly_fee_cents != null ? fromCents(data.monthly_fee_cents) : undefined,
-    registration_fee: data.registration_fee_cents != null ? fromCents(data.registration_fee_cents) : undefined,
-    yearly_fee: data.yearly_fee_cents != null ? fromCents(data.yearly_fee_cents) : undefined,
-    individual_session_fee: data.individual_session_fee_cents != null ? fromCents(data.individual_session_fee_cents) : undefined,
-  };
+  return mapProgramFromRow(data);
 }
 
 /**
@@ -301,28 +218,7 @@ export async function getProgramsWithStats(
 
 
   // Simplified - just return the programs without complex statistics
-  return (data || []).map(program => ({
-    ...program,
-    description: program.description || undefined,
-    duration_minutes: program.duration_minutes || undefined,
-    max_capacity: program.max_capacity || undefined,
-    sessions_per_week: program.sessions_per_week || undefined,
-    min_sessions_per_week: program.min_sessions_per_week || undefined,
-    max_sessions_per_week: program.max_sessions_per_week || undefined,
-    min_belt_rank: program.min_belt_rank || undefined,
-    max_belt_rank: program.max_belt_rank || undefined,
-    belt_rank_required: program.belt_rank_required || undefined,
-    prerequisite_programs: program.prerequisite_programs || undefined,
-    min_age: program.min_age || undefined,
-    max_age: program.max_age || undefined,
-    gender_restriction: (program.gender_restriction as 'male' | 'female' | 'none') || undefined,
-    special_needs_support: program.special_needs_support || undefined,
-    // Convert cents back to Money objects
-    monthly_fee: program.monthly_fee_cents != null ? fromCents(program.monthly_fee_cents) : undefined,
-    registration_fee: program.registration_fee_cents != null ? fromCents(program.registration_fee_cents) : undefined,
-    yearly_fee: program.yearly_fee_cents != null ? fromCents(program.yearly_fee_cents) : undefined,
-    individual_session_fee: program.individual_session_fee_cents != null ? fromCents(program.individual_session_fee_cents) : undefined,
-  }));
+  return (data || []).map(mapProgramFromRow);
 }
 
 /**

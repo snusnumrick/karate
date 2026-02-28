@@ -43,7 +43,7 @@ Last updated: **2026-02-28**
 | R4-T2h | ✅ Completed | `P6`: Refactored event registration action to batch existing-student lookups, run student updates in parallel, and bulk-insert new students while preserving registration order and emergency-contact linkage. |
 | R4-T3 | 🔄 In Progress | Parent tracking item for DRY refactors (shared mappers, webhook extraction, service error model, API consistency). |
 | R4-T3a | ✅ Completed | Standardized CSRF validation API usage in `instructor.attendance.tsx` to use `csrf.validate(request)` with explicit user-facing 403 handling. Commit: `58f9518` |
-| R4-T3b | ⏸ Not Started | `D1`: Extract shared `mapProgram()` to remove duplicated program null/undefined coercion paths. |
+| R4-T3b | ✅ Completed | `D1`: Added canonical `mapProgram()`/`mapProgramFromRow()` in mapper utilities and replaced duplicated program mapping blocks in class/program services. |
 | R4-T3c | ⏸ Not Started | `D2`: Extract shared `validateAndPrepareEnrollment()` logic for enroll/re-enroll flows. |
 | R4-T3d | ⏸ Not Started | `D3`: Extract `mapInvoiceEntity()` shared mapper (`getInvoiceById` / `getInvoices`). |
 | R4-T3e | ⏸ Not Started | `D4`: Extract shared `mapLineItem()` mapper in invoice service. |

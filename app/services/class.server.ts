@@ -1,6 +1,6 @@
 import { getSupabaseAdminClient } from '~/utils/supabase.server';
 import type { Database } from '~/types/database.types';
-import { mapProgramNullToUndefined, mapInstructorNullToUndefined, mapSessionNullToUndefined, mapClassNullToUndefined } from '~/utils/mappers';
+import { mapProgramFromRow, mapInstructorNullToUndefined, mapSessionNullToUndefined, mapClassNullToUndefined } from '~/utils/mappers';
 
 const MAIN_PAGE_SCHEDULE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 let mainPageScheduleCache: { data: MainPageScheduleSummary | null; expiresAt: number } | null = null;
@@ -306,7 +306,9 @@ export async function getClasses(
     max_capacity: item.max_capacity ?? undefined,
     instructor_id: item.instructor_id ?? undefined,
     instructor: item.instructor ? mapInstructorNullToUndefined(item.instructor) : undefined,
-    program: item.program ? mapProgramNullToUndefined(item.program) : item.program
+    program: item.program
+      ? mapProgramFromRow(item.program as Database['public']['Tables']['programs']['Row'])
+      : item.program
   }));
 }
 
@@ -433,7 +435,7 @@ export async function getClassById(
     description: data.description ?? undefined,
     max_capacity: data.max_capacity ?? undefined,
     instructor_id: data.instructor_id ?? undefined,
-    program: mapProgramNullToUndefined(data.program),
+    program: mapProgramFromRow(data.program as Database['public']['Tables']['programs']['Row']),
     instructor: data.instructor ? mapInstructorNullToUndefined(data.instructor) : undefined,
     enrollment_count: enrollments.length,
     next_session: nextSession ? mapSessionNullToUndefined(nextSession) : undefined,

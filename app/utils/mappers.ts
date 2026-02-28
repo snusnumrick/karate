@@ -3,6 +3,9 @@ import type {AttendanceRecord, Family, Guardian, Payment, Student, Waiver, Waive
 import { centsFromRow } from "~/utils/database-money";
 import type {Program, Class, ClassSession} from '~/types/multi-class';
 import {PaymentStatus} from "~/types/models"; // Import the enum
+import { fromCents } from "~/utils/money";
+
+type ProgramRow = Database['public']['Tables']['programs']['Row'];
 
 // Utility function to convert null values to undefined in an object
 export function nullToUndefined<T extends Record<string, unknown>>(obj: T): { [K in keyof T]: T[K] extends null ? undefined : T[K] } {
@@ -16,7 +19,54 @@ export function nullToUndefined<T extends Record<string, unknown>>(obj: T): { [K
 // Utility function to map program object with null-to-undefined conversion
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function mapProgramNullToUndefined(program: any): Program {
-  return nullToUndefined(program) as Program;
+  const normalized = nullToUndefined(program as Record<string, unknown>);
+  if (isProgramRowLike(normalized)) {
+    return mapProgramFromRow(normalized);
+  }
+  return mapProgram(normalized as unknown as Program);
+}
+
+export function mapProgram(program: Program): Program {
+  return {
+    ...program,
+    description: program.description ?? undefined,
+    duration_minutes: program.duration_minutes ?? undefined,
+    max_capacity: program.max_capacity ?? undefined,
+    sessions_per_week: program.sessions_per_week ?? undefined,
+    min_sessions_per_week: program.min_sessions_per_week ?? undefined,
+    max_sessions_per_week: program.max_sessions_per_week ?? undefined,
+    min_belt_rank: program.min_belt_rank ?? undefined,
+    max_belt_rank: program.max_belt_rank ?? undefined,
+    belt_rank_required: program.belt_rank_required ?? false,
+    prerequisite_programs: program.prerequisite_programs ?? undefined,
+    min_age: program.min_age ?? undefined,
+    max_age: program.max_age ?? undefined,
+    gender_restriction: (program.gender_restriction as 'male' | 'female' | 'none') ?? undefined,
+    special_needs_support: program.special_needs_support ?? undefined,
+    individual_session_fee: program.individual_session_fee ?? undefined,
+    yearly_fee: program.yearly_fee ?? undefined,
+    monthly_fee: program.monthly_fee ?? undefined,
+    registration_fee: program.registration_fee ?? undefined,
+  };
+}
+
+export function mapProgramFromRow(program: ProgramRow): Program {
+  return mapProgram({
+    ...program,
+    monthly_fee: program.monthly_fee_cents != null ? fromCents(program.monthly_fee_cents) : undefined,
+    registration_fee: program.registration_fee_cents != null ? fromCents(program.registration_fee_cents) : undefined,
+    yearly_fee: program.yearly_fee_cents != null ? fromCents(program.yearly_fee_cents) : undefined,
+    individual_session_fee: program.individual_session_fee_cents != null ? fromCents(program.individual_session_fee_cents) : undefined,
+  } as unknown as Program);
+}
+
+function isProgramRowLike(value: Record<string, unknown>): value is ProgramRow {
+  return (
+    'monthly_fee_cents' in value
+    && 'registration_fee_cents' in value
+    && 'yearly_fee_cents' in value
+    && 'individual_session_fee_cents' in value
+  );
 }
 
 // Utility function to map instructor object with null-to-undefined conversion
@@ -49,27 +99,7 @@ export function mapClassNullToUndefined(classObj: any): Class & { program: Progr
 }
 
 export function mapEnrollmentProgramNullToUndefined(program: Program) {
-  return {
-    ...program,
-    description: program.description ?? undefined,
-    max_capacity: program.max_capacity ?? undefined,
-    belt_rank_required: program.belt_rank_required ?? false,
-    gender_restriction: (program.gender_restriction as 'male' | 'female' | 'none') ?? undefined,
-    individual_session_fee: program.individual_session_fee ?? undefined,
-    yearly_fee: program.yearly_fee ?? undefined,
-    min_sessions_per_week: program.min_sessions_per_week ?? undefined,
-    max_sessions_per_week: program.max_sessions_per_week ?? undefined,
-    monthly_fee: program.monthly_fee ?? undefined,
-    registration_fee: program.registration_fee ?? undefined,
-    min_belt_rank: program.min_belt_rank ?? undefined,
-    max_belt_rank: program.max_belt_rank ?? undefined,
-    sessions_per_week: program.sessions_per_week ?? undefined,
-    min_age: program.min_age ?? undefined,
-    max_age: program.max_age ?? undefined,
-    special_needs_support: program.special_needs_support ?? undefined,
-    prerequisite_programs: program.prerequisite_programs ?? undefined,
-    duration_minutes: program.duration_minutes ?? undefined,
-  };
+  return mapProgram(program);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
