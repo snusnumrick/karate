@@ -49,7 +49,7 @@ Last updated: **2026-02-28**
 | R4-T3e | ✅ Completed | `D4`: Extracted shared `mapLineItem()` and replaced duplicated line-item mapping paths in invoice detail/list projections. |
 | R4-T3f | ✅ Completed | `D5`: Added shared `mapPayment()` mapper with centralized `payment_intent_id` normalization and reused it in invoice detail/list payment projections. |
 | R4-T3g | ✅ Completed | `D6`: Added shared discount-usage query/mapping helper and switched both family/student usage history methods to the shared path (with test coverage). |
-| R4-T3h | ⏸ Not Started | `D7`: Extract shared webhook route handler (`handleWebhook(provider, request)`) for Stripe/Square routes. |
+| R4-T3h | ✅ Completed | `D7`: Added shared route-agnostic `handleWebhook(provider, request)`/loader helper and switched Stripe/Square webhook routes to the shared handler (with route-helper tests). |
 | R4-T3i | ⏸ Not Started | `D8`: Consolidate duplicated money-row conversion helpers across `database-money*` modules. |
 | R4-T3j | ⏸ Not Started | `D9`: Standardize Supabase client usage pattern (session/admin naming and injection) across services/routes. |
 | R4-T3k | ⏸ Not Started | `D10`: Standardize error response shape and throwing strategy across services/routes. |
