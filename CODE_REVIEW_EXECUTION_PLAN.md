@@ -60,7 +60,7 @@ Last updated: **2026-02-28**
 | R4-T4c | ✅ Completed | `H4`: Refactored `updatePaymentStatus` to an options-object contract and updated all current call sites (`_layout.pay*`, webhook handler, local webhook test route). |
 | R4-T4d | ✅ Completed | `H5`: Replaced safe dynamic runtime imports with static imports in always-available server paths (`square.server` and full webhook test route). |
 | R4-T4e | ✅ Completed | `H6`: Added canonical `serviceRoleClient`/`requestClient` names to `getSupabaseServerClient` (with backward-compatible aliases) and migrated receipt-route usage to the canonical naming pattern. |
-| R4-T4f | ⏸ Not Started | `H7`: `||` to `??` coalescing audit to avoid falsy-value data bugs. |
+| R4-T4f | ✅ Completed | `H7`: Audited touched payment/webhook paths and replaced unsafe falsy coalescing with nullish coalescing where `0`/empty-string values must be preserved. |
 | R4-T4g | ⏸ Not Started | `H8`: Standardize `cancelled`/`canceled` spelling across schema/types/app code. |
 | R4-T4h | ⏸ Not Started | `H9`: Remove remaining push notification debug `console.log` paths in production code. |
 | R4-T4i | ⏸ Not Started | `H12`: Merge/clarify overlapping notification services (`notification` vs `push`) responsibilities. |

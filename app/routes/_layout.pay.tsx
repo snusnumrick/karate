@@ -401,9 +401,9 @@ export async function loader({ request, params }: LoaderFunctionArgs): Promise<T
     total_amount: totalMoney,
     tax_amount: totalTaxMoney,
     family: payment.family ? {
-      name: payment.family.name || undefined,
-      email: payment.family.email || undefined,
-      postal_code: payment.family.postal_code || undefined,
+      name: payment.family.name ?? undefined,
+      email: payment.family.email ?? undefined,
+      postal_code: payment.family.postal_code ?? undefined,
     } : null,
     payment_taxes: paymentTaxesWithMoney,
     payment_students: payment.payment_students ?? [],

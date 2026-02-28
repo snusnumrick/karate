@@ -519,7 +519,7 @@ export async function updatePaymentStatus(
     // Use the centralized admin client function
     const supabaseAdmin = getSupabaseAdminClient();
 
-    console.log(`[updatePaymentStatus] Called for payment ${supabasePaymentId} with status=${status}, paymentIntentId=${paymentIntentId || 'null'}`);
+    console.log(`[updatePaymentStatus] Called for payment ${supabasePaymentId} with status=${status}, paymentIntentId=${paymentIntentId ?? 'null'}`);
 
     // Check if payment already succeeded to prevent duplicate payment status updates
     const { data: existingPayment, error: checkError } = await supabaseAdmin
@@ -544,9 +544,9 @@ export async function updatePaymentStatus(
             status,
             // receipt_url: Don't store the provider receipt URL directly
             payment_method: paymentMethod,
-            type: type || undefined, // Use 'type' parameter
-            payment_intent_id: paymentIntentId || undefined, // Generic payment intent ID for all providers
-            card_last4: cardLast4 || undefined, // Store card last 4 digits
+            type: type ?? undefined, // Use 'type' parameter
+            payment_intent_id: paymentIntentId ?? undefined, // Generic payment intent ID for all providers
+            card_last4: cardLast4 ?? undefined, // Store card last 4 digits
         };
 
         // Set payment_date and generate our internal receipt_url when status becomes 'succeeded'
@@ -667,7 +667,7 @@ export async function updatePaymentStatus(
     // If payment succeeded, type is individual_session, and quantity is provided, insert the session record
     if (status === 'succeeded' && type === 'individual_session' && quantity && quantity > 0) {
         // Use family_id from the updated payment record OR the passed familyId as fallback
-        const targetFamilyId = data.family_id || familyId;
+        const targetFamilyId = data.family_id ?? familyId;
         if (!targetFamilyId) {
             console.error(`Cannot record Individual Session for payment ${data.id}: Missing family ID.`);
             // Return the payment data but log the error - session not recorded

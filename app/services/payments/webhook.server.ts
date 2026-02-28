@@ -99,7 +99,7 @@ export async function handlePaymentWebhook(
       } else {
         await markWebhookEventFailed(
           webhookEventId,
-          result.error || 'Unknown error',
+          result.error ?? 'Unknown error',
           undefined,
           processingStartTime
         );
