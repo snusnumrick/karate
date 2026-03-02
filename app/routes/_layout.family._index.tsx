@@ -266,16 +266,20 @@ export async function loader({request}: LoaderFunctionArgs) {
     const shouldFetchAuth = hasSessionCookie || hasAuthHeader;
 
     const authStart = performance.now();
-    const {data: {user}} = shouldFetchAuth
-        ? await supabaseServer.auth.getUser()
-        : { data: { user: null } };
+    let user = null;
+    try {
+        const authResult = shouldFetchAuth
+            ? await supabaseServer.auth.getUser()
+            : { data: { user: null } };
+        user = authResult.data.user;
+    } catch {
+        // Refresh token invalid/expired — clear session and redirect to login
+        return redirect('/login', { headers });
+    }
     timings.auth = performance.now() - authStart;
 
     if (!user) {
-        // This shouldn't happen if the route is protected by the layout,
-        // but good practice to handle it.
-        // Consider redirecting to login if needed, depending on layout setup.
-        return json({error: "User not authenticated"}, {status: 401, headers});
+        return redirect('/login', { headers });
     }
 
     // 1. Get the user's profile to find their family_id

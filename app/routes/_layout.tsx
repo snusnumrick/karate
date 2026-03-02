@@ -48,7 +48,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
     }
 
     const { supabaseServer, response: { headers }, ENV } = getSupabaseServerClient(request);
-    const { data: { session } } = await supabaseServer.auth.getSession();
+    let session = null;
+    try {
+        const { data } = await supabaseServer.auth.getSession();
+        session = data.session;
+    } catch {
+        // Invalid refresh token — treat as no session
+    }
     let userRole: UserRole | null = null;
     if (session?.user) {
         userRole = await getUserRole(session.user.id);
@@ -88,7 +94,7 @@ function AuthTokenSender({ supabase }: { supabase: SupabaseClient<Database> | nu
         };
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            (event, session) => {
+            (_event, session) => {
                 sendTokenToSw(session?.access_token ?? null);
             }
         );
@@ -152,10 +158,15 @@ export default function Layout() {
                     return;
                 }
 
-                const isProtectedRoute = isAdminRoute || isInstructorRoute || isFamilyRoute;
-                if (event === 'SIGNED_OUT' && isProtectedRoute) {
-                    const redirectTarget = `${location.pathname}${location.search}`;
-                    navigate(`/login?redirectTo=${encodeURIComponent(redirectTarget)}`);
+                if (event === 'SIGNED_OUT') {
+                    // Always update ref to prevent stale token comparison
+                    lastAccessTokenRef.current = undefined;
+                    const isProtectedRoute = isAdminRoute || isInstructorRoute || isFamilyRoute;
+                    if (isProtectedRoute) {
+                        const redirectTarget = `${location.pathname}${location.search}`;
+                        navigate(`/login?redirectTo=${encodeURIComponent(redirectTarget)}`);
+                    }
+                    // Do NOT revalidate on sign-out — causes a reload loop on /login
                     return;
                 }
 

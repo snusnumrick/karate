@@ -5,20 +5,32 @@ import type { UserRole } from '~/types/auth';
 
 export async function isLoggedIn(request: Request): Promise<boolean> {
   const { supabaseServer } = getSupabaseServerClient(request);
-  const { data: { user }, error } = await supabaseServer.auth.getUser();
-  return ! (error || !user);
+  try {
+    const { data: { user }, error } = await supabaseServer.auth.getUser();
+    return !(error || !user);
+  } catch {
+    return false;
+  }
 }
 
 export async function requireUserId(request: Request): Promise<string> {
-  const { supabaseServer } = getSupabaseServerClient(request);
-  const { data: { user }, error } = await supabaseServer.auth.getUser();
+  const { supabaseServer, response: { headers } } = getSupabaseServerClient(request);
+  const url = new URL(request.url);
+  const redirectTo = `${url.pathname}${url.search}`;
 
-  if (error || !user) {
-    const url = new URL(request.url);
-    const redirectTo = `${url.pathname}${url.search}`;
-    throw redirect(`/login?redirectTo=${encodeURIComponent(redirectTo)}`);
+  let user = null;
+  try {
+    const { data, error } = await supabaseServer.auth.getUser();
+    if (error) throw error;
+    user = data.user;
+  } catch {
+    throw redirect(`/login?redirectTo=${encodeURIComponent(redirectTo)}`, { headers });
   }
-  
+
+  if (!user) {
+    throw redirect(`/login?redirectTo=${encodeURIComponent(redirectTo)}`, { headers });
+  }
+
   return user.id;
 }
 
@@ -28,14 +40,21 @@ type RequireRoleResult = {
 };
 
 export async function requireRole(request: Request, allowedRoles: readonly UserRole[]): Promise<RequireRoleResult> {
-  const { supabaseServer } = getSupabaseServerClient(request);
+  const { supabaseServer, response: { headers } } = getSupabaseServerClient(request);
+  const url = new URL(request.url);
+  const redirectTo = `${url.pathname}${url.search}`;
 
-  const { data: { user }, error } = await supabaseServer.auth.getUser();
+  let user = null;
+  try {
+    const { data, error } = await supabaseServer.auth.getUser();
+    if (error) throw error;
+    user = data.user;
+  } catch {
+    throw redirect(`/login?redirectTo=${encodeURIComponent(redirectTo)}`, { headers });
+  }
 
-  if (error || !user) {
-    const url = new URL(request.url);
-    const redirectTo = `${url.pathname}${url.search}`;
-    throw redirect(`/login?redirectTo=${encodeURIComponent(redirectTo)}`);
+  if (!user) {
+    throw redirect(`/login?redirectTo=${encodeURIComponent(redirectTo)}`, { headers });
   }
 
   const role = await getUserRole(user.id);
