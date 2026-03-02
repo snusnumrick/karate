@@ -1,6 +1,7 @@
-import {Link} from "@remix-run/react";
+import {Link, useNavigate} from "@remix-run/react";
 
 export default function _layoutPaymentCancel() {
+    const navigate = useNavigate();
     return (
         <div className="max-w-md mx-auto my-12 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
             <div className="text-center">
@@ -26,12 +27,12 @@ export default function _layoutPaymentCancel() {
                         Return Home
                     </Link>
 
-                    <Link
-                        to="/registration"
+                    <button
+                        onClick={() => navigate(-1)}
                         className="px-4 py-2 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500"
                     >
                         Try Again
-                    </Link>
+                    </button>
                 </div>
             </div>
         </div>

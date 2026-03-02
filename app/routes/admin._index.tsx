@@ -341,6 +341,7 @@ export async function loader(_: LoaderFunctionArgs) {
             inProgressSessions,
             upcomingSessions,
             todaysSessions: todaysSessions || [],
+            today,
             // Invoice statistics
             invoiceStats: invoiceStats ? {
                 total_invoices: invoiceStats.total_invoices,
@@ -747,7 +748,7 @@ export default function AdminDashboard() {
                                     </p>
                                 )}
                                 {data.todaysSessions.length > 3 && (
-                                    <Link to="/admin/sessions/today"
+                                    <Link to={`/admin/sessions?date_from=${data.today}&date_to=${data.today}`}
                                           className="text-blue-600 dark:text-blue-400 text-sm hover:underline block">
                                         View all {data.todaysSessions.length} sessions →
                                     </Link>

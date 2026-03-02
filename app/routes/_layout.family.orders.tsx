@@ -124,7 +124,7 @@ export default function FamilyOrders() {
                                 <AlertCircle className="h-4 w-4" />
                                 <AlertTitle>No Orders Found</AlertTitle>
                                 <AlertDescription>
-                                    You haven&apos;t placed any orders yet. Visit the <Link to="/family/store" className="font-medium text-primary underline underline-offset-4">Store</Link> to make a purchase.
+                                    You haven&apos;t placed any orders yet. To make a purchase, visit a student profile from your <Link to="/family" className="font-medium text-primary underline underline-offset-4">Family Dashboard</Link>.
                                 </AlertDescription>
                             </Alert>
                         ) : (
