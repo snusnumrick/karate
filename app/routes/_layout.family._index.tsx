@@ -1301,7 +1301,7 @@ export default function FamilyDashboard() {
                                     {/* Show list of pending waivers */}
                                     {pendingWaivers && pendingWaivers.length > 0 && (
                                         <div className="space-y-3 mb-6">
-                                            {pendingWaivers.map((waiver: { id: string; title: string }, index: number) => (
+                                            {pendingWaivers.map((waiver: PendingWaiver, index: number) => (
                                                 <div key={index}
                                                      className="p-3 form-card-styles rounded-lg border-l-4 border-orange-500">
                                                     <div className="flex items-start gap-3">
@@ -1310,8 +1310,13 @@ export default function FamilyDashboard() {
                                                         </div>
                                                         <div className="flex-1">
                                                             <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">
-                                                                {waiver.title}
+                                                                {waiver.waiver_name}
                                                             </p>
+                                                            {(waiver.student_name || waiver.program_name) && (
+                                                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                                                    {[waiver.student_name, waiver.program_name].filter(Boolean).join(' — ')}
+                                                                </p>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </div>
