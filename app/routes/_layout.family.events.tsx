@@ -654,7 +654,7 @@ export default function FamilyEventsPage() {
                 You haven&apos;t registered for any events yet.
               </p>
               <Button asChild>
-                <Link to="/family/calendar">
+                <Link to="/events">
                   Browse Events
                 </Link>
               </Button>

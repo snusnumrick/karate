@@ -269,6 +269,98 @@ export class EventService {
     return true; // public and limited events allow registration for everyone
   }
 
+  static async getAllUpcomingEvents(): Promise<UpcomingEvent[]> {
+    const today = getTodayLocalDateString();
+    const { data: events, error } = await getSupabase()
+      .from('events')
+      .select(`
+        id,
+        title,
+        description,
+        event_type_id,
+        status,
+        start_date,
+        end_date,
+        start_time,
+        end_time,
+        location,
+        address,
+        registration_fee,
+        registration_fee_cents,
+        late_registration_fee,
+        late_registration_fee_cents,
+        registration_deadline,
+        external_url,
+        visibility,
+        event_type:event_types(
+          name,
+          display_name,
+          color_class,
+          border_class,
+          dark_mode_class,
+          icon
+        )
+      `)
+      .eq('visibility', 'public')
+      .in('status', ['published', 'registration_open'])
+      .or(`end_date.gte.${today},end_date.is.null`)
+      .gte('start_date', today)
+      .order('start_date', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching all upcoming events:', error);
+      return [];
+    }
+
+    return (events || []).map(applyEventMoney);
+  }
+
+  static async getAllEventsForLoggedInUsers(): Promise<UpcomingEvent[]> {
+    const today = getTodayLocalDateString();
+    const { data: events, error } = await getSupabase()
+      .from('events')
+      .select(`
+        id,
+        title,
+        description,
+        event_type_id,
+        status,
+        start_date,
+        end_date,
+        start_time,
+        end_time,
+        location,
+        address,
+        registration_fee,
+        registration_fee_cents,
+        late_registration_fee,
+        late_registration_fee_cents,
+        registration_deadline,
+        external_url,
+        visibility,
+        event_type:event_types(
+          name,
+          display_name,
+          color_class,
+          border_class,
+          dark_mode_class,
+          icon
+        )
+      `)
+      .in('visibility', ['public', 'limited', 'internal'])
+      .in('status', ['published', 'registration_open'])
+      .or(`end_date.gte.${today},end_date.is.null`)
+      .gte('start_date', today)
+      .order('start_date', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching all events for logged-in users:', error);
+      return [];
+    }
+
+    return (events || []).map(applyEventMoney);
+  }
+
   static clearCache() {
     eventCache.clear();
     loggedInEventCache.clear();

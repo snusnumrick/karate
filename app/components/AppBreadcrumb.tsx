@@ -669,6 +669,12 @@ export const breadcrumbPatterns = {
     { label: "Sign", current: true },
   ],
 
+  // Public events listing page
+  publicEvents: () => [
+    { label: "Home", href: "/" },
+    { label: "Upcoming Events", current: true },
+  ],
+
   // Public waiver pages (for non-authenticated users)
   waivers: () => [
     { label: "Home", href: "/" },
