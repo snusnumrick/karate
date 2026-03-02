@@ -1,5 +1,6 @@
 import { json, redirect, type LoaderFunctionArgs, type ActionFunctionArgs, type MetaFunction } from '@remix-run/node';
 import { useLoaderData, useRouteError, Link } from '@remix-run/react';
+import { AppBreadcrumb, breadcrumbPatterns } from '~/components/AppBreadcrumb';
 import { EventService, type EventWithEventType } from '~/services/event.server';
 import { siteConfig } from '~/config/site';
 import { Button } from '~/components/ui/button';
@@ -813,16 +814,9 @@ export default function EventRegistration() {
   return (
     <div className="min-h-screen page-background-styles py-12">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Back Button and Breadcrumb Navigation */}
+        {/* Breadcrumb Navigation */}
         <div className="mb-8">
-
-          <nav className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
-            <Link to="/" className="hover:text-green-600 dark:hover:text-green-400">Home</Link>
-            <span>/</span>
-            <Link to={`/events/${event.id}`} className="hover:text-green-600 dark:hover:text-green-400">Event Details</Link>
-            <span>/</span>
-            <span className="text-gray-900 dark:text-white">Registration</span>
-          </nav>
+          <AppBreadcrumb items={breadcrumbPatterns.eventRegister(event.title, event.id)} />
         </div>
 
         {/* Page Header */}

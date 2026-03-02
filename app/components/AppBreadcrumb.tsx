@@ -675,6 +675,35 @@ export const breadcrumbPatterns = {
     { label: "Upcoming Events", current: true },
   ],
 
+  // Event detail page
+  eventDetail: (eventTitle: string) => [
+    { label: "Home", href: "/" },
+    { label: "Upcoming Events", href: "/events" },
+    { label: eventTitle, current: true },
+  ],
+
+  // Event registration steps
+  eventRegisterStudents: (eventTitle: string, eventId: string) => [
+    { label: "Home", href: "/" },
+    { label: "Upcoming Events", href: "/events" },
+    { label: eventTitle, href: `/events/${eventId}` },
+    { label: "Select Students", current: true },
+  ],
+
+  eventRegisterWaivers: (eventTitle: string, eventId: string) => [
+    { label: "Home", href: "/" },
+    { label: "Upcoming Events", href: "/events" },
+    { label: eventTitle, href: `/events/${eventId}` },
+    { label: "Sign Waivers", current: true },
+  ],
+
+  eventRegister: (eventTitle: string, eventId: string) => [
+    { label: "Home", href: "/" },
+    { label: "Upcoming Events", href: "/events" },
+    { label: eventTitle, href: `/events/${eventId}` },
+    { label: "Registration", current: true },
+  ],
+
   // Public waiver pages (for non-authenticated users)
   waivers: () => [
     { label: "Home", href: "/" },

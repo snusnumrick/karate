@@ -1,6 +1,7 @@
 import React from 'react';
 import { json, redirect, type LoaderFunctionArgs, type ActionFunctionArgs } from '@remix-run/node';
 import { Form, useLoaderData, Link } from '@remix-run/react';
+import { AppBreadcrumb, breadcrumbPatterns } from '~/components/AppBreadcrumb';
 import { getSupabaseServerClient } from '~/utils/supabase.server';
 import { Button } from '~/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '~/components/ui/card';
@@ -194,13 +195,7 @@ export default function EventStudentSelection() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Breadcrumb */}
         <div className="mb-8">
-          <nav className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
-            <Link to="/" className="hover:text-green-600 dark:hover:text-green-400">Home</Link>
-            <span>/</span>
-            <Link to={`/events/${event.id}`} className="hover:text-green-600 dark:hover:text-green-400">Event Details</Link>
-            <span>/</span>
-            <span className="text-gray-900 dark:text-white">Select Students</span>
-          </nav>
+          <AppBreadcrumb items={breadcrumbPatterns.eventRegisterStudents(event.title, event.id)} />
         </div>
 
         {/* Page Header */}

@@ -1,5 +1,6 @@
 import { json, redirect, type LoaderFunctionArgs } from '@remix-run/node';
 import { useLoaderData, Link } from '@remix-run/react';
+import { AppBreadcrumb, breadcrumbPatterns } from '~/components/AppBreadcrumb';
 import { getSupabaseServerClient } from '~/utils/supabase.server';
 import { Button } from '~/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
@@ -135,13 +136,7 @@ export default function EventRegistrationWaivers() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Breadcrumb */}
         <div className="mb-8">
-          <nav className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
-            <Link to="/" className="hover:text-green-600 dark:hover:text-green-400">Home</Link>
-            <span>/</span>
-            <Link to={`/events/${eventId}`} className="hover:text-green-600 dark:hover:text-green-400">Event Details</Link>
-            <span>/</span>
-            <span className="text-gray-900 dark:text-white">Required Waivers</span>
-          </nav>
+          <AppBreadcrumb items={breadcrumbPatterns.eventRegisterWaivers(eventTitle, eventId)} />
         </div>
 
         {/* Page Header */}

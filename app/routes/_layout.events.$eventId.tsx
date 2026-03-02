@@ -1,6 +1,7 @@
 import type { LoaderFunctionArgs, MetaFunction } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { Link, useLoaderData, Outlet, useLocation, useRouteError, isRouteErrorResponse, useRouteLoaderData } from "@remix-run/react";
+import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { JsonLd } from "~/components/JsonLd";
 import { EventService, type EventWithEventType } from "~/services/event.server";
 import { Button } from "~/components/ui/button";
@@ -169,11 +170,9 @@ export default function EventDetail() {
       {nonce && (<JsonLd data={eventStructuredData} nonce={nonce} />)}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Breadcrumb Navigation */}
-        <nav className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400 mb-8">
-          <Link to="/" className="hover:text-green-600 dark:hover:text-green-400">Home</Link>
-          <span>/</span>
-          <span className="text-gray-900 dark:text-white">Event Details</span>
-        </nav>
+        <div className="mb-8">
+          <AppBreadcrumb items={breadcrumbPatterns.eventDetail(event.title)} />
+        </div>
         
         {/* Page Header */}
         <div className="text-center mb-12">
