@@ -515,12 +515,12 @@ export function ErrorBoundary() {
             {message}
           </p>
           <div className="space-y-3">
-            <Link 
-              to="/" 
+            <a
+              href="/events"
               className="block w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md transition-colors"
             >
               Return to Events
-            </Link>
+            </a>
             {status === 404 && (
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 If you believe this is an error, please contact us.

@@ -60,7 +60,19 @@
       "Bash(git push:*)",
       "Bash(git log:*)",
       "Bash(npx @squoosh/cli:*)",
-      "Bash(npx playwright install:*)"
+      "Bash(npx playwright install:*)",
+      "Bash(wc:*)",
+      "mcp__20f13d73-612b-413d-aa25-ed7f2b6368f9__gmail_search_messages",
+      "mcp__20f13d73-612b-413d-aa25-ed7f2b6368f9__gmail_read_message",
+      "Bash(while read hash msg)",
+      "Bash(do echo \"\")",
+      "mcp__plugin_playwright_playwright__browser_navigate",
+      "mcp__plugin_playwright_playwright__browser_take_screenshot",
+      "mcp__plugin_playwright_playwright__browser_wait_for",
+      "Skill(commit-commands:commit)",
+      "Skill(commit-commands:commit:*)",
+      "mcp__plugin_oh-my-claudecode_t__lsp_diagnostics",
+      "mcp__plugin_oh-my-claudecode_t__lsp_diagnostics_directory"
     ],
     "deny": [],
     "ask": []

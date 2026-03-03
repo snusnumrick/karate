@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { Link } from "@remix-run/react";
 import {
   Breadcrumb,
@@ -25,13 +26,13 @@ export function AppBreadcrumb({ items, className }: AppBreadcrumbProps) {
     <Breadcrumb className={className}>
       <BreadcrumbList>
         {items.map((item, index) => (
-          <div key={index} className="flex items-center">
+          <Fragment key={index}>
             <BreadcrumbItem>
               {item.current || (!item.href && !item.onClick) ? (
                 <BreadcrumbPage>{item.label}</BreadcrumbPage>
               ) : item.onClick ? (
                 <BreadcrumbLink asChild>
-                  <button 
+                  <button
                     onClick={item.onClick}
                     className="hover:underline cursor-pointer bg-transparent border-none p-0 font-inherit text-inherit"
                   >
@@ -45,7 +46,7 @@ export function AppBreadcrumb({ items, className }: AppBreadcrumbProps) {
               )}
             </BreadcrumbItem>
             {index < items.length - 1 && <BreadcrumbSeparator />}
-          </div>
+          </Fragment>
         ))}
       </BreadcrumbList>
     </Breadcrumb>
