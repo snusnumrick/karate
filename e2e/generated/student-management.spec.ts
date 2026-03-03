@@ -14,60 +14,30 @@ import { loginAsAdmin, loginAsFamily, loginAsInstructor } from '../utils/auth';
 
 test.describe('Student Management', () => {
   
-  test('smoke: /admin/families/:familyId/students/new loads successfully', async ({ page }) => {
-    // Collect JS errors before navigation
-    const errors = [];
-    page.on('pageerror', err => errors.push(err.message));
-
-    await page.goto('/admin/families/:familyId/students/new');
-
-    // Wait for page to be interactive (auth redirect is acceptable)
-    await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
-
-    // Page must load something — not a blank white screen or server crash
-    const bodyText = await page.textContent('body').catch(() => '');
-    expect(bodyText).not.toBeNull();
-
-    // No uncaught JS errors
-    expect(errors).toHaveLength(0);
+  test.skip('smoke: /admin/families/:familyId/students/new loads successfully', async ({ page }) => {
+    // SKIPPED: route contains dynamic parameters that require real IDs.
+    // Navigating to "/admin/families/:familyId/students/new" literally would send ":familyId" etc. to the
+    // database, causing UUID parse errors (Sentry: invalid input syntax for uuid).
+    // To enable: replace params with real test-fixture IDs from your test database.
+    // Example: '/admin/families/:familyId/students/new'.replace(':familyId', process.env.TEST_FAMILY_ID ?? '')
   });
 
   
-  test('smoke: /admin/student-belts/:studentId/ loads successfully', async ({ page }) => {
-    // Collect JS errors before navigation
-    const errors = [];
-    page.on('pageerror', err => errors.push(err.message));
-
-    await page.goto('/admin/student-belts/:studentId/');
-
-    // Wait for page to be interactive (auth redirect is acceptable)
-    await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
-
-    // Page must load something — not a blank white screen or server crash
-    const bodyText = await page.textContent('body').catch(() => '');
-    expect(bodyText).not.toBeNull();
-
-    // No uncaught JS errors
-    expect(errors).toHaveLength(0);
+  test.skip('smoke: /admin/student-belts/:studentId/ loads successfully', async ({ page }) => {
+    // SKIPPED: route contains dynamic parameters that require real IDs.
+    // Navigating to "/admin/student-belts/:studentId/" literally would send ":familyId" etc. to the
+    // database, causing UUID parse errors (Sentry: invalid input syntax for uuid).
+    // To enable: replace params with real test-fixture IDs from your test database.
+    // Example: '/admin/student-belts/:studentId/'.replace(':familyId', process.env.TEST_FAMILY_ID ?? '')
   });
 
   
-  test('smoke: /admin/student-belts/:studentId/:beltAwardId/edit loads successfully', async ({ page }) => {
-    // Collect JS errors before navigation
-    const errors = [];
-    page.on('pageerror', err => errors.push(err.message));
-
-    await page.goto('/admin/student-belts/:studentId/:beltAwardId/edit');
-
-    // Wait for page to be interactive (auth redirect is acceptable)
-    await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
-
-    // Page must load something — not a blank white screen or server crash
-    const bodyText = await page.textContent('body').catch(() => '');
-    expect(bodyText).not.toBeNull();
-
-    // No uncaught JS errors
-    expect(errors).toHaveLength(0);
+  test.skip('smoke: /admin/student-belts/:studentId/:beltAwardId/edit loads successfully', async ({ page }) => {
+    // SKIPPED: route contains dynamic parameters that require real IDs.
+    // Navigating to "/admin/student-belts/:studentId/:beltAwardId/edit" literally would send ":familyId" etc. to the
+    // database, causing UUID parse errors (Sentry: invalid input syntax for uuid).
+    // To enable: replace params with real test-fixture IDs from your test database.
+    // Example: '/admin/student-belts/:studentId/:beltAwardId/edit'.replace(':familyId', process.env.TEST_FAMILY_ID ?? '')
   });
 
   

@@ -1134,14 +1134,20 @@ END $$;
 
 -- Waiver Signature Materialized View Refresh Functions
 -- Fix for "must be owner of materialized view enrollment_waiver_status" error
+-- Matches migration 035: SET search_path on trigger fn, CONCURRENTLY fallback, three triggers
 
--- Drop the existing trigger first
+-- Drop all trigger variants (migration 035 renamed them)
+DROP TRIGGER IF EXISTS trigger_enrollments_refresh_waiver_status ON enrollments;
+DROP TRIGGER IF EXISTS trigger_waiver_signatures_refresh_status ON waiver_signatures;
+DROP TRIGGER IF EXISTS trigger_programs_refresh_waiver_status ON programs;
 DROP TRIGGER IF EXISTS refresh_enrollment_waiver_status_on_signature ON waiver_signatures;
 
--- Drop the existing function (it may have the wrong signature)
+-- Drop the existing functions
 DROP FUNCTION IF EXISTS refresh_enrollment_waiver_status() CASCADE;
+DROP FUNCTION IF EXISTS trigger_refresh_enrollment_waiver_status() CASCADE;
 
--- Create a simple procedure (not a trigger function) to refresh with elevated privileges
+-- Create the SECURITY DEFINER procedure to refresh the materialized view
+-- Uses CONCURRENTLY first (non-blocking), falls back to regular refresh if no unique index
 CREATE OR REPLACE FUNCTION refresh_enrollment_waiver_status_proc()
 RETURNS void
 SECURITY DEFINER
@@ -1149,25 +1155,33 @@ SET search_path = public
 LANGUAGE plpgsql
 AS $$
 BEGIN
-    -- Refresh the materialized view with owner/superuser privileges
-    REFRESH MATERIALIZED VIEW enrollment_waiver_status;
+    BEGIN
+        REFRESH MATERIALIZED VIEW CONCURRENTLY enrollment_waiver_status;
+    EXCEPTION
+        WHEN OTHERS THEN
+            -- If concurrent refresh fails (e.g., no unique index), try regular refresh
+            REFRESH MATERIALIZED VIEW enrollment_waiver_status;
+    END;
 EXCEPTION
     WHEN OTHERS THEN
-        -- Log the error but don't fail
+        -- Log the error but don't fail the transaction
+        -- This prevents cascade delete failures when the view doesn't exist
         RAISE WARNING 'Failed to refresh enrollment_waiver_status: %', SQLERRM;
 END;
 $$;
 
--- Create a trigger function that calls the procedure
+-- Create the trigger function that calls the SECURITY DEFINER procedure
+-- SET search_path = public ensures function resolution works during cascade deletes
+-- from auth.users (which run in a different schema context)
 CREATE OR REPLACE FUNCTION trigger_refresh_enrollment_waiver_status()
 RETURNS trigger
 LANGUAGE plpgsql
+SET search_path = public
 AS $$
 BEGIN
-    -- Call the security definer procedure
-    PERFORM refresh_enrollment_waiver_status_proc();
+    -- Call with explicit schema qualification for safety
+    PERFORM public.refresh_enrollment_waiver_status_proc();
 
-    -- Return appropriate value for trigger
     IF TG_OP = 'DELETE' THEN
         RETURN OLD;
     ELSE
@@ -1176,15 +1190,29 @@ BEGIN
 END;
 $$;
 
--- Create the trigger using FOR EACH STATEMENT (more efficient)
-CREATE TRIGGER refresh_enrollment_waiver_status_on_signature
+-- Trigger on enrollments table
+CREATE TRIGGER trigger_enrollments_refresh_waiver_status
+    AFTER INSERT OR UPDATE OR DELETE ON enrollments
+    FOR EACH STATEMENT
+    EXECUTE FUNCTION trigger_refresh_enrollment_waiver_status();
+
+-- Trigger on waiver_signatures table
+CREATE TRIGGER trigger_waiver_signatures_refresh_status
     AFTER INSERT OR UPDATE OR DELETE ON waiver_signatures
     FOR EACH STATEMENT
     EXECUTE FUNCTION trigger_refresh_enrollment_waiver_status();
 
+-- Trigger on programs table (only when required_waiver_id changes)
+CREATE TRIGGER trigger_programs_refresh_waiver_status
+    AFTER UPDATE OF required_waiver_id ON programs
+    FOR EACH STATEMENT
+    EXECUTE FUNCTION trigger_refresh_enrollment_waiver_status();
+
 -- Add comments explaining the functions
-COMMENT ON FUNCTION refresh_enrollment_waiver_status_proc() IS 'Security definer procedure to refresh enrollment_waiver_status materialized view with elevated privileges.';
-COMMENT ON FUNCTION trigger_refresh_enrollment_waiver_status() IS 'Trigger function that calls the security definer refresh procedure.';
+COMMENT ON FUNCTION refresh_enrollment_waiver_status_proc() IS
+    'SECURITY DEFINER procedure to refresh enrollment_waiver_status materialized view with elevated privileges. Used by triggers to ensure proper permissions when refreshing the view.';
+COMMENT ON FUNCTION trigger_refresh_enrollment_waiver_status() IS
+    'Trigger function that calls the SECURITY DEFINER refresh procedure when enrollment, waiver_signatures, or program data changes.';
 
 
 -- Drop existing triggers first to avoid conflicts when recreating
@@ -1192,15 +1220,21 @@ DROP TRIGGER IF EXISTS families_updated ON families;
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 
 -- Create trigger for profile creation
+-- Security hardened: SET search_path = public prevents search_path manipulation attacks
+-- on this SECURITY DEFINER function (see migration 041)
 CREATE OR REPLACE FUNCTION public.handle_new_user()
-    RETURNS TRIGGER AS
-$$
+    RETURNS TRIGGER
+    LANGUAGE plpgsql
+    SECURITY DEFINER
+    SET search_path = public
+AS $$
 BEGIN
-INSERT INTO public.profiles (id, email)
-VALUES (NEW.id, NEW.email);
-RETURN NEW;
+    INSERT INTO public.profiles (id, email, role)
+    VALUES (NEW.id, NEW.email, 'user')
+    ON CONFLICT (id) DO NOTHING;
+    RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 -- Only create trigger if it doesn't exist
 DO

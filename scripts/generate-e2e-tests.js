@@ -63,7 +63,7 @@ test.describe('${feature.name}', () => {
 });
 `,
 
-  smokeTest: (feature, route) => `
+  smokeTest: (_feature, route) => `
   test('smoke: ${route} loads successfully', async ({ page }) => {
     // Collect JS errors before navigation
     const errors = [];
@@ -80,6 +80,17 @@ test.describe('${feature.name}', () => {
 
     // No uncaught JS errors
     expect(errors).toHaveLength(0);
+  });`,
+
+  // Smoke test stub for routes with dynamic params — skipped to prevent
+  // literal param strings (e.g. ":familyId") from hitting the database
+  skippedSmokeTest: (_feature, route) => `
+  test.skip('smoke: ${route} loads successfully', async ({ page }) => {
+    // SKIPPED: route contains dynamic parameters that require real IDs.
+    // Navigating to "${route}" literally would send ":familyId" etc. to the
+    // database, causing UUID parse errors (Sentry: invalid input syntax for uuid).
+    // To enable: replace params with real test-fixture IDs from your test database.
+    // Example: '${route}'.replace(':familyId', process.env.TEST_FAMILY_ID ?? '')
   });`,
 
   roleBasedAccessTest: (route, role) => `
@@ -164,9 +175,16 @@ function generateFeatureTests(feature) {
   const tests = [];
   const routes = extractRoutes(feature.files || []);
 
-  // Generate smoke tests for each route
+  // Generate smoke tests for each route.
+  // Dynamic-param routes (containing ":") are skipped — navigating to them
+  // with literal param names (e.g. "/families/:familyId") causes the Remix
+  // loader to pass ":familyId" as a UUID to the database, producing Sentry errors.
   routes.slice(0, 3).forEach(route => {
-    tests.push(TEMPLATES.smokeTest(feature, route));
+    if (route.includes(':')) {
+      tests.push(TEMPLATES.skippedSmokeTest(feature, route));
+    } else {
+      tests.push(TEMPLATES.smokeTest(feature, route));
+    }
   });
 
   if (routes.length > 3) {

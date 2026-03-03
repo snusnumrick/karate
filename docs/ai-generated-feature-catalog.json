@@ -1,0 +1,774 @@
+{
+  "meta": {
+    "type": "AI-Enhanced Feature Catalog",
+    "generated_at": "2026-03-03T17:12:13.168Z",
+    "generated_by": "scripts/generate-feature-catalog-ai.js",
+    "ai_model": "gemini-2.5-flash",
+    "note": "AI-generated descriptions. For manual overrides, see standard_prd.json"
+  },
+  "stats": {
+    "routes": {
+      "total": 194,
+      "admin": 98,
+      "family": 28,
+      "instructor": 8,
+      "api": 25,
+      "public": 38
+    },
+    "last_scan": "2026-03-03T17:12:13.172Z"
+  },
+  "tech_stack": [
+    "React 18.3.1",
+    "Remix 2.16.7",
+    "Vite 5.0.0",
+    "TypeScript",
+    "Supabase (PostgreSQL + Auth + Storage)",
+    "Tailwind CSS 3.3.5",
+    "Shadcn/UI (Component library)",
+    "Stripe (Payment processing)",
+    "Square Web SDK (Payment processing)",
+    "Resend (Email service)",
+    "Web Push (Push notifications)",
+    "Google Gemini API (AI integration)",
+    "Zod (Schema validation)",
+    "React Hook Form",
+    "@react-pdf/renderer (PDF generation)",
+    "dinero.js (Money calculations)",
+    "Vitest (Unit testing)",
+    "Playwright (E2E testing)",
+    "Express (Production server)",
+    "Sentry (Error monitoring)"
+  ],
+  "features": [
+    {
+      "name": "Authentication & User Management",
+      "description": "Implements user authentication, including login, logout, and Supabase session management via callbacks.",
+      "capabilities": [
+        "Manages user login and session creation using Supabase.",
+        "Handles user logout and session termination securely.",
+        "Processes Supabase authentication callbacks for email verification or password resets.",
+        "Utilizes CSRF protection for authentication forms."
+      ],
+      "files": [
+        "app/routes/_layout.auth.callback.ts",
+        "app/routes/_layout.login.tsx",
+        "app/routes/logout.ts",
+        "app/utils/api-auth.server.ts",
+        "app/utils/auth.server.ts",
+        "e2e/utils/auth.ts"
+      ],
+      "stats": {
+        "total": 6,
+        "routes": 3,
+        "services": 0,
+        "components": 0,
+        "utils": 3
+      },
+      "meta": {
+        "ai_generated": true
+      }
+    },
+    {
+      "name": "Payment Processing",
+      "description": "Manages event registration and invoice payments, including history tracking, multi-method processing, and financial calculations.",
+      "capabilities": [
+        "Process payments for event registrations, accounting for fees and student counts.",
+        "Manage invoice payments, display comprehensive payment history, and track outstanding balances.",
+        "Support a variety of payment methods including cash, check, credit card, bank transfer, and mobile pay.",
+        "Perform financial calculations, apply taxes, and format monetary values consistently.",
+        "Record and display details of who processed each payment for auditing and reporting."
+      ],
+      "files": [
+        "app/components/EventPaymentForm.tsx",
+        "app/components/InvoicePaymentHistory.tsx",
+        "app/components/PaymentMethodSelector.tsx",
+        "app/components/PaymentSetupForm.tsx",
+        "app/components/RecordPaymentForm.tsx",
+        "app/components/StudentPaymentSection.tsx",
+        "app/components/payment/PaymentForm.tsx",
+        "app/components/payment/SquarePaymentForm.tsx",
+        "app/components/payment/StripePaymentForm.tsx",
+        "app/routes/__tests__/family-payment-action.test.ts",
+        "app/routes/_layout.family.payment-history.tsx",
+        "app/routes/_layout.family.payment.success.$paymentId.tsx",
+        "app/routes/_layout.family.payment.tsx",
+        "app/routes/_layout.family.receipt.$paymentId.tsx",
+        "app/routes/_layout.pay.$paymentId.tsx",
+        "app/routes/_layout.pay.tsx",
+        "app/routes/_layout.payment.cancel.tsx",
+        "app/routes/_layout.payment.success.tsx",
+        "app/routes/admin.invoices.$id.record-payment.tsx",
+        "app/routes/admin.payments.$paymentId.tsx",
+        "app/routes/admin.payments._index.tsx",
+        "app/routes/admin.payments.new.tsx",
+        "app/routes/admin.payments.pending.tsx",
+        "app/routes/api.check-pending-payment.tsx",
+        "app/routes/api.create-payment-intent.ts",
+        "app/routes/api.student-payment-eligibility.$studentId.ts",
+        "app/routes/api.student-payment-options.$studentId.ts",
+        "app/services/enrollment-payment.server.ts",
+        "app/services/payment-eligibility.server.ts",
+        "app/services/payments/index.server.ts",
+        "app/services/payments/paid-until-calculator.server.ts",
+        "app/services/payments/square.server.ts",
+        "app/services/payments/stripe.server.ts",
+        "app/services/payments/types.server.ts",
+        "app/services/payments/webhook-events.server.ts",
+        "app/services/payments/webhook-route.server.ts",
+        "app/services/payments/webhook.server.ts"
+      ],
+      "stats": {
+        "total": 37,
+        "routes": 18,
+        "services": 10,
+        "components": 9,
+        "utils": 0
+      },
+      "meta": {
+        "ai_generated": true
+      }
+    },
+    {
+      "name": "Family Management",
+      "description": "A dedicated portal for families to manage student profiles, payments, schedules, and class registrations.",
+      "capabilities": [
+        "Access personalized family dashboards and student profiles.",
+        "Manage and process student enrollment and recurring payments.",
+        "View school calendars and event schedules.",
+        "Monitor and complete incomplete student registrations.",
+        "Secure navigation and user-specific content delivery."
+      ],
+      "files": [
+        "app/components/FamilyNavbar.tsx",
+        "app/routes/__tests__/family-payment-action.test.ts",
+        "app/routes/_layout.family._index.tsx",
+        "app/routes/_layout.family.account.tsx",
+        "app/routes/_layout.family.add-guardian.tsx",
+        "app/routes/_layout.family.add-student.tsx",
+        "app/routes/_layout.family.attendance.tsx",
+        "app/routes/_layout.family.calendar.tsx",
+        "app/routes/_layout.family.complete-profile.tsx",
+        "app/routes/_layout.family.create.tsx",
+        "app/routes/_layout.family.events.tsx",
+        "app/routes/_layout.family.guardian.$guardianId.tsx",
+        "app/routes/_layout.family.invoices.$id.tsx",
+        "app/routes/_layout.family.invoices._index.tsx",
+        "app/routes/_layout.family.messages.$conversationId.tsx",
+        "app/routes/_layout.family.messages._index.tsx",
+        "app/routes/_layout.family.messages.new.tsx",
+        "app/routes/_layout.family.orders.tsx",
+        "app/routes/_layout.family.payment-history.tsx",
+        "app/routes/_layout.family.payment.success.$paymentId.tsx",
+        "app/routes/_layout.family.payment.tsx",
+        "app/routes/_layout.family.receipt.$paymentId.tsx",
+        "app/routes/_layout.family.store.purchase.$studentId.tsx",
+        "app/routes/_layout.family.student.$studentId._index.tsx",
+        "app/routes/_layout.family.student.$studentId.attendance.tsx",
+        "app/routes/_layout.family.waivers.$id.download.tsx",
+        "app/routes/_layout.family.waivers.$id.sign.tsx",
+        "app/routes/_layout.family.waivers.$waiverId.tsx",
+        "app/routes/_layout.family.waivers._index.tsx",
+        "app/routes/admin.families.$familyId.edit.tsx",
+        "app/routes/admin.families.$familyId.guardians.edit.tsx",
+        "app/routes/admin.families.$familyId.students.new.tsx",
+        "app/routes/admin.families.$familyId.tsx",
+        "app/routes/admin.families._index.tsx",
+        "app/routes/admin.families.new.tsx",
+        "app/routes/api.available-discounts.$familyId.tsx",
+        "app/routes/api.student-family.$studentId.ts",
+        "app/routes/api/v1/families.$familyId.guardians.ts",
+        "app/routes/api/v1/families.$familyId.ts",
+        "app/services/family.server.ts"
+      ],
+      "stats": {
+        "total": 40,
+        "routes": 38,
+        "services": 1,
+        "components": 1,
+        "utils": 0
+      },
+      "meta": {
+        "ai_generated": true
+      }
+    },
+    {
+      "name": "Guardian Management",
+      "description": "Manages guardian profiles, allowing creation, viewing, editing, and deletion, tied to student families.",
+      "capabilities": [
+        "Add new guardian profiles with personal details.",
+        "View and update individual guardian records.",
+        "Associate guardians with specific student families.",
+        "Delete guardian profiles with confirmation.",
+        "Provide an administrative interface for managing family-guardian relationships."
+      ],
+      "files": [
+        "app/routes/_layout.family.add-guardian.tsx",
+        "app/routes/_layout.family.guardian.$guardianId.tsx",
+        "app/routes/admin.families.$familyId.guardians.edit.tsx",
+        "app/routes/api/v1/families.$familyId.guardians.ts",
+        "app/routes/api/v1/guardians.$guardianId.ts",
+        "app/services/guardian.server.ts"
+      ],
+      "stats": {
+        "total": 6,
+        "routes": 5,
+        "services": 1,
+        "components": 0,
+        "utils": 0
+      },
+      "meta": {
+        "ai_generated": true
+      }
+    },
+    {
+      "name": "Student Management",
+      "description": "Manages student profiles, including personal details, payment information, and event registrations.",
+      "capabilities": [
+        "Create and edit student profiles with personal details and attributes like T-shirt size.",
+        "Manage student payment eligibility, setup, and financial details related to enrollment.",
+        "Facilitate student registration and enrollment for specific school events.",
+        "Provides different management interfaces for administrators and family members."
+      ],
+      "files": [
+        "app/components/StudentFormFields.tsx",
+        "app/components/StudentPaymentSection.tsx",
+        "app/routes/_layout.events.$eventId.register_.students.tsx",
+        "app/routes/_layout.family.add-student.tsx",
+        "app/routes/_layout.family.store.purchase.$studentId.tsx",
+        "app/routes/_layout.family.student.$studentId._index.tsx",
+        "app/routes/_layout.family.student.$studentId.attendance.tsx",
+        "app/routes/admin.families.$familyId.students.new.tsx",
+        "app/routes/admin.student-belts.$studentId.$beltAwardId.edit.tsx",
+        "app/routes/admin.student-belts.$studentId._index.tsx",
+        "app/routes/admin.student-belts.$studentId.new.tsx",
+        "app/routes/admin.students.$studentId.tsx",
+        "app/routes/admin.students._index.tsx",
+        "app/routes/admin.students.new.tsx",
+        "app/routes/api.student-eligible-classes.$studentId.ts",
+        "app/routes/api.student-family.$studentId.ts",
+        "app/routes/api.student-payment-eligibility.$studentId.ts",
+        "app/routes/api.student-payment-options.$studentId.ts",
+        "app/routes/api/v1/students.$studentId.ts",
+        "app/routes/instructor.students.tsx",
+        "app/services/student.server.ts"
+      ],
+      "stats": {
+        "total": 21,
+        "routes": 18,
+        "services": 1,
+        "components": 2,
+        "utils": 0
+      },
+      "meta": {
+        "ai_generated": true
+      }
+    },
+    {
+      "name": "Invoice Management",
+      "description": "Manages the creation, editing, and processing of invoices for karate school entities, including line items and taxes.",
+      "capabilities": [
+        "Create, edit, and process invoices with detailed forms.",
+        "Select and link invoices to specific entities (students/customers).",
+        "Dynamically manage invoice line items, including adding, duplicating, and removing.",
+        "Apply and calculate taxes for individual line items based on type.",
+        "Utilize invoice templates for efficient invoice generation."
+      ],
+      "files": [
+        "app/components/InvoiceEntitySelector.tsx",
+        "app/components/InvoiceForm.tsx",
+        "app/components/InvoiceLineItemBuilder.tsx",
+        "app/components/InvoicePaymentHistory.tsx",
+        "app/components/InvoicePreview.tsx",
+        "app/components/InvoiceTemplates.tsx",
+        "app/routes/_layout.family.invoices.$id.tsx",
+        "app/routes/_layout.family.invoices._index.tsx",
+        "app/routes/admin.invoice-entities.$id._index.tsx",
+        "app/routes/admin.invoice-entities.$id.edit.tsx",
+        "app/routes/admin.invoice-entities.$id.toggle-status.tsx",
+        "app/routes/admin.invoice-entities._index.tsx",
+        "app/routes/admin.invoice-entities.new.tsx",
+        "app/routes/admin.invoice-templates.$id.edit.tsx",
+        "app/routes/admin.invoice-templates._index.tsx",
+        "app/routes/admin.invoice-templates.new.tsx",
+        "app/routes/admin.invoice-templates.tsx",
+        "app/routes/admin.invoices.$id._index.tsx",
+        "app/routes/admin.invoices.$id.edit.tsx",
+        "app/routes/admin.invoices.$id.record-payment.tsx",
+        "app/routes/admin.invoices._index.tsx",
+        "app/routes/admin.invoices.new.tsx",
+        "app/routes/api.invoice-entities.search.tsx",
+        "app/routes/api.invoices.$id.pdf.ts",
+        "app/services/invoice-email.server.ts",
+        "app/services/invoice-entity.server.ts",
+        "app/services/invoice-template.server.ts",
+        "app/services/invoice.server.ts"
+      ],
+      "stats": {
+        "total": 28,
+        "routes": 18,
+        "services": 4,
+        "components": 6,
+        "utils": 0
+      },
+      "meta": {
+        "ai_generated": true
+      }
+    },
+    {
+      "name": "Waiver System",
+      "description": "Manages event and family waivers, allowing users to sign, store, and download signed PDF documents.",
+      "capabilities": [
+        "Facilitates waiver display and signing, often integrated with event registration flows.",
+        "Captures and stores digital signatures along with associated guardian and student information.",
+        "Generates high-quality PDF documents of signed waivers, incorporating signature images and content.",
+        "Provides secure access for families to download their specific signed waiver PDFs.",
+        "Utilizes server-side logic for authentication, data retrieval, and PDF storage/delivery."
+      ],
+      "files": [
+        "app/components/pdf/WaiverPDFTemplate.tsx",
+        "app/routes/_layout.events.$eventId.register_.waivers.tsx",
+        "app/routes/_layout.family.waivers.$id.download.tsx",
+        "app/routes/_layout.family.waivers.$id.sign.tsx",
+        "app/routes/_layout.family.waivers.$waiverId.tsx",
+        "app/routes/_layout.family.waivers._index.tsx",
+        "app/routes/admin.waivers.$waiverId.tsx",
+        "app/routes/admin.waivers._index.tsx",
+        "app/routes/admin.waivers.missing.tsx",
+        "app/routes/admin.waivers.new.tsx",
+        "app/routes/admin.waivers.signatures.tsx",
+        "app/services/waiver.server.ts"
+      ],
+      "stats": {
+        "total": 12,
+        "routes": 10,
+        "services": 1,
+        "components": 1,
+        "utils": 0
+      },
+      "meta": {
+        "ai_generated": true
+      }
+    },
+    {
+      "name": "Event Management",
+      "description": "Manages event creation, student registration, and payment processing for karate school events.",
+      "capabilities": [
+        "Facilitates student and family registration for events.",
+        "Handles secure payment processing for event fees, including tax calculation.",
+        "Collects and manages participant details during event registration.",
+        "Ensures robust error handling for event-related user interfaces."
+      ],
+      "files": [
+        "app/components/EventPaymentForm.tsx",
+        "app/components/EventRegistrationForm.tsx",
+        "app/routes/__tests__/event-error-boundary.test.tsx",
+        "app/routes/_layout.events.$eventId.register_.students.tsx",
+        "app/routes/_layout.events.$eventId.register_.waivers.tsx",
+        "app/routes/_layout.events.$eventId.tsx",
+        "app/routes/_layout.events.$eventId_.register.tsx",
+        "app/routes/_layout.events._index.tsx",
+        "app/routes/_layout.family.events.tsx",
+        "app/routes/admin.events.$eventId.tsx",
+        "app/routes/admin.events.$eventId_.edit.tsx",
+        "app/routes/admin.events.$eventId_.registrations.tsx",
+        "app/routes/admin.events._index.tsx",
+        "app/routes/admin.events.new.tsx",
+        "app/routes/admin.events.tsx",
+        "app/services/event-type.server.ts",
+        "app/services/event.server.ts"
+      ],
+      "stats": {
+        "total": 17,
+        "routes": 13,
+        "services": 2,
+        "components": 2,
+        "utils": 0
+      },
+      "meta": {
+        "ai_generated": true
+      }
+    },
+    {
+      "name": "Attendance System",
+      "description": "A student attendance system allowing families to view records and admins to manage them.",
+      "capabilities": [
+        "Enables family members to view general and specific student attendance history.",
+        "Empowers administrators to record, filter, and manage all student attendance entries.",
+        "Presents attendance data in structured tables with status badges and formatted dates.",
+        "Implements role-based access for family users and administrative staff."
+      ],
+      "files": [
+        "app/routes/_layout.family.attendance.tsx",
+        "app/routes/_layout.family.student.$studentId.attendance.tsx",
+        "app/routes/admin.attendance._index.tsx",
+        "app/routes/admin.attendance.record.tsx",
+        "app/routes/admin.attendance.report.tsx",
+        "app/routes/instructor.attendance.tsx",
+        "app/services/attendance.server.ts"
+      ],
+      "stats": {
+        "total": 7,
+        "routes": 6,
+        "services": 1,
+        "components": 0,
+        "utils": 0
+      },
+      "meta": {
+        "ai_generated": true
+      }
+    },
+    {
+      "name": "Messaging System",
+      "description": "Securely enables users and administrators to exchange messages and manage conversations within the system.",
+      "capabilities": [
+        "Display distinct conversation lists for administrators and general users.",
+        "Summarize conversations with subjects, participant names, and last message timestamps.",
+        "Indicate unread message counts for ongoing conversations.",
+        "Provide a text input for composing and sending new messages.",
+        "Ensure secure message submission using CSRF protection."
+      ],
+      "files": [
+        "app/components/AdminConversationList.tsx",
+        "app/components/ConversationList.tsx",
+        "app/components/MessageInput.tsx",
+        "app/components/MessageView.tsx",
+        "app/routes/_layout.family.messages.$conversationId.tsx",
+        "app/routes/_layout.family.messages._index.tsx",
+        "app/routes/_layout.family.messages.new.tsx",
+        "app/routes/admin.messages.$conversationId.tsx",
+        "app/routes/admin.messages._index.tsx",
+        "app/routes/admin.messages.new.tsx",
+        "app/routes/instructor.messages.$conversationId.tsx",
+        "app/routes/instructor.messages._index.tsx"
+      ],
+      "stats": {
+        "total": 12,
+        "routes": 8,
+        "services": 0,
+        "components": 4,
+        "utils": 0
+      },
+      "meta": {
+        "ai_generated": true
+      }
+    },
+    {
+      "name": "Discount System",
+      "description": "Allows administrators to manage and assign automatic discount rules and templates for members.",
+      "capabilities": [
+        "Create, edit, and delete automatic discount rules.",
+        "Define and utilize reusable discount templates.",
+        "Assign and manage the application of automatic discounts to members.",
+        "Securely manage all discount operations via an admin-only interface."
+      ],
+      "files": [
+        "app/routes/admin.automatic-discounts.$ruleId.tsx",
+        "app/routes/admin.automatic-discounts._index.tsx",
+        "app/routes/admin.automatic-discounts.assignments.tsx",
+        "app/routes/admin.automatic-discounts.new.tsx",
+        "app/routes/admin.automatic-discounts.tsx",
+        "app/routes/admin.automatic-discounts.utilities.tsx",
+        "app/routes/admin.discount-codes.$id.edit.tsx",
+        "app/routes/admin.discount-codes._index.tsx",
+        "app/routes/admin.discount-codes.new.tsx",
+        "app/routes/admin.discount-codes.tsx",
+        "app/routes/admin.discount-templates.$id.edit.tsx",
+        "app/routes/admin.discount-templates._index.tsx",
+        "app/routes/admin.discount-templates.new.tsx",
+        "app/routes/admin.discount-templates.tsx",
+        "app/routes/api.admin.discount-codes.tsx",
+        "app/routes/api.admin.discount-templates.tsx",
+        "app/routes/api.available-discounts.$familyId.tsx",
+        "app/routes/api.discount-codes.validate.tsx",
+        "app/services/auto-discount.server.ts",
+        "app/services/discount-template.server.ts",
+        "app/services/discount.server.ts",
+        "app/utils/auto-discount-events.server.ts"
+      ],
+      "stats": {
+        "total": 22,
+        "routes": 18,
+        "services": 3,
+        "components": 0,
+        "utils": 1
+      },
+      "meta": {
+        "ai_generated": true
+      }
+    },
+    {
+      "name": "Calendar & Scheduling",
+      "description": "Displays and manages school events on an interactive calendar, supporting grid/list views and student filtering.",
+      "capabilities": [
+        "Displays various event types (e.g., sessions, birthdays) with visual status indicators.",
+        "Provides interactive calendar navigation and access to detailed event information.",
+        "Supports customizable grid and list views for events, with user preference persistence.",
+        "Enables filtering of events, including by student, for personalized views."
+      ],
+      "files": [
+        "app/components/calendar/Calendar.tsx",
+        "app/components/calendar/CalendarEvent.tsx",
+        "app/components/calendar/CalendarFilterContainer.tsx",
+        "app/components/calendar/CalendarFilters.tsx",
+        "app/components/calendar/CalendarGrid.tsx",
+        "app/components/calendar/CalendarHeader.tsx",
+        "app/components/calendar/CalendarLayout.tsx",
+        "app/components/calendar/CalendarLegend.tsx",
+        "app/components/calendar/CalendarListView.tsx",
+        "app/components/calendar/CalendarPageHeader.tsx",
+        "app/components/calendar/CalendarStats.tsx",
+        "app/components/calendar/index.ts",
+        "app/components/calendar/types.ts",
+        "app/components/calendar/utils.ts",
+        "app/routes/_layout.family.calendar.tsx",
+        "app/routes/admin.calendar.new.tsx",
+        "app/routes/admin.calendar.tsx",
+        "app/routes/admin.classes.$id.sessions.$sessionId.$action.tsx",
+        "app/routes/admin.classes.$id.sessions.tsx",
+        "app/routes/admin.sessions.$id.edit.tsx",
+        "app/routes/admin.sessions.$sessionId.tsx",
+        "app/routes/admin.sessions._index.tsx",
+        "app/routes/admin.sessions.tsx",
+        "app/routes/instructor.sessions.tsx"
+      ],
+      "stats": {
+        "total": 24,
+        "routes": 10,
+        "services": 0,
+        "components": 14,
+        "utils": 0
+      },
+      "meta": {
+        "ai_generated": true
+      }
+    },
+    {
+      "name": "Store & Products",
+      "description": "This feature enables users to view their past orders and administrators to manage, view, and update all store orders.",
+      "capabilities": [
+        "Users can view their personal order history and individual order details.",
+        "Administrators can view, filter, and navigate through a list of all store orders.",
+        "Administrators can access detailed information for specific orders, including the ability to update order status and add internal notes.",
+        "Leverages Supabase for authenticated and secure data retrieval, distinguishing between user and admin access."
+      ],
+      "files": [
+        "app/routes/_layout.family.orders.tsx",
+        "app/routes/admin.store.orders.$orderId.tsx",
+        "app/routes/admin.store.orders._index.tsx",
+        "app/routes/admin.store.products.$productId.edit.tsx",
+        "app/routes/admin.store.products.$productId.variants.$variantId.edit.tsx",
+        "app/routes/admin.store.products.$productId.variants._index.tsx",
+        "app/routes/admin.store.products.$productId.variants.new.tsx",
+        "app/routes/admin.store.products._index.tsx",
+        "app/routes/admin.store.products.new.tsx"
+      ],
+      "stats": {
+        "total": 9,
+        "routes": 9,
+        "services": 0,
+        "components": 0,
+        "utils": 0
+      },
+      "meta": {
+        "ai_generated": true
+      }
+    },
+    {
+      "name": "Program & Class Management",
+      "description": "This feature enables the creation, display, and management of karate school programs, classes, and their individual sessions.",
+      "capabilities": [
+        "View and browse available karate programs and classes with schedule details.",
+        "Administrators can create, edit, and update detailed class information.",
+        "Manage the status (e.g., complete, cancel) of individual class sessions.",
+        "Secure administration access with authentication and CSRF protection for management tasks."
+      ],
+      "files": [
+        "app/routes/_layout.classes.tsx",
+        "app/routes/admin.classes.$id.edit.tsx",
+        "app/routes/admin.classes.$id.sessions.$sessionId.$action.tsx",
+        "app/routes/admin.classes.$id.sessions.tsx",
+        "app/routes/admin.classes._index.tsx",
+        "app/routes/admin.classes.new.tsx",
+        "app/routes/admin.classes.tsx",
+        "app/routes/admin.programs.$id.edit.tsx",
+        "app/routes/admin.programs._index.tsx",
+        "app/routes/admin.programs.new.tsx",
+        "app/routes/admin.programs.tsx",
+        "app/routes/api.student-eligible-classes.$studentId.ts",
+        "app/services/class.server.ts",
+        "app/services/program.server.ts"
+      ],
+      "stats": {
+        "total": 14,
+        "routes": 12,
+        "services": 2,
+        "components": 0,
+        "utils": 0
+      },
+      "meta": {
+        "ai_generated": true
+      }
+    },
+    {
+      "name": "Enrollment Management",
+      "description": "Admins can manage student enrollments, including viewing existing records, creating new ones, and applying filters.",
+      "capabilities": [
+        "View and list all existing student enrollments",
+        "Create new enrollments by linking students to specific classes",
+        "Search and filter enrollment records based on various criteria",
+        "Display detailed information about each enrollment, including status",
+        "Perform administrative actions on enrollments, such as status updates or deletion"
+      ],
+      "files": [
+        "app/routes/admin.enrollments._index.tsx",
+        "app/routes/admin.enrollments.new.tsx",
+        "app/routes/admin.enrollments.tsx",
+        "app/services/enrollment-payment.server.ts",
+        "app/services/enrollment.server.ts"
+      ],
+      "stats": {
+        "total": 5,
+        "routes": 3,
+        "services": 2,
+        "components": 0,
+        "utils": 0
+      },
+      "meta": {
+        "ai_generated": true
+      }
+    },
+    {
+      "name": "AI Database Chat",
+      "description": "Enables the AI Database Chat to correctly parse and interpret PostgreSQL array data.",
+      "capabilities": [
+        "Parses PostgreSQL string-formatted arrays (e.g., '{value1,value2}').",
+        "Handles native PostgreSQL array types returned by database drivers.",
+        "Converts various PostgreSQL array representations into standard JavaScript string arrays.",
+        "Facilitates the AI's understanding and processing of PostgreSQL array data."
+      ],
+      "files": [
+        "app/utils/retrieve.db.structure.ts"
+      ],
+      "stats": {
+        "total": 1,
+        "routes": 0,
+        "services": 0,
+        "components": 0,
+        "utils": 1
+      },
+      "meta": {
+        "ai_generated": true
+      }
+    },
+    {
+      "name": "Push Notifications",
+      "description": "Enables real-time web push notifications, allowing users to subscribe, manage settings, and send quick replies.",
+      "capabilities": [
+        "Allows users to subscribe and unsubscribe from push notifications.",
+        "Provides a user interface for managing notification settings.",
+        "Supports storing and managing Web Push API subscription data.",
+        "Processes quick replies sent by users from interactive push notifications.",
+        "Integrates with Supabase for user authentication and database operations."
+      ],
+      "files": [
+        "app/components/NotificationSettings.tsx",
+        "app/routes/api.push.reply.ts",
+        "app/routes/api.push.subscribe.ts",
+        "app/routes/api.push.test.ts",
+        "app/routes/api.push.unsubscribe.ts",
+        "app/routes/api.push.vapid-key.ts",
+        "app/routes/api.push.verify.ts",
+        "app/utils/notification-startup.ts",
+        "app/utils/notifications.client.ts",
+        "app/utils/push-notifications.client.ts",
+        "app/utils/push-notifications.server.ts"
+      ],
+      "stats": {
+        "total": 11,
+        "routes": 6,
+        "services": 0,
+        "components": 1,
+        "utils": 4
+      },
+      "meta": {
+        "ai_generated": true
+      }
+    },
+    {
+      "name": "PWA Support",
+      "description": "Enables the web application to function as an installable Progressive Web App (PWA) with offline capabilities.",
+      "capabilities": [
+        "Allows users to install the application to their device's home screen for an app-like experience.",
+        "Provides offline access to cached data, such as family details and upcoming class schedules.",
+        "Displays a user-friendly prompt for PWA installation and manages its state.",
+        "Implements an offline error boundary to gracefully handle network disconnections and display cached content.",
+        "Shows the current PWA status, including online/offline state and installation status."
+      ],
+      "files": [
+        "app/components/OfflineErrorBoundary.tsx",
+        "app/components/PWAInstallPrompt.tsx",
+        "app/components/PWAStatus.tsx",
+        "app/components/ServiceWorkerRegistration.tsx",
+        "app/routes/_layout.pwa.tsx"
+      ],
+      "stats": {
+        "total": 5,
+        "routes": 1,
+        "services": 0,
+        "components": 4,
+        "utils": 0
+      },
+      "meta": {
+        "ai_generated": true
+      }
+    },
+    {
+      "name": "Theme & UI",
+      "description": "Provides dynamic light/dark/system theme switching and a foundational set of reusable UI components.",
+      "capabilities": [
+        "Manages dynamic light, dark, and system theme modes for the application.",
+        "Persists user theme preferences across sessions using local storage.",
+        "Offers a foundational set of accessible and reusable UI components like buttons, dropdowns, and accordions.",
+        "Utilizes React Context for centralized theme state management."
+      ],
+      "files": [
+        "app/components/mode-toggle.tsx",
+        "app/components/theme-provider.tsx",
+        "app/components/ui/accordion.tsx",
+        "app/components/ui/alert-dialog.tsx",
+        "app/components/ui/alert.tsx",
+        "app/components/ui/badge.tsx",
+        "app/components/ui/breadcrumb.tsx",
+        "app/components/ui/button.tsx",
+        "app/components/ui/card.tsx",
+        "app/components/ui/checkbox.tsx",
+        "app/components/ui/dialog.tsx",
+        "app/components/ui/dropdown-menu.tsx",
+        "app/components/ui/form.tsx",
+        "app/components/ui/input.tsx",
+        "app/components/ui/label.tsx",
+        "app/components/ui/radio-group.tsx",
+        "app/components/ui/scroll-area.tsx",
+        "app/components/ui/select.tsx",
+        "app/components/ui/separator.tsx",
+        "app/components/ui/sheet.tsx",
+        "app/components/ui/sonner.tsx",
+        "app/components/ui/switch.tsx",
+        "app/components/ui/table.tsx",
+        "app/components/ui/tabs.tsx",
+        "app/components/ui/textarea.tsx",
+        "app/components/ui/tooltip.tsx"
+      ],
+      "stats": {
+        "total": 26,
+        "routes": 0,
+        "services": 0,
+        "components": 26,
+        "utils": 0
+      },
+      "meta": {
+        "ai_generated": true
+      }
+    }
+  ]
+}
