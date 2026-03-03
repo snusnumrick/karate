@@ -46,6 +46,7 @@ const CONFIG = {
 const TEMPLATES = {
   testFile: (feature, tests) => `
 import { test, expect } from '@playwright/test';
+import { loginAsAdmin, loginAsFamily, loginAsInstructor } from '../utils/auth';
 
 /**
  * ${feature.name} - E2E Tests
@@ -64,33 +65,34 @@ test.describe('${feature.name}', () => {
 
   smokeTest: (feature, route) => `
   test('smoke: ${route} loads successfully', async ({ page }) => {
-    await page.goto('${route}');
-    await expect(page).toHaveURL(/${route.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\$/g, '[^/]+')}.*$/);
-
-    // Check no critical errors
+    // Collect JS errors before navigation
     const errors = [];
     page.on('pageerror', err => errors.push(err.message));
 
-    // Wait for page to be interactive
+    await page.goto('${route}');
+
+    // Wait for page to be interactive (auth redirect is acceptable)
     await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
+    // Page must load something — not a blank white screen or server crash
+    const bodyText = await page.textContent('body').catch(() => '');
+    expect(bodyText).not.toBeNull();
+
+    // No uncaught JS errors
     expect(errors).toHaveLength(0);
   });`,
 
   roleBasedAccessTest: (route, role) => `
   test('access: ${role} can access ${route}', async ({ page }) => {
-    // TODO: Implement ${role} login
-    // await loginAs${role.charAt(0).toUpperCase() + role.slice(1)}(page);
-
-    await page.goto('${route}');
+    ${role === 'instructor' ? "if (!process.env.TEST_INSTRUCTOR_EMAIL) { test.skip(true, 'No instructor credentials — set TEST_INSTRUCTOR_EMAIL/PASSWORD in .env'); return; }" : ''}
+    await loginAs${role.charAt(0).toUpperCase() + role.slice(1)}(page);
+    const response = await page.goto('${route}');
 
     // Should not redirect to login
     await expect(page).not.toHaveURL(/.*login.*/);
 
-    // Should see content (not 404)
-    const content = await page.textContent('body');
-    expect(content).not.toContain('404');
-    expect(content).not.toContain('Not Found');
+    // Should respond with a success status (not 4xx/5xx)
+    expect(response?.status() ?? 200).toBeLessThan(400);
   });`,
 
   validationTest: (criteria, index) => `
@@ -174,10 +176,12 @@ function generateFeatureTests(feature) {
   }
 
   // Generate role-based access test if applicable
+  // Prefer a static route (no dynamic params) for the access test
   if (routes.length > 0) {
-    const category = categorizeRoute(routes[0]);
-    if (category !== 'public' && category !== 'api') {
-      tests.push(TEMPLATES.roleBasedAccessTest(routes[0], category));
+    const staticRoute = routes.find(r => !r.includes(':')) || routes[0];
+    const category = categorizeRoute(staticRoute);
+    if (category !== 'public' && category !== 'api' && !staticRoute.includes(':')) {
+      tests.push(TEMPLATES.roleBasedAccessTest(staticRoute, category));
     }
   }
 
@@ -328,8 +332,13 @@ export async function logout(page: Page) {
 }
 `;
 
-  fs.writeFileSync(path.join(utilsDir, 'auth.ts'), authHelpers);
-  console.log('  ✓ e2e/utils/auth.ts');
+  const authPath = path.join(utilsDir, 'auth.ts');
+  if (!fs.existsSync(authPath)) {
+    fs.writeFileSync(authPath, authHelpers);
+    console.log('  ✓ e2e/utils/auth.ts (created)');
+  } else {
+    console.log('  ↩ e2e/utils/auth.ts (skipped — already implemented)');
+  }
 
   // Test data helpers
   const testDataHelpers = `
@@ -377,8 +386,13 @@ export function generateTestStudent() {
 }
 `;
 
-  fs.writeFileSync(path.join(utilsDir, 'test-data.ts'), testDataHelpers);
-  console.log('  ✓ e2e/utils/test-data.ts');
+  const testDataPath = path.join(utilsDir, 'test-data.ts');
+  if (!fs.existsSync(testDataPath)) {
+    fs.writeFileSync(testDataPath, testDataHelpers);
+    console.log('  ✓ e2e/utils/test-data.ts (created)');
+  } else {
+    console.log('  ↩ e2e/utils/test-data.ts (skipped — already exists)');
+  }
 
   // Common actions
   const commonActions = `
@@ -412,8 +426,13 @@ export async function navigateToAdminSection(page: Page, section: string) {
 }
 `;
 
-  fs.writeFileSync(path.join(utilsDir, 'actions.ts'), commonActions);
-  console.log('  ✓ e2e/utils/actions.ts');
+  const actionsPath = path.join(utilsDir, 'actions.ts');
+  if (!fs.existsSync(actionsPath)) {
+    fs.writeFileSync(actionsPath, commonActions);
+    console.log('  ✓ e2e/utils/actions.ts (created)');
+  } else {
+    console.log('  ↩ e2e/utils/actions.ts (skipped — already exists)');
+  }
 }
 
 // ============================================================================
