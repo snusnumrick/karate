@@ -625,7 +625,11 @@ export function InvoiceTemplate({ invoice, companyInfo }: InvoiceTemplateProps) 
 
         {/* Footer */}
         <Text style={styles.footer}>
-          Thank you for your business! Payment is due by {formatDate(invoice.due_date)}.
+          {invoice.status === 'paid'
+            ? 'Thank you for your payment! This invoice has been paid in full.'
+            : invoice.status === 'cancelled'
+              ? 'This invoice has been cancelled. No payment is required.'
+              : `Thank you for your business! Payment is due by ${formatDate(invoice.due_date)}.`}
           {companyInfo?.email && companyInfo.email.trim() ? (
             <Text> For questions, contact us at {safeText(companyInfo.email, 'N/A')}.</Text>
           ) : null}
