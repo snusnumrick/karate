@@ -456,20 +456,177 @@ function generateInvoiceEmailHTML(invoice: InvoiceWithDetails): string {
   `;
 }
 
+function generateCancellationEmailHTML(invoice: InvoiceWithDetails): string {
+  const companyInfo = getDefaultCompanyInfo();
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cancellation Notice: Invoice #${invoice.invoice_number}</title>
+    <style>
+        body {
+            font-family: Helvetica, Arial, sans-serif;
+            line-height: 1.5;
+            color: #1f2937;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+            font-size: 14px;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #6b7280;
+        }
+        .company-name {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+        .company-details {
+            font-size: 12px;
+            color: #4b5563;
+        }
+        .notice-banner {
+            background-color: #f3f4f6;
+            border: 1px solid #d1d5db;
+            border-left: 4px solid #6b7280;
+            border-radius: 4px;
+            padding: 16px 20px;
+            margin: 20px 0;
+        }
+        .notice-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #374151;
+            margin-bottom: 6px;
+        }
+        .notice-subtitle {
+            font-size: 13px;
+            color: #6b7280;
+        }
+        .invoice-ref {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 14px 16px;
+            margin: 16px 0;
+            font-size: 13px;
+        }
+        .invoice-ref table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .invoice-ref td {
+            padding: 4px 0;
+        }
+        .invoice-ref .label {
+            color: #6b7280;
+            width: 120px;
+            font-weight: 600;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 1px solid #e5e7eb;
+            text-align: center;
+            color: #9ca3af;
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="company-name">${companyInfo.name}</div>
+            <div class="company-details">${companyInfo.address}</div>
+            <div class="company-details">${companyInfo.phone} &middot; ${companyInfo.email}</div>
+        </div>
+
+        <div class="notice-banner">
+            <div class="notice-title">Cancellation Notice</div>
+            <div class="notice-subtitle">The following invoice has been cancelled.</div>
+        </div>
+
+        <div class="invoice-ref">
+            <table>
+                <tr>
+                    <td class="label">Invoice #:</td>
+                    <td>${invoice.invoice_number}</td>
+                </tr>
+                <tr>
+                    <td class="label">Issued to:</td>
+                    <td>${invoice.entity.name}</td>
+                </tr>
+                <tr>
+                    <td class="label">Issue Date:</td>
+                    <td>${formatDateLocal(invoice.issue_date)}</td>
+                </tr>
+                <tr>
+                    <td class="label">Original Total:</td>
+                    <td>${formatMoney(invoice.total_amount)}</td>
+                </tr>
+                <tr>
+                    <td class="label">Status:</td>
+                    <td><strong>CANCELLED</strong></td>
+                </tr>
+            </table>
+        </div>
+
+        <p style="font-size: 13px; color: #4b5563;">
+            This invoice has been cancelled and no payment is required. A copy of the
+            cancelled invoice is attached for your records.
+        </p>
+
+        <p style="font-size: 13px; color: #4b5563;">
+            If you have any questions, please contact us at
+            <a href="mailto:${companyInfo.email}">${companyInfo.email}</a> or ${companyInfo.phone}.
+        </p>
+
+        <div class="footer">
+            <p><strong>${siteConfig.name}</strong></p>
+        </div>
+    </div>
+</body>
+</html>
+  `;
+}
+
 export async function sendInvoiceEmail(invoice: InvoiceWithDetails): Promise<boolean> {
   if (!invoice.entity.email) {
     console.error(`Cannot send invoice email: No email address for entity ${invoice.entity.name}`);
     return false;
   }
 
-  const subject = `Invoice #${invoice.invoice_number} from ${siteConfig.name}`;
-  const html = generateInvoiceEmailHTML(invoice);
+  // Choose subject and HTML body based on invoice status.
+  const subject =
+    invoice.status === 'paid'
+      ? `Receipt: Invoice #${invoice.invoice_number} from ${siteConfig.name}`
+      : invoice.status === 'cancelled'
+        ? `Cancellation Notice: Invoice #${invoice.invoice_number} from ${siteConfig.name}`
+        : `Invoice #${invoice.invoice_number} from ${siteConfig.name}`;
+
+  const html =
+    invoice.status === 'cancelled'
+      ? generateCancellationEmailHTML(invoice)
+      : generateInvoiceEmailHTML(invoice);
 
   try {
-    // Generate PDF with 'sent' status (not draft) for attachment
+    // Generate PDF preserving the real status, except 'draft' which is
+    // never appropriate to show on a sent document — promote it to 'sent'.
     const invoiceForPdf = {
       ...invoice,
-      status: 'sent' as const // Ensure PDF shows 'sent' status, not 'draft'
+      status: (invoice.status === 'draft' ? 'sent' : invoice.status) as typeof invoice.status
     };
     
     const companyInfo = getDefaultCompanyInfo();
