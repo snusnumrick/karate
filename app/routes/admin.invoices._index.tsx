@@ -45,14 +45,25 @@ export async function loader({ request }: LoaderFunctionArgs) {
       paid: invoices.filter((inv: InvoiceWithDetails) => inv.status === "paid").length,
       overdue: invoices.filter((inv: InvoiceWithDetails) => {
         const today = getTodayLocalDateString();
-        return inv.status !== 'paid' && inv.due_date < today;
+        // Exclude draft/cancelled — they have no outstanding balance and
+        // must not be counted as overdue (mirrors getInvoiceStats logic).
+        return (
+          inv.status !== 'paid' &&
+          inv.status !== 'draft' &&
+          inv.status !== 'cancelled' &&
+          inv.due_date < today
+        );
       }).length,
       totalAmount: invoices.reduce((sum, inv) => sum + (inv.total_amount ? toCents(inv.total_amount) : 0), 0),
-      pendingAmount: invoices.reduce((sum, inv) => {
-        const totalCents = inv.total_amount ? toCents(inv.total_amount) : 0;
-        const paidCents = inv.amount_paid ? toCents(inv.amount_paid) : 0;
-        return sum + (totalCents - paidCents);
-      }, 0)
+      // Only count unpaid balance on issued (sent/viewed) invoices so that
+      // pendingAmount is consistent with the pending count above.
+      pendingAmount: invoices
+        .filter((inv: InvoiceWithDetails) => inv.status === "sent" || inv.status === "viewed")
+        .reduce((sum, inv) => {
+          const totalCents = inv.total_amount ? toCents(inv.total_amount) : 0;
+          const paidCents = inv.amount_paid ? toCents(inv.amount_paid) : 0;
+          return sum + (totalCents - paidCents);
+        }, 0)
     };
     
     // Serialize Money types for invoices
