@@ -414,7 +414,7 @@ export default function InvoiceDetailPage() {
                 </Form>
               )}
               
-              {invoice.status === "paid" && (
+              {invoice.status === "draft" && (
                 <Form method="post" className="inline">
                   <AuthenticityTokenInput />
                   <input type="hidden" name="action" value="mark_pending" />
