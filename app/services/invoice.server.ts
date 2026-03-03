@@ -1113,7 +1113,16 @@ export async function getInvoiceStats(
       }
     }
 
-    if (inv.status !== 'paid' && inv.due_date < today) {
+    // Only count as overdue if the invoice has an outstanding balance:
+    // - exclude 'paid' (fully settled)
+    // - exclude 'draft' (not yet issued, matches outstanding_amount guard above)
+    // - exclude 'cancelled' (zero balance, never appears in outstanding_amount)
+    if (
+      inv.status !== 'paid' &&
+      inv.status !== 'draft' &&
+      inv.status !== 'cancelled' &&
+      inv.due_date < today
+    ) {
       stats.overdue_count++;
     }
   });
