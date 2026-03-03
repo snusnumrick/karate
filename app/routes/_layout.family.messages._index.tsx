@@ -2,6 +2,7 @@ import {useEffect, useRef, useState} from "react"; // Import useEffect, useRef, 
 import {json, type LoaderFunctionArgs, type TypedResponse} from "@remix-run/node";
 import {Link, useLoaderData, useRevalidator, useOutletContext} from "@remix-run/react"; // Import useRevalidator, useOutletContext
 import {SupabaseClient, RealtimeChannel} from "@supabase/supabase-js"; // Import SupabaseClient, RealtimeChannel
+import {classifyRealtimeStatus} from "~/utils/realtime-channel";
 import {getSupabaseServerClient} from "~/utils/supabase.server";
 import {Database} from "~/types/database.types"; // Import Database
 import ConversationList from "~/components/ConversationList";
@@ -162,15 +163,15 @@ export default function MessagesIndex() {
                 }
             })
             .subscribe((status: string, err?: Error) => {
-                if (status === 'SUBSCRIBED') {
+                const level = classifyRealtimeStatus(status, isCleaningUpRef.current);
+                if (level === 'subscribed') {
                     console.log(`[FamilyMessagesIndex] Subscribed to ${channelName}`);
-                } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-                    // Real errors — report to Sentry via console.error
+                } else if (level === 'error') {
                     console.error(`[FamilyMessagesIndex] Channel ${channelName} issue: Status=${status}`, err || '(No error object provided)');
-                } else if (status === 'CLOSED' && !isCleaningUpRef.current) {
-                    // CLOSED during cleanup is expected (removeChannel call). Only warn if unexpected.
+                } else if (level === 'warn') {
                     console.warn(`[FamilyMessagesIndex] Channel ${channelName} closed unexpectedly`);
                 }
+                // 'ignore' → CLOSED during cleanup; no log
             });
 
         return () => {

@@ -1,7 +1,8 @@
-import {useEffect, useRef, useState} from "react"; // Import useRef
+import {useEffect, useRef, useState} from "react";
 import {json, type LoaderFunctionArgs, type TypedResponse} from "@vercel/remix";
 import {useLoaderData, useRevalidator, useOutletContext} from "@remix-run/react";
-import {RealtimeChannel} from "@supabase/supabase-js"; // Import RealtimeChannel
+import {RealtimeChannel} from "@supabase/supabase-js";
+import {classifyRealtimeStatus} from "~/utils/realtime-channel";
 import {getSupabaseServerClient} from "~/utils/supabase.server";
 import {AlertCircle} from "lucide-react";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
@@ -158,15 +159,15 @@ export default function InstructorMessagesIndex() {
                 }
             })
             .subscribe((status: string, err?: Error) => {
-                if (status === 'SUBSCRIBED') {
+                const level = classifyRealtimeStatus(status, isCleaningUpRef.current);
+                if (level === 'subscribed') {
                     console.log(`[InstructorMessagesIndex] Subscribed to ${channelName}`);
-                } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-                    // Real errors — report to Sentry via console.error
+                } else if (level === 'error') {
                     console.error(`[InstructorMessagesIndex] Channel ${channelName} issue: Status=${status}`, err || '(No error object provided)');
-                } else if (status === 'CLOSED' && !isCleaningUpRef.current) {
-                    // CLOSED during cleanup is expected (removeChannel call). Only warn if unexpected.
+                } else if (level === 'warn') {
                     console.warn(`[InstructorMessagesIndex] Channel ${channelName} closed unexpectedly`);
                 }
+                // 'ignore' → CLOSED during cleanup; no log
             });
 
         return () => {
