@@ -116,7 +116,7 @@ export function getDefaultCompanyInfo(): CompanyInfo {
     address: formattedAddress,
     phone: contact.phone,
     email: contact.paymentsEmail, // Use payments email for invoices
-    // website intentionally omitted — siteConfig.url is localhost in dev
+    website: siteConfig.url,
     // logo: process.env.COMPANY_LOGO_URL, // Optional logo URL
   };
 }
