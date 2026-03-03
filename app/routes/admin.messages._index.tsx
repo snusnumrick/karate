@@ -104,121 +104,85 @@ export default function AdminMessagesIndex() {
     const { supabase } = useOutletContext<{ supabase: SupabaseClient<Database> }>(); // Get Supabase client from context
     const channelRef = useRef<RealtimeChannel | null>(null); // Ref for the channel
     const isCleaningUpRef = useRef(false); // Ref to prevent race conditions during cleanup
-    const [clientInitialized, setClientInitialized] = useState(false); // State to track initialization
+    const [sessionReady, setSessionReady] = useState(false); // True only after session is authenticated
 
-    // Effect for Supabase Client Initialization
+    // Effect for Supabase Client Initialization + Session setup
     useEffect(() => {
-        console.log("[AdminMessagesIndex] Using Supabase client from context.");
-        if (supabase) {
-            console.log("[AdminMessagesIndex] Supabase client available from context.");
-            setClientInitialized(true); // Signal that the client object exists
-        } else {
+        if (!supabase) {
             console.warn("[AdminMessagesIndex] Supabase client not available from context.");
+            return;
         }
-    }, [supabase]); // Depend on supabase from context
-
-    // Effect to set/update the session on the initialized client
-    useEffect(() => {
-        console.log("[AdminMessagesIndex] Session update effect running.");
-        if (supabase && accessToken && refreshToken) {
-            console.log("[AdminMessagesIndex] Setting session on Supabase client...");
-            supabase.auth.setSession({
-                access_token: accessToken,
-                refresh_token: refreshToken,
-            }).then(({error: sessionError}) => {
-                if (sessionError) {
-                    console.error("[AdminMessagesIndex] Error setting session:", sessionError.message);
-                } else {
-                    console.log("[AdminMessagesIndex] Session set successfully.");
-                }
-            });
-        } else if (!accessToken || !refreshToken) {
+        if (!accessToken || !refreshToken) {
             console.warn("[AdminMessagesIndex] Access token or refresh token missing, cannot set session.");
-        } else {
-            console.log("[AdminMessagesIndex] Supabase client not ready for session setting.");
+            return;
         }
-    }, [accessToken, refreshToken, supabase]); // Depend on tokens and supabase client
+        supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+        }).then(({error: sessionError}) => {
+            if (sessionError) {
+                console.error("[AdminMessagesIndex] Error setting session:", sessionError.message);
+            } else {
+                setSessionReady(true);
+            }
+        });
+    }, [accessToken, refreshToken, supabase]);
 
-    // Effect for Supabase Realtime Subscription
+    // Effect for Supabase Realtime Subscription — only runs after session is authenticated
     useEffect(() => {
-        // Ensure cleanup ref is reset when dependencies change
         isCleaningUpRef.current = false;
-        console.log("[AdminMessagesIndex] Subscription effect running.");
 
-        if (!clientInitialized || !supabase) {
-            console.log("[AdminMessagesIndex] Supabase client not ready for real-time. Skipping subscription setup.");
-            return; // Exit if client is not initialized
+        if (!sessionReady || !supabase) {
+            return;
         }
 
-        // Prevent setup if already subscribed or during cleanup
+        // Prevent setup if already subscribed
         if (channelRef.current && channelRef.current.state === 'joined') {
-             console.log("[AdminMessagesIndex] Already subscribed to channel. Skipping setup.");
-             return;
+            return;
         }
 
-        console.log("[AdminMessagesIndex] Setting up Supabase real-time subscription...");
         const channelName = 'admin-messages-list-channel';
-        console.log(`[AdminMessagesIndex] Attempting to create/get channel: ${channelName}`);
 
-        // Remove any existing channel before creating a new one (belt-and-suspenders)
+        // Remove any existing channel before creating a new one
         if (channelRef.current) {
-            console.warn(`[AdminMessagesIndex] Removing potentially stale channel ${channelName} before creating new one.`);
             supabase.removeChannel(channelRef.current);
             channelRef.current = null;
         }
 
         const channel = supabase.channel(channelName);
-        channelRef.current = channel; // Store the channel instance
-        console.log(`[AdminMessagesIndex] Initial channel state before subscribe: ${channel.state}`);
+        channelRef.current = channel;
 
         channel
-            .on('postgres_changes', {event: 'INSERT', schema: 'public', table: 'messages'}, (payload: { new: Record<string, unknown>; old: Record<string, unknown> | null; eventType: string }) => {
-                console.log('[AdminMessagesIndex] *** New message INSERT detected! ***:', payload);
-                if (!isCleaningUpRef.current) { // Check cleanup flag
-                    console.log('[AdminMessagesIndex] Revalidating conversation list due to new message...');
+            .on('postgres_changes', {event: 'INSERT', schema: 'public', table: 'messages'}, () => {
+                if (!isCleaningUpRef.current) {
                     revalidator.revalidate();
-                } else {
-                    console.log('[AdminMessagesIndex] Cleanup in progress, skipping revalidation.');
                 }
             })
             .subscribe((status: string, err?: Error) => {
-                console.log(`[AdminMessagesIndex] Channel ${channelName} subscription status update: ${status}`);
                 if (status === 'SUBSCRIBED') {
-                    console.log(`[AdminMessagesIndex] Successfully subscribed to channel: ${channelName}`);
-                }
-                if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-                    // Log the actual error object for more details on CHANNEL_ERROR
+                    console.log(`[AdminMessagesIndex] Subscribed to ${channelName}`);
+                } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                    // Real errors — report to Sentry via console.error
                     console.error(`[AdminMessagesIndex] Channel ${channelName} issue: Status=${status}`, err || '(No error object provided)');
-                    // Optional: Attempt to resubscribe on certain errors? Be cautious of loops.
+                } else if (status === 'CLOSED' && !isCleaningUpRef.current) {
+                    // CLOSED during cleanup is expected (removeChannel call). Only warn if unexpected.
+                    console.warn(`[AdminMessagesIndex] Channel ${channelName} closed unexpectedly`);
                 }
             });
 
-        console.log(`[AdminMessagesIndex] Channel ${channelName} .subscribe() called. Current state: ${channel.state}`);
-
-        // Return cleanup function
         return () => {
-            isCleaningUpRef.current = true; // Set cleanup flag
-            console.log(`[AdminMessagesIndex] Cleaning up Supabase real-time subscription for channel: ${channelName}.`);
-            const currentChannel = channelRef.current; // Capture ref value
-            if (currentChannel) {
-                console.log(`[AdminMessagesIndex] Current state before removal: ${currentChannel.state}`);
+            isCleaningUpRef.current = true;
+            const currentChannel = channelRef.current;
+            if (currentChannel && supabase) {
                 supabase.removeChannel(currentChannel)
-                    .then((status: string) => console.log(`[AdminMessagesIndex] Removed channel ${channelName} status: ${status}`))
-                    .catch((error: Error) => console.error(`[AdminMessagesIndex] Error removing channel ${channelName}:`, error))
                     .finally(() => {
-                        // Only nullify if it's the same channel we intended to remove
                         if (channelRef.current === currentChannel) {
                             channelRef.current = null;
                         }
-                        // Reset cleanup flag after operation attempt
-                        // isCleaningUpRef.current = false; // Resetting here might be too soon if effect re-runs immediately
                     });
-            } else {
-                 console.log(`[AdminMessagesIndex] No channel found in ref during cleanup.`);
             }
         };
-        // Depend on client initialization state, revalidator, and supabase
-    }, [clientInitialized, revalidator, supabase]);
+    }, [sessionReady, revalidator, supabase]);
 
 
     if (error) {

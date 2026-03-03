@@ -107,118 +107,85 @@ export default function MessagesIndex() {
     const { supabase } = useOutletContext<{ supabase: SupabaseClient<Database> }>(); // Get Supabase client from context
     const channelRef = useRef<RealtimeChannel | null>(null); // Ref for the channel
     const isCleaningUpRef = useRef(false); // Ref to prevent race conditions during cleanup
-    const [clientInitialized, setClientInitialized] = useState(false); // State to track initialization
+    const [sessionReady, setSessionReady] = useState(false); // True only after session is authenticated
 
-    // Effect for Supabase Client Initialization
+    // Effect for Supabase Client Initialization + Session setup
     useEffect(() => {
-        console.log("[FamilyMessagesIndex] Using Supabase client from context.");
-        if (supabase) {
-            console.log("[FamilyMessagesIndex] Supabase client available from context.");
-            setClientInitialized(true); // Signal that the client object exists
-        } else {
+        if (!supabase) {
             console.warn("[FamilyMessagesIndex] Supabase client not available from context.");
+            return;
         }
-    }, [supabase]); // Depend on supabase from context
-
-    // Effect to set/update the session on the initialized client
-    useEffect(() => {
-        console.log("[FamilyMessagesIndex] Session update effect running.");
-        if (supabase && accessToken && refreshToken) {
-            console.log("[FamilyMessagesIndex] Setting session on Supabase client...");
-            supabase.auth.setSession({
-                access_token: accessToken,
-                refresh_token: refreshToken,
-            }).then(({error: sessionError}) => {
-                if (sessionError) {
-                    console.error("[FamilyMessagesIndex] Error setting session:", sessionError.message);
-                } else {
-                    console.log("[FamilyMessagesIndex] Session set successfully.");
-                }
-            });
-        } else if (!accessToken || !refreshToken) {
+        if (!accessToken || !refreshToken) {
             console.warn("[FamilyMessagesIndex] Access token or refresh token missing, cannot set session.");
-        } else {
-            console.log("[FamilyMessagesIndex] Supabase client not ready for session setting.");
+            return;
         }
-    }, [accessToken, refreshToken, supabase]); // Depend on tokens and supabase client
+        supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+        }).then(({error: sessionError}) => {
+            if (sessionError) {
+                console.error("[FamilyMessagesIndex] Error setting session:", sessionError.message);
+            } else {
+                setSessionReady(true);
+            }
+        });
+    }, [accessToken, refreshToken, supabase]);
 
-    // Effect for Supabase Realtime Subscription
+    // Effect for Supabase Realtime Subscription — only runs after session is authenticated
     useEffect(() => {
-        // Ensure cleanup ref is reset when dependencies change
         isCleaningUpRef.current = false;
-        console.log("[FamilyMessagesIndex] Subscription effect running.");
 
-        if (!clientInitialized || !supabase) {
-            console.log("[FamilyMessagesIndex] Supabase client not ready for real-time. Skipping subscription setup.");
-            return; // Exit if client is not initialized
+        if (!sessionReady || !supabase) {
+            return;
         }
 
-        // Prevent setup if already subscribed or during cleanup
+        // Prevent setup if already subscribed
         if (channelRef.current && channelRef.current.state === 'joined') {
-             console.log("[FamilyMessagesIndex] Already subscribed to channel. Skipping setup.");
-             return;
+            return;
         }
 
-        console.log("[FamilyMessagesIndex] Setting up Supabase real-time subscription...");
         const channelName = 'family-messages-list-channel';
-        console.log(`[FamilyMessagesIndex] Attempting to create/get channel: ${channelName}`);
 
         // Remove any existing channel before creating a new one
         if (channelRef.current) {
-            console.warn(`[FamilyMessagesIndex] Removing potentially stale channel ${channelName} before creating new one.`);
             supabase.removeChannel(channelRef.current);
             channelRef.current = null;
         }
 
         const channel = supabase.channel(channelName);
-        channelRef.current = channel; // Store the channel instance
-        console.log(`[FamilyMessagesIndex] Initial channel state before subscribe: ${channel.state}`);
+        channelRef.current = channel;
 
         channel
-            .on('postgres_changes', {event: 'INSERT', schema: 'public', table: 'messages'}, (payload: { new: Record<string, unknown>; old: Record<string, unknown> | null; eventType: string }) => {
-                console.log('[FamilyMessagesIndex] *** New message INSERT detected! ***:', payload);
-                if (!isCleaningUpRef.current) { // Check cleanup flag
-                    console.log('[FamilyMessagesIndex] Revalidating conversation list due to new message...');
+            .on('postgres_changes', {event: 'INSERT', schema: 'public', table: 'messages'}, () => {
+                if (!isCleaningUpRef.current) {
                     revalidator.revalidate();
-                } else {
-                    console.log('[FamilyMessagesIndex] Cleanup in progress, skipping revalidation.');
                 }
             })
             .subscribe((status: string, err?: Error) => {
-                console.log(`[FamilyMessagesIndex] Channel ${channelName} subscription status update: ${status}`);
                 if (status === 'SUBSCRIBED') {
-                    console.log(`[FamilyMessagesIndex] Successfully subscribed to channel: ${channelName}`);
-                }
-                if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+                    console.log(`[FamilyMessagesIndex] Subscribed to ${channelName}`);
+                } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                    // Real errors — report to Sentry via console.error
                     console.error(`[FamilyMessagesIndex] Channel ${channelName} issue: Status=${status}`, err || '(No error object provided)');
-                    // Optional: Attempt to resubscribe on certain errors? Be cautious of loops.
+                } else if (status === 'CLOSED' && !isCleaningUpRef.current) {
+                    // CLOSED during cleanup is expected (removeChannel call). Only warn if unexpected.
+                    console.warn(`[FamilyMessagesIndex] Channel ${channelName} closed unexpectedly`);
                 }
             });
 
-        console.log(`[FamilyMessagesIndex] Channel ${channelName} .subscribe() called. Current state: ${channel.state}`);
-
-        // Return cleanup function
         return () => {
-            isCleaningUpRef.current = true; // Set cleanup flag
-            console.log(`[FamilyMessagesIndex] Cleaning up Supabase real-time subscription for channel: ${channelName}.`);
-            const currentChannel = channelRef.current; // Capture ref value
-            if (currentChannel && supabase) { // Ensure supabase client still exists
-                console.log(`[FamilyMessagesIndex] Current state before removal: ${currentChannel.state}`);
+            isCleaningUpRef.current = true;
+            const currentChannel = channelRef.current;
+            if (currentChannel && supabase) {
                 supabase.removeChannel(currentChannel)
-                    .then((status: string) => console.log(`[FamilyMessagesIndex] Removed channel ${channelName} status: ${status}`))
-                    .catch((error: Error) => console.error(`[FamilyMessagesIndex] Error removing channel ${channelName}:`, error))
                     .finally(() => {
-                        // Only nullify if it's the same channel we intended to remove
                         if (channelRef.current === currentChannel) {
                             channelRef.current = null;
                         }
                     });
-            } else {
-                 console.log(`[FamilyMessagesIndex] Cleanup: No channel found in ref for ${channelName} or supabase client missing.`);
             }
         };
-        // Depend on client initialization state, revalidator, and supabase
-    }, [clientInitialized, revalidator, supabase]);
+    }, [sessionReady, revalidator, supabase]);
 
 
     if (error) {
