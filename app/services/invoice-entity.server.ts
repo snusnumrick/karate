@@ -197,9 +197,10 @@ export async function getInvoiceEntitiesWithStats(
   
   const { data: invoiceStats, error: statsError } = await client
     .from('invoices')
-    .select('entity_id, total_amount, total_amount_cents, amount_paid, amount_paid_cents, created_at')
+    .select('entity_id, status, total_amount, total_amount_cents, amount_paid, amount_paid_cents, created_at')
     .in('entity_id', entityIds)
-    .neq('status', 'cancelled');
+    .neq('status', 'cancelled')
+    .neq('status', 'draft');
 
   if (statsError) {
     console.error('[Service/getInvoiceEntitiesWithStats] Error fetching invoice stats:', statsError);
@@ -224,8 +225,13 @@ export async function getInvoiceEntitiesWithStats(
       stats.total_invoices++;
       const total = moneyFromRow('invoices', 'total_amount', invoice as unknown as Record<string, unknown>);
       const paid = moneyFromRow('invoices', 'amount_paid', invoice as unknown as Record<string, unknown>);
+      // total_amount counts all non-draft, non-cancelled invoices (sent/viewed/paid)
       stats.total_amount = addMoney(stats.total_amount, total);
-      stats.outstanding_amount = addMoney(stats.outstanding_amount, subtractMoney(total, paid));
+      // outstanding_amount only counts unpaid sent/viewed invoices
+      const invoiceStatus = (invoice as { status: string }).status;
+      if (invoiceStatus === 'sent' || invoiceStatus === 'viewed') {
+        stats.outstanding_amount = addMoney(stats.outstanding_amount, subtractMoney(total, paid));
+      }
       const createdAt = (invoice as Record<string, string | null | undefined>)['created_at'] || null;
       if (!stats.last_invoice_date || (createdAt && createdAt > stats.last_invoice_date)) {
         stats.last_invoice_date = createdAt;
