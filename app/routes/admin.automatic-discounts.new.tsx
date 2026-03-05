@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 import { Save } from "lucide-react";
 import { AutoDiscountService } from "~/services/auto-discount.server";
 import { DiscountTemplateService } from "~/services/discount-template.server";
-import { requireAdminUser } from "~/utils/auth.server";
+import { withAdminLoader, withAdminAction } from "~/utils/auth.server";
 import type { Json } from "~/types/database.types";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { toMoney, formatDollars } from "~/utils/money";
@@ -20,8 +20,7 @@ import { Badge } from "~/components/ui/badge";
 import { csrf } from "~/utils/csrf.server";
 import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 
-export async function loader({ request }: LoaderFunctionArgs) {
-  await requireAdminUser(request);
+async function loaderImpl({ request }: LoaderFunctionArgs) {
 
   try {
     const [templates, programs] = await Promise.all([
@@ -34,8 +33,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
   }
 }
 
-export async function action({ request }: ActionFunctionArgs) {
-  await requireAdminUser(request);
+export const loader = withAdminLoader(loaderImpl);
+
+async function actionImpl({ request }: ActionFunctionArgs) {
   await csrf.validate(request);
   const formData = await request.formData();
 
@@ -100,6 +100,8 @@ export async function action({ request }: ActionFunctionArgs) {
     return json({ error: 'Failed to create automation rule' }, { status: 500 });
   }
 }
+
+export const action = withAdminAction(actionImpl);
 
 const eventTypes = [
   { value: 'student_enrollment', label: 'Student Enrollment' },

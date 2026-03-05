@@ -6,7 +6,7 @@ import { Label } from "~/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { getSupabaseServerClient, getSupabaseAdminClient } from "~/utils/supabase.server";
-import { requireAdminUser } from "~/utils/auth.server";
+import { withAdminLoader, withAdminAction } from "~/utils/auth.server";
 import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 import { csrf } from "~/utils/csrf.server";
 
@@ -32,15 +32,15 @@ function assertNonProductionRoute(): void {
   }
 }
 
-export async function loader({ request }: LoaderFunctionArgs) {
+async function loaderImpl({ request }: LoaderFunctionArgs) {
   assertNonProductionRoute();
-  await requireAdminUser(request);
   return json({});
 }
 
-export async function action({ request }: ActionFunctionArgs) {
+export const loader = withAdminLoader(loaderImpl);
+
+async function actionImpl({ request }: ActionFunctionArgs) {
   assertNonProductionRoute();
-  await requireAdminUser(request);
 
   try {
     await csrf.validate(request);
@@ -256,6 +256,8 @@ export async function action({ request }: ActionFunctionArgs) {
     }, { status: 500 });
   }
 }
+
+export const action = withAdminAction(actionImpl);
 
 export default function TestEmailPage() {
   const actionData = useActionData<ActionData>();

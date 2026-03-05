@@ -5,7 +5,7 @@ import { csrf } from "~/utils/csrf.server";
 import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 import { AutoDiscountService } from "~/services/auto-discount.server";
 import { DiscountTemplateService } from "~/services/discount-template.server";
-import { requireAdminUser } from "~/utils/auth.server";
+import { withAdminLoader, withAdminAction } from "~/utils/auth.server";
 import { getSupabaseServerClient } from '~/utils/supabase.server';
 import { useState } from "react";
 import { Button } from "~/components/ui/button";
@@ -32,8 +32,7 @@ type AssignmentWithJoins = {
   } | null;
 };
 
-export async function loader({ request, params }: LoaderFunctionArgs) {
-  await requireAdminUser(request);
+async function loaderImpl({ request, params }: LoaderFunctionArgs) {
   
   const ruleId = params.ruleId;
   if (!ruleId) {
@@ -97,8 +96,9 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   }
 }
 
-export async function action({ request, params }: ActionFunctionArgs) {
-  await requireAdminUser(request);
+export const loader = withAdminLoader(loaderImpl);
+
+async function actionImpl({ request, params }: ActionFunctionArgs) {
   
   const ruleId = params.ruleId;
   if (!ruleId) {
@@ -170,6 +170,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
     return json({ error: "Failed to update automation rule" }, { status: 500 });
   }
 }
+
+export const action = withAdminAction(actionImpl);
 
 export default function EditAutomationRule() {
   const { rule, templates, programs, assignments } = useLoaderData<typeof loader>();

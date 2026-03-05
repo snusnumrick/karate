@@ -16,7 +16,7 @@ import {
 } from "~/components/ui/alert-dialog";
 import { Plus, Edit, Trash2, Zap, Calendar, Target } from "lucide-react";
 import { AutoDiscountService } from "~/services/auto-discount.server";
-import { requireAdminUser } from "~/utils/auth.server";
+import { withAdminLoader, withAdminAction } from "~/utils/auth.server";
 import { formatDistanceToNow } from "date-fns";
 import { useState } from "react";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
@@ -38,8 +38,7 @@ type AssignmentWithJoins = {
   } | null;
 };
 
-export async function loader({ request }: LoaderFunctionArgs) {
-  await requireAdminUser(request);
+async function loaderImpl({ request }: LoaderFunctionArgs) {
   
   try {
     const automationRules = await AutoDiscountService.getAutomationRules();
@@ -52,8 +51,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
   }
 }
 
-export async function action({ request }: ActionFunctionArgs) {
-  await requireAdminUser(request);
+export const loader = withAdminLoader(loaderImpl);
+
+async function actionImpl({ request }: ActionFunctionArgs) {
   await csrf.validate(request);
   
   const formData = await request.formData();
@@ -72,6 +72,8 @@ export async function action({ request }: ActionFunctionArgs) {
   
   return json({ success: false });
 }
+
+export const action = withAdminAction(actionImpl);
 
 export default function AutomaticDiscountsIndex() {
   const { automationRules, assignments } = useLoaderData<typeof loader>();

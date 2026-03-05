@@ -11,7 +11,7 @@ import {
 } from "@remix-run/react";
 import {type SupabaseClient} from '@supabase/supabase-js';
 import {getSupabaseAdminClient,checkStudentEligibility} from '~/utils/supabase.server';
-import { requireAdminUser } from '~/utils/auth.server';
+import { withAdminLoader, withAdminAction } from '~/utils/auth.server';
 import type {Database} from "~/types/database.types";
 import type {ClassSession} from "~/types/multi-class";
 import {getClassSessions} from "~/services/class.server";
@@ -91,7 +91,7 @@ type ActionData = {
 
 
 // Loader: Fetch sessions and enrolled students for attendance recording
-export async function loader({request}: LoaderFunctionArgs) {
+async function loaderImpl({request}: LoaderFunctionArgs) {
     console.log("Entering /admin/attendance/record loader...");
     const url = new URL(request.url);
     const dateParam = url.searchParams.get("date");
@@ -199,11 +199,13 @@ export async function loader({request}: LoaderFunctionArgs) {
     }
 }
 
+export const loader = withAdminLoader(loaderImpl);
+
 // Action: Save session attendance records
-export async function action({request}: ActionFunctionArgs) {
+async function actionImpl({request, auth}: ActionFunctionArgs & { auth: { user: { id: string } } }) {
     console.log("Entering /admin/attendance/record action...");
     await csrf.validate(request);
-    const adminUser = await requireAdminUser(request);
+    const adminUser = auth.user;
     const formData = await request.formData();
     const sessionId = formData.get("sessionId") as string;
     const studentIds = formData.getAll("studentId") as string[];
@@ -309,6 +311,8 @@ export async function action({request}: ActionFunctionArgs) {
         return json({error: message}, {status: 500});
     }
 }
+
+export const action = withAdminAction(actionImpl);
 
 // Helper function to send absence notifications
 async function sendAbsenceNotifications(

@@ -1,6 +1,6 @@
 import { json, redirect, type ActionFunctionArgs } from "@remix-run/node";
 import { Form, useActionData, useNavigation, Link } from "@remix-run/react";
-import { requireAdminUser } from "~/utils/auth.server";
+import { withAdminAction } from "~/utils/auth.server";
 import { DiscountTemplateService } from "~/services/discount-template.server";
 import { fromDollars } from "~/utils/money";
 import { Button } from "~/components/ui/button";
@@ -29,8 +29,7 @@ type ActionData = {
 
 
 
-export async function action({ request }: ActionFunctionArgs) {
-  await requireAdminUser(request);
+async function actionImpl({ request }: ActionFunctionArgs) {
   await csrf.validate(request);
   const formData = await request.formData();
 
@@ -107,6 +106,8 @@ export async function action({ request }: ActionFunctionArgs) {
     );
   }
 }
+
+export const action = withAdminAction(actionImpl);
 
 export default function NewDiscountTemplate() {
   const actionData = useActionData<ActionData>();

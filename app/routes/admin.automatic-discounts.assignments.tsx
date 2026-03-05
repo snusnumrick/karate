@@ -1,7 +1,7 @@
 import type { LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { useLoaderData, Link, useSearchParams } from "@remix-run/react";
-import { requireAdminUser } from "~/utils/auth.server";
+import { withAdminLoader } from "~/utils/auth.server";
 import { getSupabaseAdminClient } from "~/utils/supabase.server";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
@@ -13,8 +13,7 @@ import { ArrowLeft, Search, Filter, Users, CheckCircle, Clock, XCircle } from "l
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { formatDate, getCurrentDateTimeInTimezone } from "~/utils/misc";
 
-export async function loader({ request }: LoaderFunctionArgs) {
-  await requireAdminUser(request);
+async function loaderImpl({ request }: LoaderFunctionArgs) {
   
   const supabase = getSupabaseAdminClient();
   const url = new URL(request.url);
@@ -133,6 +132,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
     throw new Response("Failed to load assignments", { status: 500 });
   }
 }
+
+export const loader = withAdminLoader(loaderImpl);
 
 export default function DiscountAssignments() {
   const { assignments, rules, pagination, filters, stats } = useLoaderData<typeof loader>();

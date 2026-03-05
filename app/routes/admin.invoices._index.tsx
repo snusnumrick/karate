@@ -10,14 +10,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { getInvoices } from "~/services/invoice.server";
 import { formatMoney, toCents, fromCents } from "~/utils/money";
-import { requireUserId } from "~/utils/auth.server";
+import { withAdminLoader } from "~/utils/auth.server";
 import { getTodayLocalDateString } from "~/utils/misc";
 import { Plus, Search, FileText, Calendar, DollarSign, Users } from "lucide-react";
 import type { InvoiceWithDetails, InvoiceStatus } from "~/types/invoice";
 import { siteConfig } from "~/config/site";
 
-export async function loader({ request }: LoaderFunctionArgs) {
-  await requireUserId(request);
+async function loaderImpl({ request }: LoaderFunctionArgs) {
 
   const url = new URL(request.url);
   const search = url.searchParams.get("search") || "";
@@ -92,6 +91,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
     });
   }
 }
+
+export const loader = withAdminLoader(loaderImpl);
 
 const getStatusColor = (status: string) => {
   switch (status) {

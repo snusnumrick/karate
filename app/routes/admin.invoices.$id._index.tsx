@@ -38,7 +38,7 @@ import {
 } from "~/utils/money";
 import { moneyFromRow } from "~/utils/database-money";
 import type { InvoiceWithDetails, InvoiceLineItem, InvoiceLineItemTax } from "~/types/invoice";
-import { requireUserId } from "~/utils/auth.server";
+import { withAdminLoader, withAdminAction } from "~/utils/auth.server";
 import { 
   Send,
   Trash2, 
@@ -83,8 +83,7 @@ interface RawPayment {
   payment_method: string;
 }
 
-export async function loader({ request, params }: LoaderFunctionArgs) {
-  await requireUserId(request);
+async function loaderImpl({ request, params }: LoaderFunctionArgs) {
   
   const { id } = params;
   if (!id) {
@@ -110,8 +109,9 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   }
 }
 
-export async function action({ request, params }: ActionFunctionArgs) {
-  await requireUserId(request);
+export const loader = withAdminLoader(loaderImpl);
+
+async function actionImpl({ request, params }: ActionFunctionArgs) {
   
   const { id } = params;
   if (!id) {
@@ -219,6 +219,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
     return json({ error: "Failed to update invoice" }, { status: 500 });
   }
 }
+
+export const action = withAdminAction(actionImpl);
 
 const getStatusIcon = (status: string) => {
   switch (status) {

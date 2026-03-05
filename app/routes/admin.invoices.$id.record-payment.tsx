@@ -1,7 +1,7 @@
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@remix-run/node';
 import { useLoaderData, useNavigate } from '@remix-run/react';
 import { getSupabaseAdminClient } from '~/utils/supabase.server';
-import { requireUserId } from '~/utils/auth.server';
+import { withAdminLoader, withAdminAction } from '~/utils/auth.server';
 import { z } from 'zod';
 import { ArrowLeft } from 'lucide-react';
 import RecordPaymentForm from '~/components/RecordPaymentForm';
@@ -27,8 +27,7 @@ const RecordPaymentSchema = z.object({
   receipt_url: z.string().url().optional()
 });
 
-export async function loader({ request, params }: LoaderFunctionArgs) {
-  await requireUserId(request);
+async function loaderImpl({ request, params }: LoaderFunctionArgs) {
   const supabase = getSupabaseAdminClient();
   
   if (!params.id) {
@@ -95,8 +94,9 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   });
 }
 
-export async function action({ request, params }: ActionFunctionArgs) {
-  await requireUserId(request);
+export const loader = withAdminLoader(loaderImpl);
+
+async function actionImpl({ request, params }: ActionFunctionArgs) {
   await csrf.validate(request);
   const supabase = getSupabaseAdminClient();
   
@@ -287,6 +287,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
     return json({ errors: { general: 'An unexpected error occurred' } }, { status: 500 });
   }
 }
+
+export const action = withAdminAction(actionImpl);
 
 export default function RecordPaymentPage() {
   const { invoice, payments: payments_db, remainingBalance } = useLoaderData<typeof loader>();

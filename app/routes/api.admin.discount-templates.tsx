@@ -1,10 +1,9 @@
 import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from "@remix-run/node";
-import { requireAdminUser } from "~/utils/auth.server";
+import { withAdminLoader, withAdminAction } from "~/utils/auth.server";
 import { DiscountTemplateService } from "~/services/discount-template.server";
 import type { CreateDiscountTemplateData, UpdateDiscountTemplateData } from "~/types/discount";
 
-export async function loader({ request }: LoaderFunctionArgs) {
-  await requireAdminUser(request);
+async function loaderImpl({ request }: LoaderFunctionArgs) {
   
   const url = new URL(request.url);
   const activeOnly = url.searchParams.get("active") === "true";
@@ -24,8 +23,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
   }
 }
 
-export async function action({ request }: ActionFunctionArgs) {
-  const adminUser = await requireAdminUser(request);
+export const loader = withAdminLoader(loaderImpl);
+
+async function actionImpl({
+  request,
+  auth,
+}: ActionFunctionArgs & { auth: { user: { id: string } } }) {
+  const adminUser = auth.user;
   
   const method = request.method;
   
@@ -103,3 +107,5 @@ export async function action({ request }: ActionFunctionArgs) {
     }
   }
 }
+
+export const action = withAdminAction(actionImpl);

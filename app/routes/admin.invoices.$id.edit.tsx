@@ -7,7 +7,7 @@ import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { getInvoiceEntities } from "~/services/invoice-entity.server";
 import { getInvoiceById, getInvoiceByNumber, updateInvoice } from "~/services/invoice.server";
 import { getApplicableTaxRates } from "~/services/tax-rates.server";
-import { requireUserId } from "~/utils/auth.server";
+import { withAdminLoader, withAdminAction } from "~/utils/auth.server";
 import type { CreateInvoiceData, CreateInvoiceLineItemData, TaxRate } from "~/types/invoice";
 import { isNegative, toCents, fromCents, deserializeMoney, type MoneyJSON } from "~/utils/money";
 
@@ -26,8 +26,7 @@ interface ActionData {
   };
 }
 
-export async function loader({ request, params }: LoaderFunctionArgs) {
-  await requireUserId(request);
+async function loaderImpl({ request, params }: LoaderFunctionArgs) {
   
   const { id } = params;
   if (!id) {
@@ -156,8 +155,9 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   }
 }
 
-export async function action({ request, params }: ActionFunctionArgs) {
-  await requireUserId(request);
+export const loader = withAdminLoader(loaderImpl);
+
+async function actionImpl({ request, params }: ActionFunctionArgs) {
   
   const { id } = params;
   if (!id) {
@@ -305,6 +305,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
     }, { status: 500 });
   }
 }
+
+export const action = withAdminAction(actionImpl);
 
 export default function EditInvoicePage() {
   const { invoice, entities: rawEntities, initialData, selectedEntity: rawSelectedEntity, taxRatesByItemType } = useLoaderData<typeof loader>();

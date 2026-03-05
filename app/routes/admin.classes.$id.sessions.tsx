@@ -19,7 +19,7 @@ import {
 import { Calendar, Clock, Plus, Edit2, Trash2, ExternalLink } from "lucide-react";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { siteConfig } from "~/config/site";
-import { requireAdminUser } from "~/utils/auth.server";
+import { withAdminLoader, withAdminAction } from "~/utils/auth.server";
 import { getClassById, getClassSessions, generateClassSessions, deleteClassSession } from "~/services/class.server";
 import { hasAttendanceRecords } from "~/services/attendance.server";
 import type { BulkSessionGeneration } from "~/types/multi-class";
@@ -34,8 +34,7 @@ type ActionData = {
   success?: string;
 };
 
-export async function loader({ request, params }: LoaderFunctionArgs) {
-  await requireAdminUser(request);
+async function loaderImpl({ request, params }: LoaderFunctionArgs) {
 
   const classId = params.id;
   if (!classId) {
@@ -54,8 +53,9 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   return json({ classData, sessions });
 }
 
-export async function action({ request, params }: ActionFunctionArgs) {
-  await requireAdminUser(request);
+export const loader = withAdminLoader(loaderImpl);
+
+async function actionImpl({ request, params }: ActionFunctionArgs) {
   await csrf.validate(request);
 
   const classId = params.id;
@@ -114,6 +114,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
     );
   }
 }
+
+export const action = withAdminAction(actionImpl);
 
 export default function ClassSessions() {
   const { classData, sessions } = useLoaderData<typeof loader>();

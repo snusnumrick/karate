@@ -1,11 +1,10 @@
 import type { LoaderFunctionArgs } from '@remix-run/node';
 import { json } from '@remix-run/node';
-import { requireAdminUser } from '~/utils/auth.server';
+import { withAdminLoader } from '~/utils/auth.server';
 import { getInvoiceById } from '~/services/invoice.server';
 import { generateInvoicePDF, getDefaultCompanyInfo, generateInvoiceFilename } from '~/utils/pdf-generator';
 
-export async function loader({ request, params }: LoaderFunctionArgs) {
-  await requireAdminUser(request);
+async function loaderImpl({ request, params }: LoaderFunctionArgs) {
   
   const invoiceId = params.id;
   if (!invoiceId) {
@@ -52,3 +51,5 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     );
   }
 }
+
+export const loader = withAdminLoader(loaderImpl);

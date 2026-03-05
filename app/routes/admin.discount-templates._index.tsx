@@ -1,6 +1,6 @@
 import { json, type LoaderFunctionArgs } from "@remix-run/node";
 import { useLoaderData, Link } from "@remix-run/react";
-import { requireAdminUser } from "~/utils/auth.server";
+import { withAdminLoader } from "~/utils/auth.server";
 import { DiscountTemplateService } from "~/services/discount-template.server";
 import { toMoney, formatDollars } from "~/utils/money";
 import { Button } from "~/components/ui/button";
@@ -9,12 +9,13 @@ import { Badge } from "~/components/ui/badge";
 import { Plus, Edit, FileText } from "lucide-react";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
-export async function loader({ request }: LoaderFunctionArgs) {
-  await requireAdminUser(request);
+async function loaderImpl({ request }: LoaderFunctionArgs) {
   const templates = await DiscountTemplateService.getAllTemplates();
   // Let Remix serialize Money via toJSON; client handles Money JSON
   return json({ templates });
 }
+
+export const loader = withAdminLoader(loaderImpl);
 
 export default function DiscountTemplatesIndex() {
   const { templates } = useLoaderData<typeof loader>();

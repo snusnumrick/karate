@@ -1,6 +1,6 @@
 import { json, type LoaderFunctionArgs } from "@remix-run/node";
 import { useLoaderData, Link, useSearchParams } from "@remix-run/react";
-import { requireAdminUser } from "~/utils/auth.server";
+import { withAdminLoader } from "~/utils/auth.server";
 import { getPrograms } from "~/services/program.server";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
@@ -10,8 +10,7 @@ import { Plus, Edit, Calendar, Archive, Users } from "lucide-react";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { serializeMoney, fromCents, formatMoney, isPositive } from "~/utils/money";
 
-export async function loader({ request }: LoaderFunctionArgs) {
-  await requireAdminUser(request);
+async function loaderImpl({ request }: LoaderFunctionArgs) {
 
   const url = new URL(request.url);
   const showInactive = url.searchParams.get('showInactive') === 'true';
@@ -29,6 +28,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   return json({ programs: serializedPrograms, showInactive });
 }
+
+export const loader = withAdminLoader(loaderImpl);
 
 export default function ProgramsIndex() {
   const { programs, showInactive } = useLoaderData<typeof loader>();

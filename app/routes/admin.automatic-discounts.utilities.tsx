@@ -1,7 +1,7 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { Form, useActionData, useNavigation, Link } from "@remix-run/react";
-import { requireAdminUser } from "~/utils/auth.server";
+import { withAdminLoader, withAdminAction } from "~/utils/auth.server";
 import { batchProcessExistingData } from "~/utils/auto-discount-events.server";
 import { AutoDiscountService } from "~/services/auto-discount.server";
 import { Button } from "~/components/ui/button";
@@ -17,13 +17,13 @@ import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 
 
 
-export async function loader({ request }: LoaderFunctionArgs) {
-  await requireAdminUser(request);
+async function loaderImpl({ request }: LoaderFunctionArgs) {
   return json({});
 }
 
-export async function action({ request }: ActionFunctionArgs) {
-  await requireAdminUser(request);
+export const loader = withAdminLoader(loaderImpl);
+
+async function actionImpl({ request }: ActionFunctionArgs) {
   await csrf.validate(request);
   
   const formData = await request.formData();
@@ -87,6 +87,8 @@ export async function action({ request }: ActionFunctionArgs) {
     return json({ success: false, message: `Error: ${error instanceof Error ? error.message : 'Unknown error'}` });
   }
 }
+
+export const action = withAdminAction(actionImpl);
 
 export default function AutoDiscountUtilities() {
   const actionData = useActionData<typeof action>();

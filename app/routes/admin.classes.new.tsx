@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 import { Checkbox } from "~/components/ui/checkbox";
 import { Alert, AlertDescription } from "~/components/ui/alert";
 import { Plus, X, AlertTriangle, Info } from "lucide-react";
-import { requireAdminUser } from "~/utils/auth.server";
+import { withAdminLoader, withAdminAction } from "~/utils/auth.server";
 import { createClass, getInstructors, createClassSchedule } from "~/services/class.server";
 import { getPrograms } from "~/services/program.server";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
@@ -21,8 +21,7 @@ import { validateClassConstraints, getDefaultMaxCapacity, getSessionFrequencyDes
 import { serializeMoney } from "~/utils/money";
 
 
-export async function loader({ request }: LoaderFunctionArgs) {
-  await requireAdminUser(request);
+async function loaderImpl({ request }: LoaderFunctionArgs) {
 
   const [programs, instructors] = await Promise.all([
     getPrograms(),
@@ -41,8 +40,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
   return json({ programs: serializedPrograms, instructors });
 }
 
-export async function action({ request }: ActionFunctionArgs) {
-  await requireAdminUser(request);
+export const loader = withAdminLoader(loaderImpl);
+
+async function actionImpl({ request }: ActionFunctionArgs) {
   await csrf.validate(request);
 
   try {
@@ -130,6 +130,8 @@ export async function action({ request }: ActionFunctionArgs) {
     );
   }
 }
+
+export const action = withAdminAction(actionImpl);
 
 export default function NewClass() {
   const { programs, instructors } = useLoaderData<typeof loader>();

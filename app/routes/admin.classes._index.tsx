@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/com
 import { Badge } from "~/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Plus, Edit, Users, Calendar, Clock } from "lucide-react";
-import { requireAdminUser } from "~/utils/auth.server";
+import { withAdminLoader } from "~/utils/auth.server";
 import { getClasses, getClassById } from "~/services/class.server";
 import { getPrograms } from "~/services/program.server";
 import { getEnrollmentStats } from "~/services/enrollment.server";
@@ -18,8 +18,7 @@ type ClassWithStats = ClassWithDetails & {
   enrollmentStats: EnrollmentStats;
 };
 
-export async function loader({ request }: LoaderFunctionArgs) {
-  await requireAdminUser(request);
+async function loaderImpl({ request }: LoaderFunctionArgs) {
 
   const url = new URL(request.url);
   const programId = url.searchParams.get("program");
@@ -54,6 +53,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   return json({ classes: classesWithStats, programs: serializedPrograms, selectedProgramId: programId });
 }
+
+export const loader = withAdminLoader(loaderImpl);
 
 export default function AdminClassesIndex() {
   const { classes, programs, selectedProgramId } = useLoaderData<typeof loader>();

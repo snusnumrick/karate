@@ -5,7 +5,7 @@ import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek } from "date-f
 import { parseLocalDate, birthdaysToCalendarEvents, expandMultiDayEvents } from "~/components/calendar/utils";
 import { formatDate, getTodayLocalDateString } from "~/utils/misc";
 import { getSupabaseServerClient, getSupabaseAdminClient } from "~/utils/supabase.server";
-import { requireAdminUser } from "~/utils/auth.server";
+import { withAdminLoader, withAdminAction } from "~/utils/auth.server";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog";
@@ -87,9 +87,8 @@ type LoaderData = {
     csrfToken: string;
 };
 
-export async function loader({ request }: LoaderFunctionArgs) {
+async function loaderImpl({ request }: LoaderFunctionArgs) {
     // Require admin authentication
-    await requireAdminUser(request);
 
     // Create a service role client directly for admin-level data fetching
     const supabaseAdmin = getSupabaseAdminClient();
@@ -440,12 +439,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
     }
 }
 
+export const loader = withAdminLoader(loaderImpl);
+
 type ActionResponse =
     | { success: true; sessionId: string; status: 'scheduled' | 'completed' | 'cancelled' }
     | { success: false; error: string };
 
-export async function action({ request }: ActionFunctionArgs) {
-    await requireAdminUser(request);
+async function actionImpl({ request }: ActionFunctionArgs) {
 
     try {
         await csrf.validate(request);
@@ -475,6 +475,8 @@ export async function action({ request }: ActionFunctionArgs) {
 
     return json<ActionResponse>({ success: false, error: 'Invalid action.' }, { status: 400 });
 }
+
+export const action = withAdminAction(actionImpl);
 
 export default function AdminCalendar() {
     const { events: initialEvents, students, programs, instructors, filters, csrfToken } = useLoaderData<LoaderData>();

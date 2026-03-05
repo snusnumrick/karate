@@ -12,7 +12,7 @@ import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescript
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { CheckCircle, Clock, AlertCircle, Users, Plus, Edit, Trash2 } from "lucide-react";
 import { formatDate } from "~/utils/misc";
-import { requireAdminUser } from "~/utils/auth.server";
+import { withAdminLoader, withAdminAction } from "~/utils/auth.server";
 import { getEnrollments, updateEnrollment, dropStudent } from "~/services/enrollment.server";
 import { getClasses } from "~/services/class.server";
 import { getPrograms } from "~/services/program.server";
@@ -21,8 +21,7 @@ import { csrf } from "~/utils/csrf.server";
 import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 import { serializeMoney } from "~/utils/money";
 
-export async function loader({ request }: LoaderFunctionArgs) {
-  await requireAdminUser(request);
+async function loaderImpl({ request }: LoaderFunctionArgs) {
 
   const url = new URL(request.url);
   const classId = url.searchParams.get("class");
@@ -83,8 +82,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
   });
 }
 
-export async function action({ request }: ActionFunctionArgs) {
-  await requireAdminUser(request);
+export const loader = withAdminLoader(loaderImpl);
+
+async function actionImpl({ request }: ActionFunctionArgs) {
   await csrf.validate(request);
   
   const formData = await request.formData();
@@ -120,6 +120,8 @@ export async function action({ request }: ActionFunctionArgs) {
       return json({ error: "Invalid intent" }, { status: 400 });
   }
 }
+
+export const action = withAdminAction(actionImpl);
 
 export default function AdminEnrollments() {
   const { enrollments, classes, programs, stats, filters } = useLoaderData<typeof loader>();

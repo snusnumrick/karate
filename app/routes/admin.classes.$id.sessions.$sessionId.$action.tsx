@@ -1,6 +1,6 @@
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from "@remix-run/node";
 import { csrf } from "~/utils/csrf.server";
-import { requireAdminUser } from "~/utils/auth.server";
+import { withAdminLoader, withAdminAction } from "~/utils/auth.server";
 import { getClassSessionById, updateClassSession } from "~/services/class.server";
 
 const ACTION_STATUS_MAP = {
@@ -8,8 +8,7 @@ const ACTION_STATUS_MAP = {
   cancel: "cancelled",
 } as const satisfies Record<string, "completed" | "cancelled">;
 
-export async function action({ request, params }: ActionFunctionArgs) {
-  await requireAdminUser(request);
+async function actionImpl({ request, params }: ActionFunctionArgs) {
   await csrf.validate(request);
 
   const classId = params.id;
@@ -44,10 +43,14 @@ export async function action({ request, params }: ActionFunctionArgs) {
   return redirect(`/admin/classes/${classId}/sessions`);
 }
 
-export function loader({ request }: LoaderFunctionArgs) {
+export const action = withAdminAction(actionImpl);
+
+function loaderImpl({ request }: LoaderFunctionArgs) {
   if (request.method === "GET") {
     throw new Response("Method Not Allowed", { status: 405 });
   }
 
   throw new Response("Unsupported method", { status: 405 });
 }
+
+export const loader = withAdminLoader(loaderImpl);

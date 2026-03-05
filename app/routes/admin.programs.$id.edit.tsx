@@ -1,6 +1,6 @@
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction } from "@remix-run/node";
 import { Form, useActionData, useLoaderData, useNavigation, Link } from "@remix-run/react";
-import { requireAdminUser } from "~/utils/auth.server";
+import { withAdminLoader, withAdminAction } from "~/utils/auth.server";
 import { getProgramById, updateProgram } from "~/services/program.server";
 import { getProgramRequiredWaivers, addProgramWaiver, removeProgramWaiver, updateProgramWaiver } from "~/services/waiver.server";
 import { csrf } from "~/utils/csrf.server";
@@ -42,8 +42,7 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
   ];
 };
 
-export async function loader({ request, params }: LoaderFunctionArgs) {
-  await requireAdminUser(request);
+async function loaderImpl({ request, params }: LoaderFunctionArgs) {
   const programId = params.id;
 
   if (!programId) {
@@ -80,8 +79,9 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   });
 }
 
-export async function action({ request, params }: ActionFunctionArgs) {
-  await requireAdminUser(request);
+export const loader = withAdminLoader(loaderImpl);
+
+async function actionImpl({ request, params }: ActionFunctionArgs) {
   
   try {
     await csrf.validate(request);
@@ -263,6 +263,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
     }, { status: 500 });
   }
 }
+
+export const action = withAdminAction(actionImpl);
 
 export default function EditProgram() {
   const { program, allWaivers, programWaivers } = useLoaderData<typeof loader>();

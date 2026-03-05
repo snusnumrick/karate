@@ -1,6 +1,6 @@
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from "@remix-run/node";
 import { Form, useActionData, useLoaderData, useNavigation, Link } from "@remix-run/react";
-import { requireAdminUser } from "~/utils/auth.server";
+import { withAdminLoader, withAdminAction } from "~/utils/auth.server";
 import { createProgram } from "~/services/program.server";
 import { addProgramWaiver } from "~/services/waiver.server";
 import { AuthenticityTokenInput } from "remix-utils/csrf/react";
@@ -31,8 +31,7 @@ type ActionData = {
   };
 };
 
-export async function loader({ request }: LoaderFunctionArgs) {
-  await requireAdminUser(request);
+async function loaderImpl({ request }: LoaderFunctionArgs) {
 
   // Get all available waivers
   const supabaseAdmin = getSupabaseAdminClient();
@@ -46,8 +45,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
   });
 }
 
-export async function action({ request }: ActionFunctionArgs) {
-  await requireAdminUser(request);
+export const loader = withAdminLoader(loaderImpl);
+
+async function actionImpl({ request }: ActionFunctionArgs) {
   await csrf.validate(request);
   const formData = await request.formData();
 
@@ -193,6 +193,8 @@ export async function action({ request }: ActionFunctionArgs) {
     }, { status: 500 });
   }
 }
+
+export const action = withAdminAction(actionImpl);
 
 export default function NewProgram() {
   const { allWaivers } = useLoaderData<typeof loader>();

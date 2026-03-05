@@ -1,10 +1,9 @@
 import { json, type LoaderFunctionArgs } from "@remix-run/node";
-import { requireAdminUser } from "~/utils/auth.server";
+import { withAdminLoader } from "~/utils/auth.server";
 import { getClasses } from "~/services/class.server";
 import { getSupabaseAdminClient } from "~/utils/supabase.server";
 
-export async function loader({ request, params }: LoaderFunctionArgs) {
-  await requireAdminUser(request);
+async function loaderImpl({ request, params }: LoaderFunctionArgs) {
   
   const { studentId } = params;
   
@@ -45,3 +44,5 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     return json({ error: "Failed to check eligibility" }, { status: 500 });
   }
 }
+
+export const loader = withAdminLoader(loaderImpl);

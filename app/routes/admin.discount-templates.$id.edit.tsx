@@ -2,7 +2,7 @@ import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from
 import { Form, Link, useActionData, useLoaderData, useNavigation } from "@remix-run/react";
 import { csrf } from "~/utils/csrf.server";
 import { AuthenticityTokenInput } from "remix-utils/csrf/react";
-import { requireAdminUser } from "~/utils/auth.server";
+import { withAdminLoader, withAdminAction } from "~/utils/auth.server";
 import { DiscountTemplateService } from "~/services/discount-template.server";
 import { fromDollars, toDollars, type Money } from "~/utils/money";
 import { Button } from "~/components/ui/button";
@@ -39,8 +39,7 @@ import {
   AlertDialogTrigger,
 } from "~/components/ui/alert-dialog";
 
-export async function loader({ request, params }: LoaderFunctionArgs) {
-  await requireAdminUser(request);
+async function loaderImpl({ request, params }: LoaderFunctionArgs) {
   const templateId = params.id;
   
   if (!templateId) {
@@ -64,8 +63,9 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   return json({ template: normalizedTemplate });
 }
 
-export async function action({ request, params }: ActionFunctionArgs) {
-  await requireAdminUser(request);
+export const loader = withAdminLoader(loaderImpl);
+
+async function actionImpl({ request, params }: ActionFunctionArgs) {
   
   try {
     await csrf.validate(request);
@@ -169,6 +169,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
     );
   }
 }
+
+export const action = withAdminAction(actionImpl);
 
 export default function EditDiscountTemplate() {
   const { template } = useLoaderData<typeof loader>();

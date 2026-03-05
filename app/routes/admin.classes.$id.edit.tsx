@@ -21,7 +21,7 @@ import {
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
 import { Trash2, Plus, X, AlertTriangle, Info } from "lucide-react";
-import { requireAdminUser } from "~/utils/auth.server";
+import { withAdminLoader, withAdminAction } from "~/utils/auth.server";
 import { getClassById, updateClass, deleteClass, getInstructors, getClassSchedules, updateClassSchedules } from "~/services/class.server";
 import { getPrograms } from "~/services/program.server";
 import type { UpdateClassData } from "~/types/multi-class";
@@ -31,8 +31,7 @@ import { validateClassConstraints, getSessionFrequencyDescription } from "~/util
 import { serializeMoney } from "~/utils/money";
 
 
-export async function loader({ request, params }: LoaderFunctionArgs) {
-  await requireAdminUser(request);
+async function loaderImpl({ request, params }: LoaderFunctionArgs) {
 
   const classId = params.id;
   if (!classId) {
@@ -62,8 +61,9 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   return json({ classData, programs: serializedPrograms, instructors, schedules });
 }
 
-export async function action({ request, params }: ActionFunctionArgs) {
-  await requireAdminUser(request);
+export const loader = withAdminLoader(loaderImpl);
+
+async function actionImpl({ request, params }: ActionFunctionArgs) {
 
   const classId = params.id;
   if (!classId) {
@@ -161,6 +161,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
     );
   }
 }
+
+export const action = withAdminAction(actionImpl);
 
 export default function EditClass() {
   const { classData, programs, instructors, schedules } = useLoaderData<typeof loader>();

@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 import { Calendar, Clock, Save } from "lucide-react";
 import { AppBreadcrumb } from "~/components/AppBreadcrumb";
 import { AdminCard, AdminCardContent, AdminCardHeader, AdminCardTitle } from "~/components/AdminCard";
-import { requireAdminUser } from "~/utils/auth.server";
+import { withAdminLoader, withAdminAction } from "~/utils/auth.server";
 import { getClassSessionById, updateClassSession } from "~/services/class.server";
 import { formatDate } from "~/utils/misc";
 
@@ -26,8 +26,7 @@ type ActionData = {
   };
 };
 
-export async function loader({ request, params }: LoaderFunctionArgs) {
-  await requireAdminUser(request);
+async function loaderImpl({ request, params }: LoaderFunctionArgs) {
 
   const sessionId = params.id;
   if (!sessionId) {
@@ -42,8 +41,9 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   return json({ session });
 }
 
-export async function action({ request, params }: ActionFunctionArgs) {
-  await requireAdminUser(request);
+export const loader = withAdminLoader(loaderImpl);
+
+async function actionImpl({ request, params }: ActionFunctionArgs) {
 
   const sessionId = params.id;
   if (!sessionId) {
@@ -118,6 +118,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
     }, { status: 500 });
   }
 }
+
+export const action = withAdminAction(actionImpl);
 
 export default function EditSession() {
   const { session } = useLoaderData<typeof loader>();

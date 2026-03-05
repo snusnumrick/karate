@@ -8,7 +8,7 @@ import { createInvoice, getInvoiceById, updateInvoiceStatus } from "~/services/i
 import { getInvoiceEntities, getInvoiceEntityById } from "~/services/invoice-entity.server";
 import { sendInvoiceEmail } from "~/services/invoice-email.server";
 import { getActiveTaxRates } from "~/services/tax-rates.server";
-import { requireUserId } from "~/utils/auth.server";
+import { withAdminLoader, withAdminAction } from "~/utils/auth.server";
 import { getTodayLocalDateString } from "~/utils/misc";
 import type { CreateInvoiceData, CreateInvoiceLineItemData } from "~/types/invoice";
 import {isNegative, ZERO_MONEY, toCents, fromCents, deserializeMoney, type MoneyJSON} from "~/utils/money";
@@ -28,8 +28,7 @@ interface ActionData {
   };
 }
 
-export async function loader({ request }: LoaderFunctionArgs) {
-  await requireUserId(request);
+async function loaderImpl({ request }: LoaderFunctionArgs) {
   
   // Get entity_id from URL parameters if provided
   const url = new URL(request.url);
@@ -72,8 +71,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
   }
 }
 
-export async function action({ request }: ActionFunctionArgs) {
-  await requireUserId(request);
+export const loader = withAdminLoader(loaderImpl);
+
+async function actionImpl({ request }: ActionFunctionArgs) {
   await csrf.validate(request);
   
   const formData = await request.formData();
@@ -261,6 +261,8 @@ export async function action({ request }: ActionFunctionArgs) {
     }, { status: 500 });
   }
 }
+
+export const action = withAdminAction(actionImpl);
 
 export default function NewInvoicePage() {
   const { entities: rawEntities, preSelectedEntity: rawPreSelectedEntity, taxRatesByItemType } = useLoaderData<typeof loader>();

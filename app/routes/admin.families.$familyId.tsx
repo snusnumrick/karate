@@ -30,7 +30,7 @@ import { formatDate } from "~/utils/misc";
 import { getFamilyDetails, type FamilyDetails, deleteFamily } from "~/services/family.server";
 import { getGuardiansByFamily } from "~/services/guardian.server";
 import { deleteStudent } from "~/services/student.server";
-import { requireAdminUser } from "~/utils/auth.server";
+import { withAdminLoader, withAdminAction } from "~/utils/auth.server";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import type { Database } from "~/types/database.types";
 import { csrf } from "~/utils/csrf.server";
@@ -44,9 +44,10 @@ type LoaderData = {
     guardians: GuardianRow[];
 };
 
-export const meta: MetaFunction<typeof loader> = ({ data }) => {
+export const meta: MetaFunction = ({ data }) => {
+    const loaderData = data as LoaderData | undefined;
     // Access family name via the nested structure
-    const familyName = data?.family?.name ?? "Family Details";
+    const familyName = loaderData?.family?.name ?? "Family Details";
     return [
         {title: `${familyName} | Admin Dashboard`},
         {name: "description", content: `Details for the ${familyName} family.`},
@@ -54,8 +55,12 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 };
 
 
-export async function loader({ request, params }: LoaderFunctionArgs) {
-    const user = await requireAdminUser(request);
+async function loaderImpl({
+    request,
+    params,
+    auth,
+}: LoaderFunctionArgs & { auth: { user: { id: string } } }) {
+    const user = auth.user;
     
     invariant(params.familyId, "Missing familyId parameter");
     const familyId = params.familyId;
@@ -85,8 +90,10 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     }
 }
 
+export const loader = withAdminLoader(loaderImpl);
+
 // Action function to handle deletions etc.
-export async function action({request, params}: ActionFunctionArgs) {
+async function actionImpl({request, params}: ActionFunctionArgs) {
     invariant(params.familyId, "Missing familyId parameter");
     const familyId = params.familyId; // Keep familyId for potential redirects/context
     await csrf.validate(request);
@@ -137,6 +144,8 @@ export async function action({request, params}: ActionFunctionArgs) {
     // Handle other intents or return error if intent is unknown
     return json({error: `Unknown intent: ${intent}`}, {status: 400});
 }
+
+export const action = withAdminAction(actionImpl);
 
 // Helper component for the delete student button/form
 function DeleteStudentButton({studentId, studentName}: { studentId: string, studentName: string }) {

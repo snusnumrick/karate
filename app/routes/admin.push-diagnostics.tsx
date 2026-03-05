@@ -1,6 +1,6 @@
 import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from '@remix-run/node';
 import { Form, useActionData, useLoaderData } from '@remix-run/react';
-import { requireUserId } from '~/utils/auth.server';
+import { withAdminLoader, withAdminAction } from '~/utils/auth.server';
 import { getSupabaseServerClient } from '~/utils/supabase.server';
 import {
   generateVAPIDKeys,
@@ -23,8 +23,7 @@ import {
 } from "~/components/ui/alert-dialog";
 import { Button } from "~/components/ui/button";
 
-export async function loader({ request }: LoaderFunctionArgs) {
-  await requireUserId(request);
+async function loaderImpl({ request }: LoaderFunctionArgs) {
   
   const { supabaseServer } = getSupabaseServerClient(request);
   
@@ -45,8 +44,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
   });
 }
 
-export async function action({ request }: ActionFunctionArgs) {
-  await requireUserId(request);
+export const loader = withAdminLoader(loaderImpl);
+
+async function actionImpl({ request }: ActionFunctionArgs) {
   await csrf.validate(request);
   
   const formData = await request.formData();
@@ -107,6 +107,8 @@ export async function action({ request }: ActionFunctionArgs) {
       } as const);
   }
 }
+
+export const action = withAdminAction(actionImpl);
 
 export default function PushDiagnostics() {
   const { vapidConfig, subscriptionCount, subscriptions } = useLoaderData<typeof loader>();
