@@ -112,7 +112,10 @@ export async function getInvoiceEntities(
 
   let query = client
     .from('invoice_entities')
-    .select('*', { count: 'exact' });
+    .select(
+      'id, name, entity_type, contact_person, email, phone, address_line1, address_line2, city, state, postal_code, country, tax_id, payment_terms, credit_limit, credit_limit_cents, is_active, notes, created_at, updated_at, family_id',
+      { count: 'exact' }
+    );
 
   // Apply filters
   if (filters.entity_type && filters.entity_type.length > 0) {
