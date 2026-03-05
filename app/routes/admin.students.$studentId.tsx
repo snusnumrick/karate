@@ -31,6 +31,7 @@ import {
     type StudentDetails,
     type StudentUpdateData
 } from "~/services/student.server";
+import { isServiceError } from "~/utils/service-errors.server";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { StudentFormFields } from "~/components/StudentFormFields";
 
@@ -73,6 +74,9 @@ export async function loader({ params }: LoaderFunctionArgs): Promise<TypedRespo
         // Re-throw the error if it's already a Response (like 404 or 500 from the service)
         if (error instanceof Response) {
             throw error;
+        }
+        if (isServiceError(error)) {
+            throw new Response(error.message, { status: error.status, headers: response.headers });
         }
         // Otherwise, wrap it in a generic 500 response
         throw new Response("An unexpected error occurred while loading student details.", { status: 500, headers: response.headers });
@@ -140,7 +144,8 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
             console.error("[Action] Admin record Individual Session usage error:", error);
             const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
             // Return specific error message from service if available
-            return json({ intent, error: `Failed to record usage: ${errorMessage}` }, { status: 500, headers: response.headers });
+            const status = isServiceError(error) ? error.status : 500;
+            return json({ intent, error: `Failed to record usage: ${errorMessage}` }, { status, headers: response.headers });
         }
     }
 
@@ -193,7 +198,8 @@ export async function action({request, params}: ActionFunctionArgs): Promise<Typ
         } catch (error) {
             console.error("[Action] Admin student update error:", error);
             const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
-            return json({ intent, error: `Failed to update student: ${errorMessage}` }, { status: 500, headers: response.headers });
+            const status = isServiceError(error) ? error.status : 500;
+            return json({ intent, error: `Failed to update student: ${errorMessage}` }, { status, headers: response.headers });
         }
     }
 

@@ -39,6 +39,7 @@ import {
 import { moneyFromRow } from "~/utils/database-money";
 import type { InvoiceWithDetails, InvoiceLineItem, InvoiceLineItemTax } from "~/types/invoice";
 import { withAdminLoader, withAdminAction } from "~/utils/auth.server";
+import { isServiceError } from "~/utils/service-errors.server";
 import { 
   Send,
   Trash2, 
@@ -83,7 +84,7 @@ interface RawPayment {
   payment_method: string;
 }
 
-async function loaderImpl({ request, params }: LoaderFunctionArgs) {
+async function loaderImpl({ params }: LoaderFunctionArgs) {
   
   const { id } = params;
   if (!id) {
@@ -105,6 +106,9 @@ async function loaderImpl({ request, params }: LoaderFunctionArgs) {
     return json({ invoice });
   } catch (error) {
     console.error("Error loading invoice:", error);
+    if (isServiceError(error)) {
+      throw new Response(error.message, { status: error.status });
+    }
     throw new Response("Failed to load invoice", { status: 500 });
   }
 }
@@ -216,6 +220,9 @@ async function actionImpl({ request, params }: ActionFunctionArgs) {
     }
   } catch (error) {
     console.error("Error updating invoice:", error);
+    if (isServiceError(error)) {
+      return json({ error: error.message }, { status: error.status });
+    }
     return json({ error: "Failed to update invoice" }, { status: 500 });
   }
 }

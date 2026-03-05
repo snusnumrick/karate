@@ -2,9 +2,10 @@ import type { LoaderFunctionArgs } from '@remix-run/node';
 import { json } from '@remix-run/node';
 import { withAdminLoader } from '~/utils/auth.server';
 import { getInvoiceById } from '~/services/invoice.server';
+import { toServiceErrorResponseInit } from '~/utils/service-errors.server';
 import { generateInvoicePDF, getDefaultCompanyInfo, generateInvoiceFilename } from '~/utils/pdf-generator';
 
-async function loaderImpl({ request, params }: LoaderFunctionArgs) {
+async function loaderImpl({ params }: LoaderFunctionArgs) {
   
   const invoiceId = params.id;
   if (!invoiceId) {
@@ -44,10 +45,11 @@ async function loaderImpl({ request, params }: LoaderFunctionArgs) {
     if (error instanceof Response) {
       throw error;
     }
-    
+
+    const { status, body } = toServiceErrorResponseInit(error);
     return json(
-      { error: 'Failed to generate PDF' },
-      { status: 500 }
+      { error: body.message },
+      { status }
     );
   }
 }

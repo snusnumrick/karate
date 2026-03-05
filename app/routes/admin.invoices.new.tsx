@@ -9,6 +9,7 @@ import { getInvoiceEntities, getInvoiceEntityById } from "~/services/invoice-ent
 import { sendInvoiceEmail } from "~/services/invoice-email.server";
 import { getActiveTaxRates } from "~/services/tax-rates.server";
 import { withAdminLoader, withAdminAction } from "~/utils/auth.server";
+import { isServiceError } from "~/utils/service-errors.server";
 import { getTodayLocalDateString } from "~/utils/misc";
 import type { CreateInvoiceData, CreateInvoiceLineItemData } from "~/types/invoice";
 import {isNegative, ZERO_MONEY, toCents, fromCents, deserializeMoney, type MoneyJSON} from "~/utils/money";
@@ -251,14 +252,15 @@ async function actionImpl({ request }: ActionFunctionArgs) {
     
   } catch (error) {
     console.error("Error creating invoice:", error);
+    const status = isServiceError(error) ? error.status : 500;
     return json<ActionData>({
-      errors: { general: "Failed to create invoice. Please try again." },
+      errors: { general: isServiceError(error) ? error.message : "Failed to create invoice. Please try again." },
       values: {
         entity_id: formData.get("entity_id") as string || '',
         issue_date: formData.get("issue_date") as string || '',
         due_date: formData.get("due_date") as string || ''
       }
-    }, { status: 500 });
+    }, { status });
   }
 }
 

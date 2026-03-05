@@ -8,6 +8,7 @@ import { getInvoiceEntities } from "~/services/invoice-entity.server";
 import { getInvoiceById, getInvoiceByNumber, updateInvoice } from "~/services/invoice.server";
 import { getApplicableTaxRates } from "~/services/tax-rates.server";
 import { withAdminLoader, withAdminAction } from "~/utils/auth.server";
+import { isServiceError } from "~/utils/service-errors.server";
 import type { CreateInvoiceData, CreateInvoiceLineItemData, TaxRate } from "~/types/invoice";
 import { isNegative, toCents, fromCents, deserializeMoney, type MoneyJSON } from "~/utils/money";
 
@@ -26,7 +27,7 @@ interface ActionData {
   };
 }
 
-async function loaderImpl({ request, params }: LoaderFunctionArgs) {
+async function loaderImpl({ params }: LoaderFunctionArgs) {
   
   const { id } = params;
   if (!id) {
@@ -150,6 +151,9 @@ async function loaderImpl({ request, params }: LoaderFunctionArgs) {
     console.error("Error loading invoice for edit:", error);
     if (error instanceof Response) {
       throw error;
+    }
+    if (isServiceError(error)) {
+      throw new Response(error.message, { status: error.status });
     }
     throw new Response("Error loading invoice", { status: 500 });
   }
@@ -293,6 +297,16 @@ async function actionImpl({ request, params }: ActionFunctionArgs) {
     if (error instanceof Response) {
       // Re-throw Response errors (like 400 for non-draft invoices)
       throw error;
+    }
+    if (isServiceError(error)) {
+      return json<ActionData>({
+        errors: { general: error.message },
+        values: {
+          entity_id: formData.get("entity_id") as string || '',
+          issue_date: formData.get("issue_date") as string || '',
+          due_date: formData.get("due_date") as string || ''
+        }
+      }, { status: error.status });
     }
     
     return json<ActionData>({

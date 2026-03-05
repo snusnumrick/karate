@@ -31,6 +31,7 @@ import { getFamilyDetails, type FamilyDetails, deleteFamily } from "~/services/f
 import { getGuardiansByFamily } from "~/services/guardian.server";
 import { deleteStudent } from "~/services/student.server";
 import { withAdminLoader, withAdminAction } from "~/utils/auth.server";
+import { isServiceError } from "~/utils/service-errors.server";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import type { Database } from "~/types/database.types";
 import { csrf } from "~/utils/csrf.server";
@@ -56,7 +57,6 @@ export const meta: MetaFunction = ({ data }) => {
 
 
 async function loaderImpl({
-    request,
     params,
     auth,
 }: LoaderFunctionArgs & { auth: { user: { id: string } } }) {
@@ -84,6 +84,9 @@ async function loaderImpl({
         // Re-throw the error if it's already a Response (like 404 or 500 from the service)
         if (error instanceof Response) {
             throw error;
+        }
+        if (isServiceError(error)) {
+            throw new Response(error.message, { status: error.status, headers: response.headers });
         }
         // Otherwise, wrap it in a generic 500 response
         throw new Response("An unexpected error occurred while loading family details.", { status: 500, headers: response.headers });
@@ -120,7 +123,8 @@ async function actionImpl({request, params}: ActionFunctionArgs) {
             const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
             // Return error in JSON format for the fetcher
             // Use 500 for server-side errors from the service
-            return json({ error: `Failed to delete student: ${errorMessage}` }, { status: 500 });
+            const status = isServiceError(error) ? error.status : 500;
+            return json({ error: `Failed to delete student: ${errorMessage}` }, { status });
         }
     }
 
@@ -137,7 +141,8 @@ async function actionImpl({request, params}: ActionFunctionArgs) {
         } catch (error) {
             console.error(`[Action Delete Family] Error deleting family ${familyId}:`, error);
             const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
-            return json({ error: `Failed to delete family: ${errorMessage}` }, { status: 500 });
+            const status = isServiceError(error) ? error.status : 500;
+            return json({ error: `Failed to delete family: ${errorMessage}` }, { status });
         }
     }
 

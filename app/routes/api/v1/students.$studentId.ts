@@ -3,6 +3,7 @@ import type { LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import invariant from "tiny-invariant";
 import { getStudentDetails } from "~/services/student.server";
+import { toServiceErrorResponseInit } from "~/utils/service-errors.server";
 import { requireApiAuth, requireApiRole } from "~/utils/api-auth.server"; // Import auth helpers
 
 /**
@@ -38,19 +39,12 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
         return json(studentDetails, { status: 200 });
 
     } catch (error) {
-        // Handle errors thrown by the service (e.g., 404 Not Found, 500 DB error)
-        // Check if the error is a Response object (thrown by the service)
-        if (error instanceof Response) {
-            // If the service threw a Response (like 404), convert it to a JSON response
-            const errorBody = await error.text(); // Get the original error message
-            console.warn(`[API Student Loader] Service threw Response (${error.status}) for student ${studentId}: ${errorBody}`);
-            return json({ error: errorBody || "Failed to fetch student details" }, { status: error.status });
+        const { status, body } = toServiceErrorResponseInit(error);
+        if (status !== 500) {
+            console.warn(`[API Student Loader] Service error (${status}) for student ${studentId}: ${body.message}`);
         }
-
-        // Handle unexpected errors from the service (now 'error' is confirmed not a Response)
         console.error(`[API Student Loader] Unexpected error fetching student ${studentId}:`, error);
-        const errorMessage = error instanceof Error ? error.message : "An unknown server error occurred.";
-        return json({ error: errorMessage }, { status: 500 });
+        return json({ error: body.message }, { status });
     }
 }
 
