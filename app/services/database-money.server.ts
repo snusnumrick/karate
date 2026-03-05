@@ -1,6 +1,6 @@
 import { Money, fromCents, toCents, fromDollars } from '../utils/money';
-import { isLegacyDollars } from '~/utils/money-rules';
 import {
+  isLegacyDollars,
   centsFromRow as sharedCentsFromRow,
   moneyFromRow as sharedMoneyFromRow,
 } from '~/utils/database-money';
