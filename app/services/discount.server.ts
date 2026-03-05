@@ -17,6 +17,7 @@ import {getSupabaseAdminClient} from '~/utils/supabase.server';
 import { getCurrentDateTimeInTimezone } from '~/utils/misc';
 import { moneyFromRow } from '~/services/database-money.server';
 import {fromCents, fromDollars, type Money, toCents, toDollars} from '~/utils/money';
+import { createNotFoundError, createPersistenceError, createValidationError } from '~/utils/service-errors.server';
 
 type DiscountUsageRowWithCode = Database['public']['Tables']['discount_code_usage']['Row'] & {
     discount_codes?: Database['public']['Tables']['discount_codes']['Row'] | null;
@@ -110,7 +111,7 @@ const fetchDiscountUsageByScope = async (
 
     if (error) {
         console.error(`Error fetching ${scopeLabel} discount usage:`, error);
-        throw new Error(`Failed to fetch ${scopeLabel} discount usage`);
+        throw createPersistenceError(`Failed to fetch ${scopeLabel} discount usage`);
     }
 
     const rawUsage = Array.isArray(data) ? (data as unknown[]) : [];
@@ -137,7 +138,7 @@ export class DiscountService {
             .order('created_at', {ascending: false});
 
         if (error) {
-            throw new Error(`Failed to fetch active discount codes: ${error.message}`);
+            throw createPersistenceError(`Failed to fetch active discount codes: ${error.message}`);
         }
 
         // Map null to undefined for optional properties
@@ -161,7 +162,7 @@ export class DiscountService {
             .order('created_at', {ascending: false});
 
         if (codesError) {
-            throw new Error(`Failed to fetch discount codes: ${codesError.message}`);
+            throw createPersistenceError(`Failed to fetch discount codes: ${codesError.message}`);
         }
 
         if (!codes_db || codes_db.length === 0) {
@@ -206,10 +207,10 @@ export class DiscountService {
             ]);
 
             if (creatorError) {
-                throw new Error(`Failed to fetch creator profiles: ${creatorError.message}`);
+                throw createPersistenceError(`Failed to fetch creator profiles: ${creatorError.message}`);
             }
             if (usageError) {
-                throw new Error(`Failed to fetch discount usage: ${usageError.message}`);
+                throw createPersistenceError(`Failed to fetch discount usage: ${usageError.message}`);
             }
 
             creators = creatorData || [];
@@ -232,7 +233,7 @@ export class DiscountService {
                 .order('used_at', {ascending: false});
 
             if (usageError) {
-                throw new Error(`Failed to fetch discount usage: ${usageError.message}`);
+                throw createPersistenceError(`Failed to fetch discount usage: ${usageError.message}`);
             }
             usageData_db = usageData || [];
         }
@@ -296,7 +297,7 @@ export class DiscountService {
             if (error.code === 'PGRST116') {
                 return null; // Not found
             }
-            throw new Error(`Failed to fetch discount code: ${error.message}`);
+            throw createPersistenceError(`Failed to fetch discount code: ${error.message}`);
         }
 
         return normalizeDiscountCodeRow(data);
@@ -317,7 +318,7 @@ export class DiscountService {
             if (error.code === 'PGRST116') {
                 return null; // Not found
             }
-            throw new Error(`Failed to fetch discount code: ${error.message}`);
+            throw createPersistenceError(`Failed to fetch discount code: ${error.message}`);
         }
 
         return normalizeDiscountCodeRow(data);
@@ -332,16 +333,16 @@ export class DiscountService {
     ): Promise<DiscountCode> {
         // Validate association constraints
         if (discountData.scope === 'per_family' && !discountData.family_id) {
-            throw new Error('family_id is required when scope is per_family');
+            throw createValidationError('family_id is required when scope is per_family');
         }
         if (discountData.scope === 'per_student' && !discountData.student_id) {
-            throw new Error('student_id is required when scope is per_student');
+            throw createValidationError('student_id is required when scope is per_student');
         }
         if (discountData.family_id && discountData.student_id) {
-            throw new Error('Cannot specify both family_id and student_id');
+            throw createValidationError('Cannot specify both family_id and student_id');
         }
         if (!discountData.family_id && !discountData.student_id) {
-            throw new Error('Must specify either family_id or student_id');
+            throw createValidationError('Must specify either family_id or student_id');
         }
 
         const {discount_value, valid_from, ...restData} = discountData;
@@ -360,7 +361,7 @@ export class DiscountService {
             .single();
 
         if (error) {
-            throw new Error(`Failed to create discount code: ${error.message}`);
+            throw createPersistenceError(`Failed to create discount code: ${error.message}`);
         }
 
         return normalizeDiscountCodeRow(data);
@@ -385,13 +386,13 @@ export class DiscountService {
             if (!effectiveType) {
                 const existing = await this.getDiscountCodeById(id);
                 if (!existing) {
-                    throw new Error('Discount code not found');
+                    throw createNotFoundError('Discount code not found');
                 }
                 effectiveType = existing.discount_type;
             }
 
             if (!effectiveType) {
-                throw new Error('Discount type is required when updating discount value');
+                throw createValidationError('Discount type is required when updating discount value');
             }
 
             Object.assign(updateData, buildDiscountValueWrite(effectiveType, discount_value));
@@ -405,7 +406,7 @@ export class DiscountService {
             .single();
 
         if (error) {
-            throw new Error(`Failed to update discount code: ${error.message}`);
+            throw createPersistenceError(`Failed to update discount code: ${error.message}`);
         }
 
         return normalizeDiscountCodeRow(data);
@@ -421,7 +422,7 @@ export class DiscountService {
             .eq('id', id);
 
         if (error) {
-            throw new Error(`Failed to deactivate discount code: ${error.message}`);
+            throw createPersistenceError(`Failed to deactivate discount code: ${error.message}`);
         }
     }
 
@@ -435,7 +436,7 @@ export class DiscountService {
             .eq('id', id);
 
         if (error) {
-            throw new Error(`Failed to activate discount code: ${error.message}`);
+            throw createPersistenceError(`Failed to activate discount code: ${error.message}`);
         }
     }
 
@@ -449,7 +450,7 @@ export class DiscountService {
             .eq('id', id);
 
         if (error) {
-            throw new Error(`Failed to delete discount code: ${error.message}`);
+            throw createPersistenceError(`Failed to delete discount code: ${error.message}`);
         }
     }
 
@@ -469,7 +470,7 @@ export class DiscountService {
             });
 
         if (error) {
-            throw new Error(`Failed to validate discount code: ${error.message}`);
+            throw createPersistenceError(`Failed to validate discount code: ${error.message}`);
         }
 
         const result = data[0] || {is_valid: false, discount_amount: 0, error_message: 'Unknown error'};
@@ -613,7 +614,7 @@ export class DiscountService {
             attempts++;
         }
 
-        throw new Error('Failed to generate unique discount code after multiple attempts');
+        throw createPersistenceError('Failed to generate unique discount code after multiple attempts');
     }
 
     /**

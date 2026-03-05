@@ -15,6 +15,7 @@ import { recordStudentEnrollmentEvent } from '~/utils/auto-discount-events.serve
 import { mapEnrollmentClassNullToUndefined } from '~/utils/mappers';
 import { fromCents } from '~/utils/money';
 import { getFamilyRegistrationWaiverStatus, getProgramWaiverStatus } from './waiver.server';
+import { createNotFoundError, createPersistenceError, createValidationError } from '~/utils/service-errors.server';
 
 type EnrollmentOperation = 'enrollment' | 're-enrollment';
 type EnrollmentStatus = Database['public']['Tables']['enrollments']['Row']['status'];
@@ -82,11 +83,11 @@ export async function validateAndPrepareEnrollment(
     const conflictMessages = conflicts.map(c =>
       `Conflicts with ${c.conflicting_class_name} on ${(c.conflict_days as string[]).join(', ')}`
     );
-    throw new Error(`Schedule conflicts detected: ${conflictMessages.join('; ')}`);
+    throw createValidationError(`Schedule conflicts detected: ${conflictMessages.join('; ')}`);
   }
 
   if (!student?.family_id) {
-    throw new Error('Student family information not found');
+    throw createNotFoundError('Student family information not found');
   }
 
   const [{ data: familyProfile }, registrationWaiverStatus] = await Promise.all([
@@ -103,12 +104,12 @@ export async function validateAndPrepareEnrollment(
   ]);
 
   if (!familyProfile) {
-    throw new Error('Family profile not found');
+    throw createNotFoundError('Family profile not found');
   }
 
   if (!registrationWaiverStatus.is_complete) {
     const operationLabel = operation === 're-enrollment' ? 're-enrollment' : 'enrollment';
-    throw new Error(
+    throw createValidationError(
       `Registration waivers must be signed before ${operationLabel}. Missing: ${registrationWaiverStatus.missing_waivers.map(w => w.title).join(', ')}`
     );
   }
@@ -190,7 +191,7 @@ export async function enrollStudent(
       .single();
 
     if (error) {
-      throw new Error(`Failed to re-enroll student: ${error.message}`);
+      throw createPersistenceError(`Failed to re-enroll student: ${error.message}`);
     }
 
     // If enrolled as active, check if we can promote anyone from waitlist
@@ -249,7 +250,7 @@ export async function enrollStudent(
     .single();
 
   if (error) {
-    throw new Error(`Failed to enroll student: ${error.message}`);
+    throw createPersistenceError(`Failed to enroll student: ${error.message}`);
   }
 
   // If enrolled as active, check if we can promote anyone from waitlist
@@ -341,7 +342,7 @@ export async function updateEnrollment(
     .single();
 
   if (error) {
-    throw new Error(`Failed to update enrollment: ${error.message}`);
+    throw createPersistenceError(`Failed to update enrollment: ${error.message}`);
   }
 
   // If status changed to dropped or completed, process waitlist
@@ -410,7 +411,7 @@ export async function dropStudent(
     .single();
 
   if (error) {
-    throw new Error(`Failed to drop student: ${error.message}`);
+    throw createPersistenceError(`Failed to drop student: ${error.message}`);
   }
 
   // Process waitlist to see if anyone can be promoted
@@ -473,7 +474,7 @@ export async function getEnrollments(
   const { data, error } = await query;
 
   if (error) {
-    throw new Error(`Failed to fetch enrollments: ${error.message}`);
+    throw createPersistenceError(`Failed to fetch enrollments: ${error.message}`);
   }
 
   return (data || []).map(enrollment => ({
@@ -689,7 +690,7 @@ export async function processWaitlist(
     .single();
 
   if (classError || !classData) {
-    throw new Error('Failed to get class information');
+    throw createPersistenceError('Failed to get class information');
   }
 
   // Get current active enrollment count
@@ -717,7 +718,7 @@ export async function processWaitlist(
     .limit(availableSpots);
 
   if (waitlistError) {
-    throw new Error(`Failed to get waitlist: ${waitlistError.message}`);
+    throw createPersistenceError(`Failed to get waitlist: ${waitlistError.message}`);
   }
 
   if (!waitlistStudents || waitlistStudents.length === 0) {
@@ -755,7 +756,7 @@ export async function processWaitlist(
     .in('id', promotableEnrollmentIds);
 
   if (updateError) {
-    throw new Error(`Failed to promote waitlist entries: ${updateError.message}`);
+    throw createPersistenceError(`Failed to promote waitlist entries: ${updateError.message}`);
   }
 
   return promotableEnrollmentIds.length;
@@ -779,7 +780,7 @@ export async function bulkEnrollStudents(
     .single();
 
   if (classError || !classData) {
-    throw new Error(`Failed to get class information: ${classError?.message}`);
+    throw createPersistenceError(`Failed to get class information: ${classError?.message}`);
   }
 
   for (const studentId of data.student_ids) {
@@ -817,7 +818,7 @@ export async function getEnrollmentStats(
     .eq('class_id', classId);
 
   if (error) {
-    throw new Error(`Failed to get enrollment stats: ${error.message}`);
+    throw createPersistenceError(`Failed to get enrollment stats: ${error.message}`);
   }
 
   const stats = {
@@ -871,7 +872,7 @@ export async function getEnrollmentById(
     if (error.code === 'PGRST116') {
       return null; // Not found
     }
-    throw new Error(`Failed to fetch enrollment: ${error.message}`);
+    throw createPersistenceError(`Failed to fetch enrollment: ${error.message}`);
   }
 
   return {

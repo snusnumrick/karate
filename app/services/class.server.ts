@@ -1,6 +1,7 @@
 import { getSupabaseAdminClient } from '~/utils/supabase.server';
 import type { Database } from '~/types/database.types';
 import { mapProgramFromRow, mapInstructorNullToUndefined, mapSessionNullToUndefined, mapClassNullToUndefined } from '~/utils/mappers';
+import { createPersistenceError, createValidationError } from '~/utils/service-errors.server';
 
 const MAIN_PAGE_SCHEDULE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 let mainPageScheduleCache: { data: MainPageScheduleSummary | null; expiresAt: number } | null = null;
@@ -36,7 +37,7 @@ export async function getInstructors(
     .order('first_name');
 
   if (error) {
-    throw new Error(`Failed to fetch instructors: ${error.message}`);
+    throw createPersistenceError(`Failed to fetch instructors: ${error.message}`);
   }
 
   return (data || []).map(instructor => ({
@@ -65,7 +66,7 @@ export async function createClassSchedule(
     });
 
   if (error) {
-    throw new Error(`Failed to create class schedule: ${error.message}`);
+    throw createPersistenceError(`Failed to create class schedule: ${error.message}`);
   }
 }
 
@@ -83,7 +84,7 @@ export async function getClassSchedules(
     .order('day_of_week');
 
   if (error) {
-    throw new Error(`Failed to fetch class schedules: ${error.message}`);
+    throw createPersistenceError(`Failed to fetch class schedules: ${error.message}`);
   }
 
   return (data || []).map(schedule => ({
@@ -108,7 +109,7 @@ export async function updateClassSchedules(
     .eq('class_id', classId);
 
   if (deleteError) {
-    throw new Error(`Failed to delete existing schedules: ${deleteError.message}`);
+    throw createPersistenceError(`Failed to delete existing schedules: ${deleteError.message}`);
   }
 
   // Insert new schedules
@@ -124,7 +125,7 @@ export async function updateClassSchedules(
       );
 
     if (insertError) {
-      throw new Error(`Failed to create new schedules: ${insertError.message}`);
+      throw createPersistenceError(`Failed to create new schedules: ${insertError.message}`);
     }
   }
 }
@@ -142,7 +143,7 @@ export async function deleteClassSchedule(
     .eq('id', scheduleId);
 
   if (error) {
-    throw new Error(`Failed to delete class schedule: ${error.message}`);
+    throw createPersistenceError(`Failed to delete class schedule: ${error.message}`);
   }
 }
 
@@ -171,7 +172,7 @@ export async function createClass(
     .single();
 
   if (classError) {
-    throw new Error(`Failed to create class: ${classError.message}`);
+    throw createPersistenceError(`Failed to create class: ${classError.message}`);
   }
 
   // Schedules are no longer part of the simplified schema
@@ -179,7 +180,7 @@ export async function createClass(
   // Return the class with schedules
   const result = await getClassById(newClass.id, supabase);
   if (!result) {
-    throw new Error('Failed to retrieve created class');
+    throw createPersistenceError('Failed to retrieve created class');
   }
   return result;
 }
@@ -214,14 +215,14 @@ export async function updateClass(
     .single();
 
   if (error) {
-    throw new Error(`Failed to update class: ${error.message}`);
+    throw createPersistenceError(`Failed to update class: ${error.message}`);
   }
 
   // Schedules are no longer part of the simplified schema
 
   const result = await getClassById(id, supabase);
   if (!result) {
-    throw new Error('Failed to retrieve updated class');
+    throw createPersistenceError('Failed to retrieve updated class');
   }
   return result;
 }
@@ -241,11 +242,11 @@ export async function deleteClass(
     .eq('status', 'active');
 
   if (enrollmentError) {
-    throw new Error(`Failed to check for active enrollments: ${enrollmentError.message}`);
+    throw createPersistenceError(`Failed to check for active enrollments: ${enrollmentError.message}`);
   }
 
   if (activeEnrollments && activeEnrollments.length > 0) {
-    throw new Error('Cannot delete class with active enrollments. Please drop all students first.');
+    throw createValidationError('Cannot delete class with active enrollments. Please drop all students first.');
   }
 
   const { error } = await supabase
@@ -254,7 +255,7 @@ export async function deleteClass(
     .eq('id', id);
 
   if (error) {
-    throw new Error(`Failed to delete class: ${error.message}`);
+    throw createPersistenceError(`Failed to delete class: ${error.message}`);
   }
 }
 
@@ -297,7 +298,7 @@ export async function getClasses(
   const { data, error } = await query;
 
   if (error) {
-    throw new Error(`Failed to fetch classes: ${error.message}`);
+    throw createPersistenceError(`Failed to fetch classes: ${error.message}`);
   }
 
   return (data || []).map(item => ({
@@ -333,11 +334,11 @@ export async function getClassById(
     if (error.code === 'PGRST116') {
       return null; // Not found
     }
-    throw new Error(`Failed to fetch class: ${error.message}`);
+    throw createPersistenceError(`Failed to fetch class: ${error.message}`);
   }
 
   if (!data.program) {
-    throw new Error(`Class ${id} has invalid program reference`);
+    throw createValidationError(`Class ${id} has invalid program reference`);
   }
 
   // Get additional details
@@ -469,7 +470,7 @@ export async function generateClassSessions(
     });
 
   if (error) {
-    throw new Error(`Failed to generate sessions: ${error.message}`);
+    throw createPersistenceError(`Failed to generate sessions: ${error.message}`);
   }
 
   // Remove sessions for excluded dates
@@ -481,7 +482,7 @@ export async function generateClassSessions(
       .in('session_date', data.exclude_dates);
 
     if (deleteError) {
-      throw new Error(`Failed to exclude dates: ${deleteError.message}`);
+      throw createPersistenceError(`Failed to exclude dates: ${deleteError.message}`);
     }
   }
 
@@ -509,7 +510,7 @@ export async function createClassSession(
     .single();
 
   if (error) {
-    throw new Error(`Failed to create session: ${error.message}`);
+    throw createPersistenceError(`Failed to create session: ${error.message}`);
   }
 
   return {
@@ -549,7 +550,7 @@ export async function updateClassSession(
     .single();
 
   if (error) {
-    throw new Error(`Failed to update session: ${error.message}`);
+    throw createPersistenceError(`Failed to update session: ${error.message}`);
   }
 
   return {
@@ -574,11 +575,11 @@ export async function deleteClassSession(
     .eq('class_session_id', id);
 
   if (attendanceError) {
-    throw new Error(`Failed to check attendance: ${attendanceError.message}`);
+    throw createPersistenceError(`Failed to check attendance: ${attendanceError.message}`);
   }
 
   if (attendance && attendance.length > 0) {
-    throw new Error('Cannot delete session with attendance records. Please remove attendance first.');
+    throw createValidationError('Cannot delete session with attendance records. Please remove attendance first.');
   }
 
   const { error } = await supabase
@@ -587,7 +588,7 @@ export async function deleteClassSession(
     .eq('id', id);
 
   if (error) {
-    throw new Error(`Failed to delete session: ${error.message}`);
+    throw createPersistenceError(`Failed to delete session: ${error.message}`);
   }
 }
 
@@ -621,7 +622,7 @@ export async function bulkDeleteClassSessions(
   const { data: sessions, error: fetchError } = await query;
 
   if (fetchError) {
-    throw new Error(`Failed to fetch sessions for bulk delete: ${fetchError.message}`);
+    throw createPersistenceError(`Failed to fetch sessions for bulk delete: ${fetchError.message}`);
   }
 
   if (!sessions || sessions.length === 0) {
@@ -637,7 +638,7 @@ export async function bulkDeleteClassSessions(
     .in('class_session_id', sessionIds);
 
   if (attendanceError) {
-    throw new Error(`Failed to check attendance records: ${attendanceError.message}`);
+    throw createPersistenceError(`Failed to check attendance records: ${attendanceError.message}`);
   }
 
   const sessionsWithAttendance = new Set(
@@ -724,7 +725,7 @@ export async function getClassSessionById(
     if (error.code === 'PGRST116') {
       return null; // Not found
     }
-    throw new Error(`Failed to fetch class session: ${error.message}`);
+    throw createPersistenceError(`Failed to fetch class session: ${error.message}`);
   }
 
   return {
@@ -812,7 +813,7 @@ export async function getClassSessions(
   const { data, error } = await query;
 
   if (error) {
-    throw new Error(`Failed to fetch sessions: ${error.message}`);
+    throw createPersistenceError(`Failed to fetch sessions: ${error.message}`);
   }
 
   return (data || []).map(session => ({
@@ -863,7 +864,7 @@ export async function getCalendarEvents(
   const { data, error } = await query;
 
   if (error) {
-    throw new Error(`Failed to fetch calendar events: ${error.message}`);
+    throw createPersistenceError(`Failed to fetch calendar events: ${error.message}`);
   }
 
   interface SessionWithRelations {
@@ -1170,7 +1171,7 @@ export async function checkScheduleConflicts(
     .eq('status', 'active');
 
   if (enrollmentError) {
-    throw new Error(`Failed to check current enrollments: ${enrollmentError.message}`);
+    throw createPersistenceError(`Failed to check current enrollments: ${enrollmentError.message}`);
   }
 
   if (!currentEnrollments || currentEnrollments.length === 0) {
@@ -1185,7 +1186,7 @@ export async function checkScheduleConflicts(
     .in('class_id', currentClassIds);
 
   if (currentScheduleError) {
-    throw new Error(`Failed to fetch current class schedules: ${currentScheduleError.message}`);
+    throw createPersistenceError(`Failed to fetch current class schedules: ${currentScheduleError.message}`);
   }
 
   // Get new class schedules
@@ -1195,7 +1196,7 @@ export async function checkScheduleConflicts(
     .eq('class_id', newClassId);
 
   if (scheduleError) {
-    throw new Error(`Failed to fetch new class schedules: ${scheduleError.message}`);
+    throw createPersistenceError(`Failed to fetch new class schedules: ${scheduleError.message}`);
   }
 
   const conflicts: Record<string, unknown>[] = [];
