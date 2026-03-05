@@ -7,7 +7,7 @@ import type { Program } from "~/types/multi-class";
 import { mergeMeta } from "~/utils/meta";
 import { JsonLd } from "~/components/JsonLd";
 import { DEFAULT_SCHEDULE, getDefaultAgeRangeLabel } from "~/constants/schedule";
-import { buildScheduleSummaryFromClasses } from "~/services/class.server";
+import { getMainPageScheduleData } from "~/services/class.server";
 import { formatMoney, fromCents, toDollars, toCents } from "~/utils/money";
 
 type ClassWithSchedule = {
@@ -179,7 +179,7 @@ export async function loader() {
             };
         });
 
-        const scheduleSummary = buildScheduleSummaryFromClasses(classes);
+        const scheduleSummary = await getMainPageScheduleData(supabase);
 
         // Convert Money objects in programs to cents for JSON serialization
         const programsWithCents = programs.map(program => ({

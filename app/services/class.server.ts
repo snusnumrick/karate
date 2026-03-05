@@ -489,6 +489,60 @@ export async function generateClassSessions(
   return result || 0;
 }
 
+const CLASS_SESSION_CLASS_SELECT = `
+  id,
+  name,
+  description,
+  program_id,
+  instructor_id,
+  max_capacity,
+  is_active,
+  created_at,
+  updated_at,
+  program:programs(
+    id,
+    name,
+    description,
+    min_belt_rank,
+    max_belt_rank,
+    min_age,
+    max_age,
+    gender_restriction,
+    special_needs_support,
+    prerequisite_programs,
+    sessions_per_week,
+    duration_minutes,
+    max_capacity,
+    monthly_fee,
+    yearly_fee,
+    is_active,
+    created_at,
+    updated_at
+  )
+`;
+
+const CLASS_SESSION_SELECT = `
+  *,
+  class:classes(
+    ${CLASS_SESSION_CLASS_SELECT}
+  )
+`;
+
+function mapSessionStatus(status: string): ClassSession['status'] {
+  return status as ClassSession['status'];
+}
+
+function mapClassSessionShape<T extends { status: string; notes: string | null; instructor_id: string | null }>(
+  data: T
+): Omit<T, 'status' | 'notes' | 'instructor_id'> & Pick<ClassSession, 'status' | 'notes' | 'instructor_id'> {
+  return {
+    ...data,
+    status: mapSessionStatus(data.status),
+    notes: data.notes ?? undefined,
+    instructor_id: data.instructor_id ?? undefined,
+  };
+}
+
 /**
  * Create a single class session
  */
@@ -513,12 +567,7 @@ export async function createClassSession(
     throw createPersistenceError(`Failed to create session: ${error.message}`);
   }
 
-  return {
-    ...data,
-    status: data.status as 'scheduled' | 'completed' | 'cancelled',
-    notes: data.notes ?? undefined,
-    instructor_id: data.instructor_id ?? undefined,
-  };
+  return mapClassSessionShape(data);
 }
 
 /**
@@ -553,12 +602,7 @@ export async function updateClassSession(
     throw createPersistenceError(`Failed to update session: ${error.message}`);
   }
 
-  return {
-    ...data,
-    status: data.status as 'scheduled' | 'completed' | 'cancelled',
-    notes: data.notes ?? undefined,
-    instructor_id: data.instructor_id ?? undefined,
-  };
+  return mapClassSessionShape(data);
 }
 
 /**
@@ -684,40 +728,7 @@ export async function getClassSessionById(
 ): Promise<ClassSession | null> {
   const { data, error } = await supabase
     .from('class_sessions')
-    .select(`
-      *,
-      class:classes(
-        id, 
-        name, 
-        description, 
-        program_id, 
-        instructor_id, 
-        max_capacity, 
-        is_active, 
-        created_at, 
-        updated_at,
-        program:programs(
-          id,
-          name,
-          description,
-          min_belt_rank,
-          max_belt_rank,
-          min_age,
-          max_age,
-          gender_restriction,
-          special_needs_support,
-          prerequisite_programs,
-          sessions_per_week,
-          duration_minutes,
-          max_capacity,
-          monthly_fee,
-          yearly_fee,
-          is_active,
-          created_at,
-          updated_at
-        )
-      )
-    `)
+    .select(CLASS_SESSION_SELECT)
     .eq('id', id)
     .single();
 
@@ -729,10 +740,7 @@ export async function getClassSessionById(
   }
 
   return {
-    ...data,
-    status: data.status as 'scheduled' | 'completed' | 'cancelled',
-    notes: data.notes ?? undefined,
-    instructor_id: data.instructor_id ?? undefined,
+    ...mapClassSessionShape(data),
     class: data.class ? mapClassNullToUndefined(data.class) : undefined,
   };
 }
@@ -746,40 +754,7 @@ export async function getClassSessions(
 ): Promise<ClassSession[]> {
   let query = supabase
     .from('class_sessions')
-    .select(`
-      *,
-      class:classes(
-        id,
-        name,
-        description,
-        program_id,
-        instructor_id,
-        max_capacity,
-        is_active,
-        created_at,
-        updated_at,
-        program:programs(
-          id,
-          name,
-          description,
-          min_belt_rank,
-          max_belt_rank,
-          min_age,
-          max_age,
-          gender_restriction,
-          special_needs_support,
-          prerequisite_programs,
-          sessions_per_week,
-          duration_minutes,
-          max_capacity,
-          monthly_fee,
-          yearly_fee,
-          is_active,
-          created_at,
-          updated_at
-        )
-      )
-    `);
+    .select(CLASS_SESSION_SELECT);
 
   // Apply filters
   if (filters.session_id) {
@@ -817,10 +792,7 @@ export async function getClassSessions(
   }
 
   return (data || []).map(session => ({
-    ...session,
-    status: session.status as 'scheduled' | 'completed' | 'cancelled',
-    notes: session.notes ?? undefined,
-    instructor_id: session.instructor_id ?? undefined,
+    ...mapClassSessionShape(session),
     class: session.class ? mapClassNullToUndefined(session.class) : undefined,
   }));
 }
@@ -919,7 +891,7 @@ export async function getCalendarEvents(
       class_id: session.class_id,
       session_id: session.id,
       enrollment_count: 0, // TODO: Calculate actual enrollment count if needed
-      status: session.status as 'scheduled' | 'completed' | 'cancelled',
+      status: mapSessionStatus(session.status),
     };
   });
 }
