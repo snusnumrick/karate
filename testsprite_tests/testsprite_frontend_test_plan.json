@@ -1,0 +1,647 @@
+[
+  {
+    "id": "TC001",
+    "title": "User Registration and Role-Based Login",
+    "description": "Verify that user registration and login correctly assign and enforce roles (Admin, Instructor, Family) and direct users to respective dashboards.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the registration page"
+      },
+      {
+        "type": "action",
+        "description": "Register as a new family user with valid credentials"
+      },
+      {
+        "type": "assertion",
+        "description": "Ensure registration is successful and family user is created"
+      },
+      {
+        "type": "action",
+        "description": "Log out and register as an instructor user"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify instructor role is assigned and redirected to instructor dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to login with admin credentials"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify user lands on admin dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Attempt login with invalid credentials"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm login is denied with an error message"
+      }
+    ]
+  },
+  {
+    "id": "TC002",
+    "title": "Family Profile and Guardian Management",
+    "description": "Test creating and updating family profiles and adding/editing/removing guardians, supporting multiple students per family.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as family user"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to family profile management"
+      },
+      {
+        "type": "action",
+        "description": "Create a new guardian profile with valid data"
+      },
+      {
+        "type": "assertion",
+        "description": "Ensure guardian profile is saved and visible in guardian list"
+      },
+      {
+        "type": "action",
+        "description": "Edit guardian details and save changes"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm changes are reflected correctly"
+      },
+      {
+        "type": "action",
+        "description": "Add multiple students under family and associate guardians"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify students are linked and display correctly in family profile"
+      },
+      {
+        "type": "action",
+        "description": "Delete a guardian from family profile"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm guardian is removed without affecting student profiles"
+      }
+    ]
+  },
+  {
+    "id": "TC003",
+    "title": "Student Enrollment and Belt Progression",
+    "description": "Ensure students can be enrolled in programs/classes, belt progression tracking updates correctly, and attendance is reportable.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as admin and create a new martial arts program"
+      },
+      {
+        "type": "assertion",
+        "description": "Program is successfully created and listed"
+      },
+      {
+        "type": "action",
+        "description": "Enroll an existing student into a class within the program"
+      },
+      {
+        "type": "assertion",
+        "description": "Enrollment status is confirmed and visible in student profile"
+      },
+      {
+        "type": "action",
+        "description": "As instructor, access student attendance page and mark attendance"
+      },
+      {
+        "type": "assertion",
+        "description": "Attendance records are saved and late arrivals flagged"
+      },
+      {
+        "type": "action",
+        "description": "Update student's belt progression and save"
+      },
+      {
+        "type": "assertion",
+        "description": "New belt status is displayed accurately in reports"
+      }
+    ]
+  },
+  {
+    "id": "TC004",
+    "title": "Event Creation, Registration, and Waiver Signing",
+    "description": "Validate event creation by admin, student registration process including digital waiver signing, and PDF generation/storage.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as admin and create a new event with required details"
+      },
+      {
+        "type": "assertion",
+        "description": "Event appears correctly in listing and calendar views"
+      },
+      {
+        "type": "action",
+        "description": "Login as family and register a student for the event"
+      },
+      {
+        "type": "action",
+        "description": "Complete digital waiver signing process"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm waiver PDF is generated, saved, and associated with the student"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to register for event without signing waiver"
+      },
+      {
+        "type": "assertion",
+        "description": "Registration is blocked, prompting waiver signing"
+      }
+    ]
+  },
+  {
+    "id": "TC005",
+    "title": "Multi-Provider Payment Processing and Tax Calculation",
+    "description": "Test payment processing workflows with Stripe and Square integration, including tax calculations, invoice creation, and webhook event handling.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Initiate payment using Stripe with valid card details"
+      },
+      {
+        "type": "assertion",
+        "description": "Payment is processed successfully, and invoice is generated with tax included"
+      },
+      {
+        "type": "action",
+        "description": "Check webhook endpoint receives Stripe payment events correctly"
+      },
+      {
+        "type": "assertion",
+        "description": "System updates payment status based on webhook data"
+      },
+      {
+        "type": "action",
+        "description": "Initiate payment using Square Web SDK with valid details"
+      },
+      {
+        "type": "assertion",
+        "description": "Payment completes and invoice updates accordingly"
+      },
+      {
+        "type": "action",
+        "description": "Attempt payment with invalid card data"
+      },
+      {
+        "type": "assertion",
+        "description": "Payment is declined with meaningful error message"
+      }
+    ]
+  },
+  {
+    "id": "TC006",
+    "title": "Invoice Management with Line Items and Payment History",
+    "description": "Verify invoice creation, editing, line item management, PDF export, and payment history tracking accuracy.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Create a new invoice with multiple line items for a family"
+      },
+      {
+        "type": "assertion",
+        "description": "Invoice accurately reflects all line items and totals"
+      },
+      {
+        "type": "action",
+        "description": "Edit an invoice line item and save changes"
+      },
+      {
+        "type": "assertion",
+        "description": "Updated values are correctly recalculated in the invoice"
+      },
+      {
+        "type": "action",
+        "description": "Generate PDF version of the invoice"
+      },
+      {
+        "type": "assertion",
+        "description": "PDF is generated correctly and downloadable"
+      },
+      {
+        "type": "action",
+        "description": "Record a payment against an invoice and verify payment history"
+      },
+      {
+        "type": "assertion",
+        "description": "Payment history updates reflect correct payment details and balances"
+      }
+    ]
+  },
+  {
+    "id": "TC007",
+    "title": "Attendance Tracking and Reporting",
+    "description": "Ensure instructors can record session attendance and late arrivals, and administrators can view accurate attendance reports for students and sessions.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as instructor and open attendance session for a class"
+      },
+      {
+        "type": "action",
+        "description": "Mark students as present, late, or absent"
+      },
+      {
+        "type": "assertion",
+        "description": "Attendance data is saved with correct timestamps"
+      },
+      {
+        "type": "action",
+        "description": "Login as admin and navigate to attendance reporting"
+      },
+      {
+        "type": "assertion",
+        "description": "Reports display accurate attendance metrics and late arrival counts per student and session"
+      },
+      {
+        "type": "action",
+        "description": "Try to submit attendance with incomplete data"
+      },
+      {
+        "type": "assertion",
+        "description": "System prevents submission and displays validation errors"
+      }
+    ]
+  },
+  {
+    "id": "TC008",
+    "title": "Two-Way Messaging System Functionality",
+    "description": "Validate that families, instructors, and admins can send and receive messages with conversation threading, and messages are persisted correctly.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as family and send message to instructor"
+      },
+      {
+        "type": "assertion",
+        "description": "Message appears in conversation thread for both sender and receiver"
+      },
+      {
+        "type": "action",
+        "description": "Login as instructor and reply to family message"
+      },
+      {
+        "type": "assertion",
+        "description": "Family receives reply and thread updates in real time"
+      },
+      {
+        "type": "action",
+        "description": "Check message order and timestamp accuracy for multi-message threads"
+      },
+      {
+        "type": "assertion",
+        "description": "Messages are displayed with correct chronological order and no loss"
+      }
+    ]
+  },
+  {
+    "id": "TC009",
+    "title": "Calendar and Scheduling Views Accuracy",
+    "description": "Check that event calendars render correctly in grid and list views, filters apply properly, and session scheduling reflects changes immediately.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to calendar page as admin"
+      },
+      {
+        "type": "action",
+        "description": "Create multiple sessions with varied dates and times"
+      },
+      {
+        "type": "assertion",
+        "description": "Calendar grid and list views show all sessions correctly"
+      },
+      {
+        "type": "action",
+        "description": "Apply filters by program and instructor"
+      },
+      {
+        "type": "assertion",
+        "description": "Filtered sessions update calendar display accordingly"
+      },
+      {
+        "type": "action",
+        "description": "Edit a session's time and save changes"
+      },
+      {
+        "type": "assertion",
+        "description": "Calendar immediately reflects updated session time"
+      }
+    ]
+  },
+  {
+    "id": "TC010",
+    "title": "Discount Codes and Automatic Discounts Application",
+    "description": "Verify discount templates, codes, and automatic discounts apply properly during enrollment and checkout, including validation and expiry behaviors.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Create a discount code with percentage off and expiry date"
+      },
+      {
+        "type": "assertion",
+        "description": "Discount code is saved and active"
+      },
+      {
+        "type": "action",
+        "description": "Apply discount code during student program enrollment payment"
+      },
+      {
+        "type": "assertion",
+        "description": "Discount is correctly calculated in payment total"
+      },
+      {
+        "type": "action",
+        "description": "Test automatic family discount applies when multiple students enrolled"
+      },
+      {
+        "type": "assertion",
+        "description": "Automatic discount adjusts price without manual code entry"
+      },
+      {
+        "type": "action",
+        "description": "Try applying expired discount code"
+      },
+      {
+        "type": "assertion",
+        "description": "System rejects expired code with appropriate feedback"
+      }
+    ]
+  },
+  {
+    "id": "TC011",
+    "title": "E-Commerce Store Product and Order Management",
+    "description": "Test product creation with variants, inventory updates, order placement, and order status management by families and admins.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as admin and create a new product with multiple variants and inventory counts"
+      },
+      {
+        "type": "assertion",
+        "description": "Product and variants are listed correctly with accurate inventory"
+      },
+      {
+        "type": "action",
+        "description": "Login as family and add product variants to shopping cart"
+      },
+      {
+        "type": "action",
+        "description": "Complete purchase and submit order"
+      },
+      {
+        "type": "assertion",
+        "description": "Order is recorded with accurate details and inventory is updated"
+      },
+      {
+        "type": "action",
+        "description": "Cancel an order and verify inventory restoration"
+      },
+      {
+        "type": "assertion",
+        "description": "Inventory levels return to pre-order state"
+      }
+    ]
+  },
+  {
+    "id": "TC012",
+    "title": "Push Notifications Subscription and Delivery",
+    "description": "Validate the subscription to web push notifications, permission handling, sending, receiving, and reply functionality.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Subscribe to push notifications and allow permission"
+      },
+      {
+        "type": "assertion",
+        "description": "Subscription details are saved and verified server-side"
+      },
+      {
+        "type": "action",
+        "description": "Trigger a push notification from admin panel"
+      },
+      {
+        "type": "assertion",
+        "description": "Notification appears on client devices correctly"
+      },
+      {
+        "type": "action",
+        "description": "Reply to a push notification message from client"
+      },
+      {
+        "type": "assertion",
+        "description": "Reply is received and logged in messaging system"
+      },
+      {
+        "type": "action",
+        "description": "Unsubscribe from push notifications"
+      },
+      {
+        "type": "assertion",
+        "description": "Push notifications are no longer received by client"
+      }
+    ]
+  },
+  {
+    "id": "TC013",
+    "title": "Progressive Web App (PWA) Offline and Installation",
+    "description": "Ensure service workers enable offline access, PWA installation prompts appear, and offline pages display appropriately.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Visit app with network connected and trigger PWA install prompt"
+      },
+      {
+        "type": "assertion",
+        "description": "Install prompt displays and app can be installed"
+      },
+      {
+        "type": "action",
+        "description": "Go offline and navigate through app pages with cached content"
+      },
+      {
+        "type": "assertion",
+        "description": "Cached pages load without errors and show correct content"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to access uncached page offline"
+      },
+      {
+        "type": "assertion",
+        "description": "Offline error boundary displays user-friendly message"
+      }
+    ]
+  },
+  {
+    "id": "TC014",
+    "title": "Security Features: CSRF Protection, CSP Enforcement, and Role-Based Access",
+    "description": "Test security mechanisms including CSRF token validation on forms, CSP headers with nonce enforcement, JWT role-based route restrictions, and resource-level security policies.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Submit form requests without valid CSRF tokens"
+      },
+      {
+        "type": "assertion",
+        "description": "Server rejects requests with CSRF validation error"
+      },
+      {
+        "type": "action",
+        "description": "Inspect response headers for strict Content Security Policy with nonce values"
+      },
+      {
+        "type": "assertion",
+        "description": "Policy blocks inline scripts and unauthorized sources"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to access Admin-only pages with Instructor role JWT"
+      },
+      {
+        "type": "assertion",
+        "description": "Access is denied with appropriate authorization error"
+      },
+      {
+        "type": "action",
+        "description": "Use JWT token with invalid signature"
+      },
+      {
+        "type": "assertion",
+        "description": "Token is rejected and user must re-authenticate"
+      }
+    ]
+  },
+  {
+    "id": "TC015",
+    "title": "AI-Powered Database Chat Accuracy and Bulk Data Operations",
+    "description": "Validate that natural language queries to the Google Gemini API perform correct database queries, and bulk operations on large datasets execute efficiently without errors.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Input natural language query to fetch specific student attendance data"
+      },
+      {
+        "type": "assertion",
+        "description": "Chat returns accurate dataset matching the query"
+      },
+      {
+        "type": "action",
+        "description": "Input bulk update command to modify multiple student records"
+      },
+      {
+        "type": "assertion",
+        "description": "Bulk operation completes successfully with confirmation and no data corruption"
+      },
+      {
+        "type": "action",
+        "description": "Provide ambiguous or invalid input query"
+      },
+      {
+        "type": "assertion",
+        "description": "Chat provides meaningful error message or clarification request"
+      }
+    ]
+  },
+  {
+    "id": "TC016",
+    "title": "Theme Switching and UI Component Rendering",
+    "description": "Test dark/light theme toggling and verify UI components render consistently and accessibly in both modes.",
+    "category": "ui",
+    "priority": "Low",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Toggle from light theme to dark theme using theme switcher"
+      },
+      {
+        "type": "assertion",
+        "description": "UI updates colors and styling across all components accordingly without layout issues"
+      },
+      {
+        "type": "action",
+        "description": "Navigate through various UI components including buttons, tables, dialogs, and forms"
+      },
+      {
+        "type": "assertion",
+        "description": "All components function correctly and remain accessible with appropriate contrast"
+      }
+    ]
+  },
+  {
+    "id": "TC017",
+    "title": "System Logging and Error Monitoring",
+    "description": "Verify that critical errors and unexpected behaviors are captured and reported in Sentry, and that logs provide sufficient context for debugging.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Trigger a server-side error (e.g. throw exception in API route)"
+      },
+      {
+        "type": "assertion",
+        "description": "Error is logged and appears in Sentry dashboard with relevant context"
+      },
+      {
+        "type": "action",
+        "description": "Generate a client-side JavaScript error"
+      },
+      {
+        "type": "assertion",
+        "description": "Client error is reported to Sentry with stack trace"
+      },
+      {
+        "type": "action",
+        "description": "Simulate user input errors and verify error messages show without crashing"
+      },
+      {
+        "type": "assertion",
+        "description": "Errors are handled gracefully and system remains stable"
+      }
+    ]
+  }
+]

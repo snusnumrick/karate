@@ -23,4 +23,26 @@ _scratch/
 playwright-report/
 test-results/
 build/
-/.claude
+.code/
+.claude/
+.omc/
+.playwright-mcp/
+vite.config.ts.timestamp-*
+
+# Ad-hoc test/debug scripts
+test-db-connection.js
+test-email-confirmation.js
+test-registration-email.js
+test-webhook.cjs
+test-breadcrumb.html
+public/offline-test.html
+public/push-debug.html
+optimize-images.js
+m2.sh
+scripts/cleanup-test-user.sql
+scripts/delete-test-user.js
+scripts/test-square-auth.js
+
+# TestSprite credentials (contains real passwords)
+testsprite_tests/test_credentials.json
+testsprite_tests/tmp/
