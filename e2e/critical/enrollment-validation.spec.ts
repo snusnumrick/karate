@@ -32,6 +32,6 @@ test.describe('Critical enrollment contracts', () => {
       },
     });
 
-    expect([403, 500]).toContain(response.status());
+    expect(response.status()).toBe(403);
   });
 });
