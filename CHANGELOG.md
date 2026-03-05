@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shared cache modules for required waivers and admin db-chat schema metadata with refresh/invalidation paths.
 - Typed service-layer error primitives (`ServiceError`) and mapping helpers.
 - Auth wrapper APIs for route guards (`withAdmin*`, `withFamily*`, `withInstructor*`, `withUser*`).
+- Critical Playwright contract suite for auth guards, waiver/enrollment flows, and HTTP status contracts (`e2e/critical/*`).
+- Seeded E2E fixture helpers for dynamic-route coverage (`e2e/utils/fixtures.ts`).
+- New unit/regression test coverage for cache behavior, wrapper adoption, `ServiceError` mapping, schedule summary pipeline, eligibility dedupe, money compatibility, and `select('*')` regressions.
 
 ### Changed
 - Executed full `CODE_REVIEW_BACKLOG.md` implementation backlog (BL-1 through BL-13).
@@ -23,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enabled global `no-console` linting at warning level and migrated selected high-impact server logs.
 - Removed `select('*')` wildcard usage from `app/services`.
 - Unified classes/home schedule summary flow to canonical main-page schedule data path.
+- Playwright discovery now separates `smoke` (`e2e/generated`) and `critical` (`e2e/critical` + `tests/e2e`) projects in `playwright.config.ts`.
+- Hardened E2E role login helper to wait for post-login navigation away from `/login` instead of strict role landing URL assumptions.
 
 ### Planned
 - **Email Automation:** Invoice delivery and payment reminder automation

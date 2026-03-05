@@ -197,6 +197,36 @@ const CLASS_SESSION_SELECT = `id, name, ..., class:classes(id, name, ..., progra
 - Service-layer error handling now uses `ServiceError` with route/API mapping for HTTP status preservation.
 - Shared server-side cache utilities were introduced and applied to waiver and db-chat schema cache paths.
 
+## Testing Coverage Matrix (2026-03-05)
+
+### New automated tests added for BL backlog coverage
+
+| Backlog area | Coverage added | Test file(s) |
+|---|---|---|
+| BL-2 / BL-13 cache invalidation and dedupe | Unit cache behavior + invalidation + inflight dedupe | `app/services/__tests__/required-waivers-cache.server.test.ts`, `app/services/__tests__/db-chat-schema-cache.server.test.ts`, `app/utils/__tests__/server-cache.server.test.ts` |
+| BL-3 typed enrollment validation contract | `EnrollmentValidationError` type/payload assertions + waitlist behavior | `app/services/__tests__/enrollment-prepare.test.ts` |
+| BL-4 wrapper guard behavior | Wrapper contracts + route wrapper adoption guard | `app/utils/__tests__/auth.server.test.ts`, `app/routes/__tests__/auth-wrapper-adoption.test.ts`, `e2e/critical/auth-guards.spec.ts` |
+| BL-6 select wildcard regression | Guard against direct `select('*')` in `app/services` | `app/services/__tests__/no-select-star-regression.test.ts` |
+| BL-7 service error status mapping | Service error helper contracts + representative route/API status mapping | `app/utils/__tests__/service-errors.server.test.ts`, `app/routes/__tests__/service-error-route-mapping.test.ts`, `e2e/critical/service-error-http-status.spec.ts` |
+| BL-8 schedule summary canonical pipeline | RPC mapping/defaults/null-cache/dedupe/TTL refresh | `app/services/__tests__/class-main-page-schedule.test.ts` |
+| BL-11 payment eligibility query dedupe | Single `payment_students` query per eligibility check + behavior parity | `app/utils/__tests__/supabase-check-student-eligibility.test.ts` |
+| BL-12 money helper compatibility | Legacy cents/dollars compatibility across consolidated utilities | `app/utils/__tests__/database-money-compat.test.ts` |
+| Waiver/enrollment critical contracts | Route protection + contract-focused Playwright coverage | `e2e/critical/waiver-cache-invalidation.spec.ts`, `e2e/critical/enrollment-validation.spec.ts` |
+
+### Playwright suite organization updates
+
+- `playwright.config.ts` now runs:
+  - `smoke` project: `e2e/generated/**/*.spec.ts`
+  - `critical` project: `e2e/critical/**/*.spec.ts` and `tests/e2e/**/*.spec.ts`
+- Added seeded fixture helper utilities for deterministic dynamic-route tests:
+  - `e2e/utils/fixtures.ts`
+
+### Verification commands
+
+- Unit + integration: `npm run test:unit`
+- Critical browser contracts: `npx playwright test e2e/critical`
+- Full browser sweep (smoke + critical): `npx playwright test`
+
 ## Summary
 
 | ID | Item | Risk | Effort | Priority | Status |
