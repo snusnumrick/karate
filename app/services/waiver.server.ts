@@ -58,7 +58,7 @@ export async function getFamilyRegistrationWaiverStatus(
   // Get all registration waivers
   const { data: registrationWaivers, error: waiversError } = await supabase
     .from('waivers')
-    .select('*')
+    .select()
     .eq('required_for_registration', true);
 
   if (waiversError || !registrationWaivers) {

@@ -79,7 +79,7 @@ export async function getClassSchedules(
 ): Promise<Array<{ id: string; day_of_week: string; start_time: string }>> {
   const { data, error } = await supabase
     .from('class_schedules')
-    .select('*')
+    .select()
     .eq('class_id', classId)
     .order('day_of_week');
 
@@ -345,7 +345,7 @@ export async function getClassById(
   const [sessionsResult, enrollmentsResult, schedulesResult] = await Promise.all([
     supabase
       .from('class_sessions')
-      .select('*')
+      .select()
       .eq('class_id', id)
       .order('session_date', { ascending: false })
       .limit(5),
@@ -356,7 +356,7 @@ export async function getClassById(
       .eq('status', 'active'),
     supabase
       .from('class_schedules')
-      .select('*')
+      .select()
       .eq('class_id', id)
       .order('day_of_week', { ascending: true })
   ]);
@@ -369,7 +369,7 @@ export async function getClassById(
   const today = getTodayLocalDateString();
   const { data: nextSession } = await supabase
     .from('class_sessions')
-    .select('*')
+    .select()
     .eq('class_id', id)
     .gte('session_date', today)
     .eq('status', 'scheduled')
@@ -1154,7 +1154,7 @@ export async function checkScheduleConflicts(
   const currentClassIds = currentEnrollments.map(e => e.class_id);
   const { data: currentSchedules, error: currentScheduleError } = await supabase
     .from('class_schedules')
-    .select('*')
+    .select()
     .in('class_id', currentClassIds);
 
   if (currentScheduleError) {
@@ -1164,7 +1164,7 @@ export async function checkScheduleConflicts(
   // Get new class schedules
   const { data: newClassSchedules, error: scheduleError } = await supabase
     .from('class_schedules')
-    .select('*')
+    .select()
     .eq('class_id', newClassId);
 
   if (scheduleError) {

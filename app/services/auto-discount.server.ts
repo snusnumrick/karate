@@ -172,7 +172,7 @@ export class AutoDiscountService {
   ): Promise<DiscountAssignment | null> {
     const { data, error } = await getSupabaseAdminClient()
       .from('discount_assignments')
-      .select('*')
+      .select()
       .eq('automation_rule_id', rule.id)
       .eq('student_id', event.student_id || '')
       .eq('family_id', event.family_id || '')
@@ -214,7 +214,7 @@ export class AutoDiscountService {
         // Use single template (backward compatibility)
         const { data: template_db, error: templateError } = await getSupabaseAdminClient()
           .from('discount_templates')
-          .select('*')
+          .select()
           .eq('id', rule.discount_template_id)
           .single();
 

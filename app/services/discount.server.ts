@@ -131,7 +131,7 @@ export class DiscountService {
         const now = getCurrentDateTimeInTimezone().toISOString();
         const {data, error} = await this.getSupabase()
             .from('discount_codes')
-            .select('*')
+            .select()
             .eq('is_active', true)
             .lte('valid_from', now)
             .or('valid_until.is.null,valid_until.gte.' + now)
@@ -289,7 +289,7 @@ export class DiscountService {
     static async getDiscountCodeById(id: string): Promise<DiscountCode | null> {
         const {data, error} = await this.getSupabase()
             .from('discount_codes')
-            .select('*')
+            .select()
             .eq('id', id)
             .single();
 
@@ -309,7 +309,7 @@ export class DiscountService {
     static async getDiscountCodeByCode(code: string): Promise<DiscountCode | null> {
         const {data, error} = await this.getSupabase()
             .from('discount_codes')
-            .select('*')
+            .select()
             .eq('code', code)
             .eq('is_active', true)
             .single();
@@ -516,7 +516,7 @@ export class DiscountService {
             // Get the discount code details
             const {data: discountCode, error: fetchError} = await this.getSupabase()
                 .from('discount_codes')
-                .select('*')
+                .select()
                 .eq('id', discountCodeId)
                 .single();
 

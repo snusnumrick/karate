@@ -510,7 +510,7 @@ export async function getInvoiceById(
   
   const { data: lineItemTaxes_db, error: taxError } = await client
     .from('invoice_line_item_taxes')
-    .select('*')
+    .select()
     .in('invoice_line_item_id', lineItemIds);
 
   if (taxError) {
@@ -548,7 +548,7 @@ export async function getInvoiceById(
   // Fetch payment taxes separately
   const { data: paymentTaxes_db } = await client
     .from('payment_taxes')
-    .select('*')
+    .select()
     .in('payment_id', (invoice.invoice_payments || []).map(p => p.id));
 
   const paymentTaxesByPaymentId = (paymentTaxes_db || []).reduce((acc, tax) => {
@@ -732,7 +732,7 @@ export async function getInvoices(
   if (allLineItemIds.length > 0) {
     const { data: lineItemTaxes_db, error: taxError } = await client
       .from('invoice_line_item_taxes')
-      .select('*')
+      .select()
       .in('invoice_line_item_id', allLineItemIds);
 
     if (taxError) {

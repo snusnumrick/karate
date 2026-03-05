@@ -152,7 +152,7 @@ export async function getGuardianDetails(
     // Fetch data (already fetched partially in verifyGuardianAccess, but fetch full row here)
     const { data, error } = await client
         .from('guardians')
-        .select('*')
+        .select()
         .eq('id', guardianId)
         .single();
 
@@ -196,7 +196,7 @@ export async function getGuardiansByFamily(
     // Fetch data
     const { data, error } = await client
         .from('guardians')
-        .select('*')
+        .select()
         .eq('family_id', familyId)
         .order('last_name', { ascending: true }); // Order by last name
 

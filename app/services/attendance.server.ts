@@ -43,7 +43,7 @@ export async function getAttendanceBySession(
 ): Promise<AttendanceRecord[]> {
   const { data, error } = await supabase
     .from('attendance')
-    .select('*')
+    .select()
     .eq('class_session_id', sessionId);
 
   if (error) {
@@ -217,7 +217,7 @@ export async function getAttendanceForSessions(
 
   const { data, error } = await supabase
     .from('attendance')
-    .select('*')
+    .select()
     .in('class_session_id', sessionIds);
 
   if (error) {

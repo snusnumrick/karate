@@ -124,7 +124,7 @@ export async function getPrograms(
   filters: { is_active?: boolean; search?: string } = {},
   supabase = getSupabaseAdminClient()
 ): Promise<Program[]> {
-  let query = supabase.from('programs').select('*');
+  let query = supabase.from('programs').select();
 
   // Apply filters
   if (filters.is_active !== undefined) {
@@ -155,7 +155,7 @@ export async function getProgramById(
 ): Promise<Program | null> {
   const { data, error } = await supabase
     .from('programs')
-    .select('*')
+    .select()
     .eq('id', id)
     .single();
 
