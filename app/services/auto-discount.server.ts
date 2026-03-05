@@ -5,16 +5,6 @@ import type { DiscountType, UsageType, DiscountScope, CreateDiscountCodeData, Ap
 import { fromDollars } from '~/utils/money';
 import { getCurrentDateTimeInTimezone } from '~/utils/misc';
 
-
-let supabase: ReturnType<typeof getSupabaseAdminClient> | null = null;
-
-function getSupabase() {
-  if (!supabase) {
-    supabase = getSupabaseAdminClient();
-  }
-  return supabase;
-}
-
 type DiscountEventType = Database['public']['Enums']['discount_event_type'];
 type DiscountEvent = Database['public']['Tables']['discount_events']['Row'];
 type DiscountAutomationRule = Database['public']['Tables']['discount_automation_rules']['Row'];
@@ -45,7 +35,7 @@ export class AutoDiscountService {
    * Record a new discount event
    */
   static async recordEvent(eventData: CreateEventData): Promise<DiscountEvent> {
-    const { data, error } = await getSupabase()
+    const { data, error } = await getSupabaseAdminClient()
       .from('discount_events')
       .insert({
         event_type: eventData.event_type,
@@ -71,7 +61,7 @@ export class AutoDiscountService {
    */
   static async processEventForAutomation(event: DiscountEvent): Promise<void> {
     // Get active automation rules for this event type
-    const { data: rules, error: rulesError } = await getSupabase()
+    const { data: rules, error: rulesError } = await getSupabaseAdminClient()
       .from('discount_automation_rules')
       .select(`
         *,
@@ -180,7 +170,7 @@ export class AutoDiscountService {
     rule: DiscountAutomationRule,
     event: DiscountEvent
   ): Promise<DiscountAssignment | null> {
-    const { data, error } = await getSupabase()
+    const { data, error } = await getSupabaseAdminClient()
       .from('discount_assignments')
       .select('*')
       .eq('automation_rule_id', rule.id)
@@ -222,7 +212,7 @@ export class AutoDiscountService {
           }));
       } else {
         // Use single template (backward compatibility)
-        const { data: template_db, error: templateError } = await getSupabase()
+        const { data: template_db, error: templateError } = await getSupabaseAdminClient()
           .from('discount_templates')
           .select('*')
           .eq('id', rule.discount_template_id)
@@ -285,7 +275,7 @@ export class AutoDiscountService {
       const discountCode = await DiscountService.createDiscountCode(discountData);
 
       // Record the assignment
-      const { error: assignmentError } = await getSupabase()
+      const { error: assignmentError } = await getSupabaseAdminClient()
         .from('discount_assignments')
         .insert({
           automation_rule_id: rule.id,
@@ -322,7 +312,7 @@ export class AutoDiscountService {
    * Helper methods for condition evaluation
    */
   static async getStudentAge(studentId: string): Promise<number> {
-    const { data, error } = await getSupabase()
+    const { data, error } = await getSupabaseAdminClient()
       .from('students')
       .select('birth_date')
       .eq('id', studentId)
@@ -347,7 +337,7 @@ export class AutoDiscountService {
   static async getStudentBeltRank(studentId: string): Promise<string | null> {
     // Since current_belt_rank doesn't exist in students table,
     // we'll get the latest belt award for this student
-    const { data, error } = await getSupabase()
+    const { data, error } = await getSupabaseAdminClient()
       .from('belt_awards')
       .select('type')
       .eq('student_id', studentId)
@@ -363,7 +353,7 @@ export class AutoDiscountService {
   }
 
   static async getFamilySize(familyId: string): Promise<number> {
-    const { data, error } = await getSupabase()
+    const { data, error } = await getSupabaseAdminClient()
       .from('students')
       .select('id')
       .eq('family_id', familyId);
@@ -376,7 +366,7 @@ export class AutoDiscountService {
   }
 
   static async getStudentAttendanceCount(studentId: string): Promise<number> {
-    const { data, error } = await getSupabase()
+    const { data, error } = await getSupabaseAdminClient()
       .from('attendance')
       .select('id')
       .eq('student_id', studentId);
@@ -392,7 +382,7 @@ export class AutoDiscountService {
    * Get programs that a student is enrolled in
    */
   static async getStudentPrograms(studentId: string): Promise<string[]> {
-    const { data, error } = await getSupabase()
+    const { data, error } = await getSupabaseAdminClient()
       .from('enrollments')
       .select(`
         classes!inner(
@@ -433,7 +423,7 @@ export class AutoDiscountService {
       (ruleData.discount_template_ids?.[0] || ruleData.discount_template_id) : 
       ruleData.discount_template_id;
 
-    const { data, error } = await getSupabase()
+    const { data, error } = await getSupabaseAdminClient()
       .from('discount_automation_rules')
       .insert({
         name: ruleData.name,
@@ -461,13 +451,13 @@ export class AutoDiscountService {
         sequence_order: index + 1,
       }));
 
-      const { error: junctionError } = await getSupabase()
+      const { error: junctionError } = await getSupabaseAdminClient()
         .from('automation_rule_discount_templates')
         .insert(templateInserts);
 
       if (junctionError) {
         // Rollback the rule creation if junction table insert fails
-        await getSupabase().from('discount_automation_rules').delete().eq('id', data.id);
+        await getSupabaseAdminClient().from('discount_automation_rules').delete().eq('id', data.id);
         throw new Error(`Failed to create automation rule templates: ${junctionError.message}`);
       }
     }
@@ -476,7 +466,7 @@ export class AutoDiscountService {
   }
 
   static async getAutomationRules(): Promise<DiscountAutomationRule[]> {
-    const { data, error } = await getSupabase()
+    const { data, error } = await getSupabaseAdminClient()
       .from('discount_automation_rules')
       .select(`
         *,
@@ -495,7 +485,7 @@ export class AutoDiscountService {
     id: string,
     updates: Partial<CreateAutomationRuleData>
   ): Promise<DiscountAutomationRule> {
-    const { data, error } = await getSupabase()
+    const { data, error } = await getSupabaseAdminClient()
       .from('discount_automation_rules')
       .update(updates)
       .eq('id', id)
@@ -510,7 +500,7 @@ export class AutoDiscountService {
   }
 
   static async deleteAutomationRule(id: string): Promise<void> {
-    const { error } = await getSupabase()
+    const { error } = await getSupabaseAdminClient()
       .from('discount_automation_rules')
       .delete()
       .eq('id', id);
@@ -524,7 +514,7 @@ export class AutoDiscountService {
    * Get discount assignments
    */
   static async getDiscountAssignments(): Promise<DiscountAssignment[]> {
-    const { data, error } = await getSupabase()
+    const { data, error } = await getSupabaseAdminClient()
       .from('discount_assignments')
       .select(`
         *,
