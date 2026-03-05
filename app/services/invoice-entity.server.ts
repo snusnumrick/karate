@@ -77,7 +77,7 @@ export async function getInvoiceEntityById(
 
   const { data: entity, error } = await client
     .from('invoice_entities')
-    .select('*')
+    .select()
     .eq('id', entityId)
     .single();
 
@@ -164,7 +164,7 @@ export async function getInvoiceEntitiesWithStats(
 
   let entityQuery = client
     .from('invoice_entities')
-    .select('*');
+    .select();
 
   // Apply filters
   if (filters.entity_type && filters.entity_type.length > 0) {
@@ -438,7 +438,7 @@ export async function getOrCreateFamilyEntity(
   // First, try to find existing entity for this family
   const { data: existingEntity } = await client
     .from('invoice_entities')
-    .select('*')
+    .select()
     .eq('entity_type', 'family')
     .eq('family_id', familyId)
     .single();
@@ -515,7 +515,7 @@ export async function searchInvoiceEntities(
 
   const { data: entities, error } = await client
     .from('invoice_entities')
-    .select('*')
+    .select()
     .eq('is_active', true)
     .or(`name.ilike.%${searchTerm}%,contact_person.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`)
     .order('name', { ascending: true })

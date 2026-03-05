@@ -38,7 +38,7 @@ export class InvoiceTemplateService {
   async getAllTemplates(): Promise<InvoiceTemplate[]> {
     const { data: templates, error: templatesError } = await this.supabase
       .from('invoice_templates')
-      .select('*')
+      .select()
       .eq('is_active', true)
       .order('category', { ascending: true })
       .order('name', { ascending: true });
@@ -53,7 +53,7 @@ export class InvoiceTemplateService {
 
     const { data: lineItems, error: lineItemsError } = await this.supabase
       .from('invoice_template_line_items')
-      .select('*')
+      .select()
       .in('template_id', templates.map(t => t.id))
       .order('sort_order', { ascending: true });
 
@@ -67,7 +67,7 @@ export class InvoiceTemplateService {
   async getTemplateById(id: string): Promise<InvoiceTemplate | null> {
     const { data: template, error: templateError } = await this.supabase
       .from('invoice_templates')
-      .select('*')
+      .select()
       .eq('id', id)
       .eq('is_active', true)
       .single();
@@ -78,7 +78,7 @@ export class InvoiceTemplateService {
 
     const { data: lineItems, error: lineItemsError } = await this.supabase
       .from('invoice_template_line_items')
-      .select('*')
+      .select()
       .eq('template_id', id)
       .order('sort_order', { ascending: true });
 
@@ -92,7 +92,7 @@ export class InvoiceTemplateService {
   async getTemplatesByCategory(category: InvoiceTemplate['category']): Promise<InvoiceTemplate[]> {
     const { data: templates, error: templatesError } = await this.supabase
       .from('invoice_templates')
-      .select('*')
+      .select()
       .eq('category', category)
       .eq('is_active', true)
       .order('name', { ascending: true });
@@ -107,7 +107,7 @@ export class InvoiceTemplateService {
 
     const { data: lineItems, error: lineItemsError } = await this.supabase
       .from('invoice_template_line_items')
-      .select('*')
+      .select()
       .in('template_id', templates.map(t => t.id))
       .order('sort_order', { ascending: true });
 
@@ -123,7 +123,7 @@ export class InvoiceTemplateService {
     
     const { data: templates, error: templatesError } = await this.supabase
       .from('invoice_templates')
-      .select('*')
+      .select()
       .eq('is_active', true)
       .or(`name.ilike.${searchTerm},description.ilike.${searchTerm}`)
       .order('name', { ascending: true });
@@ -138,7 +138,7 @@ export class InvoiceTemplateService {
 
     const { data: lineItems, error: lineItemsError } = await this.supabase
       .from('invoice_template_line_items')
-      .select('*')
+      .select()
       .in('template_id', templates.map(t => t.id))
       .order('sort_order', { ascending: true });
 

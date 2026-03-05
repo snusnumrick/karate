@@ -15,7 +15,7 @@ export async function getActiveTaxRates(
   
   const { data, error } = await client
     .from('tax_rates')
-    .select('*')
+    .select()
     .eq('is_active', true)
     .order('name', { ascending: true });
 
@@ -85,7 +85,7 @@ export async function getTaxRateById(
   
   const { data, error } = await client
     .from('tax_rates')
-    .select('*')
+    .select()
     .eq('id', id)
     .eq('is_active', true)
     .single();
@@ -115,7 +115,7 @@ export async function getTaxRatesByIds(
   
   const { data, error } = await client
     .from('tax_rates')
-    .select('*')
+    .select()
     .in('id', ids)
     .eq('is_active', true)
     .order('name', { ascending: true });

@@ -72,7 +72,7 @@ export class DiscountTemplateService {
   static async getAllTemplates(): Promise<DiscountTemplate[]> {
     const { data, error } = await getSupabase()
       .from('discount_templates')
-      .select('*')
+      .select()
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -85,7 +85,7 @@ export class DiscountTemplateService {
   static async getActiveTemplates(): Promise<DiscountTemplate[]> {
     const { data, error } = await getSupabase()
       .from('discount_templates')
-      .select('*')
+      .select()
       .eq('is_active', true)
       .order('name', { ascending: true });
 
@@ -99,7 +99,7 @@ export class DiscountTemplateService {
   static async getTemplateById(id: string): Promise<DiscountTemplate | null> {
     const { data, error } = await getSupabase()
       .from('discount_templates')
-      .select('*')
+      .select()
       .eq('id', id)
       .single();
 

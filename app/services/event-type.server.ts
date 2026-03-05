@@ -19,7 +19,7 @@ export class EventTypeService {
   async getActiveEventTypes(): Promise<EventType[]> {
     const { data, error } = await this.supabase
       .from('event_types')
-      .select('*')
+      .select()
       .eq('is_active', true)
       .order('sort_order', { ascending: true });
 
@@ -36,7 +36,7 @@ export class EventTypeService {
   async getAllEventTypes(): Promise<EventType[]> {
     const { data, error } = await this.supabase
       .from('event_types')
-      .select('*')
+      .select()
       .order('sort_order', { ascending: true });
 
     if (error) {
@@ -52,7 +52,7 @@ export class EventTypeService {
   async getEventTypeByName(name: string): Promise<EventType | null> {
     const { data, error } = await this.supabase
       .from('event_types')
-      .select('*')
+      .select()
       .eq('name', name)
       .single();
 
@@ -72,7 +72,7 @@ export class EventTypeService {
   async getEventTypeById(id: string): Promise<EventType | null> {
     const { data, error } = await this.supabase
       .from('event_types')
-      .select('*')
+      .select()
       .eq('id', id)
       .single();
 

@@ -43,7 +43,7 @@ export async function checkWebhookIdempotency(
 
   const { data: existingEvent, error } = await supabaseAdmin
     .from('webhook_events')
-    .select('*')
+    .select()
     .eq('provider', provider)
     .eq('event_id', eventId)
     .single();
