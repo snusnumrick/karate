@@ -18,6 +18,20 @@ import { getFamilyRegistrationWaiverStatus, getProgramWaiverStatus } from './wai
 
 type EnrollmentOperation = 'enrollment' | 're-enrollment';
 type EnrollmentStatus = Database['public']['Tables']['enrollments']['Row']['status'];
+
+export class EnrollmentValidationError extends Error {
+  readonly validation: EnrollmentValidation;
+
+  constructor(validation: EnrollmentValidation) {
+    const message = validation.errors.length > 0
+      ? `Enrollment validation failed: ${validation.errors.join(', ')}`
+      : 'Enrollment validation failed';
+    super(message);
+    this.name = 'EnrollmentValidationError';
+    this.validation = validation;
+  }
+}
+
 type ValidateAndPrepareEnrollmentDeps = {
   checkScheduleConflictsFn?: typeof checkScheduleConflicts;
   validateEnrollmentFn?: typeof validateEnrollment;
@@ -61,7 +75,7 @@ export async function validateAndPrepareEnrollment(
   ]);
 
   if (!validation.is_valid) {
-    throw new Error(`Enrollment validation failed: ${validation.errors.join(', ')}`);
+    throw new EnrollmentValidationError(validation);
   }
 
   if (hasConflicts) {
@@ -509,7 +523,7 @@ export async function getEnrollmentsByFamily(
 /**
  * Validate enrollment eligibility
  */
-export async function validateEnrollment(
+export async function evaluateEnrollment(
   classId: string,
   studentId: string,
   supabaseAdmin = getSupabaseAdminClient()
@@ -645,6 +659,18 @@ export async function validateEnrollment(
   };
 }
 
+export async function validateEnrollment(
+  classId: string,
+  studentId: string,
+  supabaseAdmin = getSupabaseAdminClient()
+): Promise<EnrollmentValidation> {
+  const validation = await evaluateEnrollment(classId, studentId, supabaseAdmin);
+  if (!validation.is_valid) {
+    throw new EnrollmentValidationError(validation);
+  }
+  return validation;
+}
+
 /**
  * Process waitlist - promote students when spots become available
  */
@@ -702,7 +728,7 @@ export async function processWaitlist(
   const validationResults = await Promise.all(
     waitlistStudents.map(async (enrollment) => ({
       enrollmentId: enrollment.id,
-      validation: await validateEnrollment(
+      validation: await evaluateEnrollment(
         classId,
         enrollment.student_id,
         supabaseAdmin
