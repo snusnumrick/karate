@@ -16,3 +16,7 @@ export async function getCachedDbChatSchemaDescription(
 export function invalidateDbChatSchemaCache(): void {
   dbChatSchemaCache.invalidate(SCHEMA_CACHE_KEY);
 }
+
+export function __resetDbChatSchemaCacheForTests(): void {
+  dbChatSchemaCache.invalidate();
+}

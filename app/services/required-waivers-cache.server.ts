@@ -31,3 +31,7 @@ export async function getRequiredWaivers(): Promise<RequiredWaiver[]> {
 export function invalidateRequiredWaiversCache(): void {
   requiredWaiversCache.invalidate(REQUIRED_WAIVERS_CACHE_KEY);
 }
+
+export function __resetRequiredWaiversCacheForTests(): void {
+  requiredWaiversCache.invalidate();
+}
