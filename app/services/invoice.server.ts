@@ -30,6 +30,7 @@ import { getSupabaseAdminClient } from "~/utils/supabase.server";
 import { toCents, addMoney, subtractMoney, ZERO_MONEY, type Money } from "~/utils/money";
 import { convertRowToMoney, convertRowsToMoney, convertMoneyToRow, moneyFromRow } from "~/services/database-money.server";
 import { getTodayLocalDateString } from "~/utils/misc";
+import { logger } from "~/utils/logger";
 import {
   createNotFoundError,
   createPersistenceError,
@@ -130,18 +131,18 @@ async function insertLineItemTaxAssociations(
   }
 
   const client = supabaseAdmin ?? getSupabaseAdminClient();
-  console.log('[Service/createLineItemTaxAssociations] Tax associations prepared:', taxAssociations);
+  logger.info('[Service/createLineItemTaxAssociations] Tax associations prepared:', taxAssociations);
   
   const { error } = await client
     .from('invoice_line_item_taxes')
     .insert(taxAssociations);
 
   if (error) {
-    console.error('[Service/createLineItemTaxAssociations] Error creating tax associations:', error);
+    logger.error('[Service/createLineItemTaxAssociations] Error creating tax associations:', error);
     throw createPersistenceError(`Error creating line item tax associations: ${error.message}`);
   }
   
-  console.log('[Service/createLineItemTaxAssociations] Tax associations saved successfully');
+  logger.info('[Service/createLineItemTaxAssociations] Tax associations saved successfully');
 }
 
 async function createLineItemTaxAssociationsBatch(
@@ -338,7 +339,7 @@ export async function generateInvoiceNumber(
   const { data, error } = await client.rpc('generate_invoice_number');
   
   if (error) {
-    console.error('[Service/generateInvoiceNumber] Error generating invoice number:', error);
+    logger.error('[Service/generateInvoiceNumber] Error generating invoice number:', error);
     throw createPersistenceError(`Error generating invoice number: ${error.message}`);
   }
   
@@ -357,7 +358,7 @@ export async function createInvoice(
   
   const client = supabaseAdmin ?? getSupabaseAdminClient();
   
-  console.log('[Service/createInvoice] Creating invoice with data:', invoiceData);
+  logger.info('[Service/createInvoice] Creating invoice with data:', invoiceData);
 
   // Start a transaction
   const { data: invoice, error: invoiceError } = await client
@@ -378,7 +379,7 @@ export async function createInvoice(
     .single();
 
   if (invoiceError) {
-    console.error('[Service/createInvoice] Error creating invoice:', invoiceError);
+    logger.error('[Service/createInvoice] Error creating invoice:', invoiceError);
     throw createPersistenceError(`Error creating invoice: ${invoiceError.message}`);
   }
 
@@ -430,7 +431,7 @@ export async function createInvoice(
     .select('id');
 
   if (lineItemsError) {
-    console.error('[Service/createInvoice] Error creating line items:', lineItemsError);
+    logger.error('[Service/createInvoice] Error creating line items:', lineItemsError);
     // Clean up the invoice if line items failed
     await client.from('invoices').delete().eq('id', invoice.id);
     throw createPersistenceError(`Error creating invoice line items: ${lineItemsError.message}`);
@@ -479,7 +480,7 @@ export async function getInvoiceById(
   
   const client = supabaseAdmin ?? getSupabaseAdminClient();
   
-  console.log(`[Service/getInvoiceById] Fetching invoice details for ID: ${invoiceId}`);
+  logger.info(`[Service/getInvoiceById] Fetching invoice details for ID: ${invoiceId}`);
 
   const { data: invoice, error: invoiceError } = await client
     .from('invoices')
@@ -495,7 +496,7 @@ export async function getInvoiceById(
     .single();
 
   if (invoiceError) {
-    console.error(`[Service/getInvoiceById] Error fetching invoice ${invoiceId}:`, invoiceError);
+    logger.error(`[Service/getInvoiceById] Error fetching invoice ${invoiceId}:`, invoiceError);
     throw createPersistenceError(`Database error: ${invoiceError.message}`);
   }
 
@@ -505,7 +506,7 @@ export async function getInvoiceById(
 
   // Fetch tax data for line items
   const lineItemIds = (invoice.invoice_line_items || []).map(item => item.id);
-  console.log(`[Service/getInvoiceById] Fetching tax data for line items:`, lineItemIds);
+  logger.info(`[Service/getInvoiceById] Fetching tax data for line items:`, lineItemIds);
   
   const { data: lineItemTaxes_db, error: taxError } = await client
     .from('invoice_line_item_taxes')
@@ -513,10 +514,10 @@ export async function getInvoiceById(
     .in('invoice_line_item_id', lineItemIds);
 
   if (taxError) {
-    console.error(`[Service/getInvoiceById] Error fetching tax data:`, taxError);
+    logger.error(`[Service/getInvoiceById] Error fetching tax data:`, taxError);
   }
 
-  console.log(`[Service/getInvoiceById] Found tax data:`, lineItemTaxes_db);
+  logger.info(`[Service/getInvoiceById] Found tax data:`, lineItemTaxes_db);
 
   // Group tax data by line item ID
   const taxesByLineItem = (lineItemTaxes_db || []).reduce((acc, tax_db) => {
@@ -542,7 +543,7 @@ export async function getInvoiceById(
     return acc;
   }, {} as Record<string, string[]>);
 
-  console.log(`[Service/getInvoiceById] Grouped taxes by line item:`, taxesByLineItem);
+  logger.info(`[Service/getInvoiceById] Grouped taxes by line item:`, taxesByLineItem);
 
   // Fetch payment taxes separately
   const { data: paymentTaxes_db } = await client
@@ -614,7 +615,7 @@ export async function getInvoiceByNumber(
   
   const client = supabaseAdmin ?? getSupabaseAdminClient();
   
-  console.log(`[Service/getInvoiceByNumber] Fetching invoice details for number: ${invoiceNumber}`);
+  logger.info(`[Service/getInvoiceByNumber] Fetching invoice details for number: ${invoiceNumber}`);
 
   const { data: invoice, error: invoiceError } = await client
     .from('invoices')
@@ -623,7 +624,7 @@ export async function getInvoiceByNumber(
     .single();
 
   if (invoiceError) {
-    console.error(`[Service/getInvoiceByNumber] Error fetching invoice ${invoiceNumber}:`, invoiceError);
+    logger.error(`[Service/getInvoiceByNumber] Error fetching invoice ${invoiceNumber}:`, invoiceError);
     throw createPersistenceError(`Database error: ${invoiceError.message}`);
   }
 
@@ -646,7 +647,7 @@ export async function getInvoices(
 ): Promise<{ invoices: InvoiceWithDetails[]; total: number; totalPages: number }> {
   const client = supabaseAdmin ?? getSupabaseAdminClient();
   
-  // console.log('[Service/getInvoices] Fetching invoices with filters:', filters);
+  // logger.info('[Service/getInvoices] Fetching invoices with filters:', filters);
 
   let query = client
     .from('invoices')
@@ -717,7 +718,7 @@ export async function getInvoices(
   const { data: invoices, error, count } = await query;
 
   if (error) {
-    console.error('[Service/getInvoices] Error fetching invoices:', error);
+    logger.error('[Service/getInvoices] Error fetching invoices:', error);
     throw createPersistenceError(`Error fetching invoices: ${error.message}`);
   }
 
@@ -735,7 +736,7 @@ export async function getInvoices(
       .in('invoice_line_item_id', allLineItemIds);
 
     if (taxError) {
-      console.error(`[Service/getInvoices] Error fetching tax data:`, taxError);
+      logger.error(`[Service/getInvoices] Error fetching tax data:`, taxError);
     } else {
       // Group tax data by line item ID
       taxesByLineItem = (lineItemTaxes_db || []).reduce((acc, tax_db) => {
@@ -826,7 +827,7 @@ export async function updateInvoice(
   
   const client = supabaseAdmin ?? getSupabaseAdminClient();
   
-  console.log(`[Service/updateInvoice] Updating invoice ${invoiceId} with data:`, invoiceData);
+  logger.info(`[Service/updateInvoice] Updating invoice ${invoiceId} with data:`, invoiceData);
 
   // First, check if the invoice exists and is editable (only draft invoices can be fully edited)
   const { data: existingInvoice, error: fetchError } = await client
@@ -836,7 +837,7 @@ export async function updateInvoice(
     .single();
 
   if (fetchError) {
-    console.error(`[Service/updateInvoice] Error fetching invoice:`, fetchError);
+    logger.error(`[Service/updateInvoice] Error fetching invoice:`, fetchError);
     throw createPersistenceError(`Error fetching invoice: ${fetchError.message}`);
   }
 
@@ -866,7 +867,7 @@ export async function updateInvoice(
     .eq('id', invoiceId);
 
   if (updateError) {
-    console.error(`[Service/updateInvoice] Error updating invoice:`, updateError);
+    logger.error(`[Service/updateInvoice] Error updating invoice:`, updateError);
     throw createPersistenceError(`Error updating invoice: ${updateError.message}`);
   }
 
@@ -881,7 +882,7 @@ export async function updateInvoice(
       .eq('invoice_id', invoiceId);
 
     if (deleteError) {
-      console.error(`[Service/updateInvoice] Error deleting existing line items:`, deleteError);
+      logger.error(`[Service/updateInvoice] Error deleting existing line items:`, deleteError);
       throw createPersistenceError(`Error updating line items: ${deleteError.message}`);
     }
 
@@ -935,7 +936,7 @@ export async function updateInvoice(
       .select('id');
 
     if (lineItemsError) {
-      console.error(`[Service/updateInvoice] Error creating new line items:`, lineItemsError);
+      logger.error(`[Service/updateInvoice] Error creating new line items:`, lineItemsError);
       throw createPersistenceError(`Error updating line items: ${lineItemsError.message}`);
     }
 
@@ -986,7 +987,7 @@ export async function updateInvoiceStatus(
   
   const client = supabaseAdmin ?? getSupabaseAdminClient();
   
-  console.log(`[Service/updateInvoiceStatus] Updating invoice ${invoiceId} status to ${status}`);
+  logger.info(`[Service/updateInvoiceStatus] Updating invoice ${invoiceId} status to ${status}`);
 
   const { data: invoice, error } = await client
     .from('invoices')
@@ -996,7 +997,7 @@ export async function updateInvoiceStatus(
     .single();
 
   if (error) {
-    console.error(`[Service/updateInvoiceStatus] Error updating invoice status:`, error);
+    logger.error(`[Service/updateInvoiceStatus] Error updating invoice status:`, error);
     throw createPersistenceError(`Error updating invoice status: ${error.message}`);
   }
 
@@ -1029,7 +1030,7 @@ export async function deleteInvoice(
   
   const client = supabaseAdmin ?? getSupabaseAdminClient();
   
-  console.log(`[Service/deleteInvoice] Deleting invoice ${invoiceId}`);
+  logger.info(`[Service/deleteInvoice] Deleting invoice ${invoiceId}`);
 
   // Check if invoice has payments
   const { data: payments } = await client
@@ -1056,7 +1057,7 @@ export async function deleteInvoice(
       .eq('id', invoiceId);
 
     if (error) {
-      console.error(`[Service/deleteInvoice] Error deleting invoice:`, error);
+      logger.error(`[Service/deleteInvoice] Error deleting invoice:`, error);
       throw createPersistenceError(`Error deleting invoice: ${error.message}`);
     }
   } else {
@@ -1079,7 +1080,7 @@ export async function getInvoiceStats(
 }> {
   const client = supabaseAdmin ?? getSupabaseAdminClient();
 
-  console.log('[Service/getInvoiceStats] Fetching invoice statistics');
+  logger.info('[Service/getInvoiceStats] Fetching invoice statistics');
 
   // Use pre-computed totals from invoice table
   const { data: invoices_db, error } = await client
@@ -1088,7 +1089,7 @@ export async function getInvoiceStats(
     .neq('status', 'cancelled');
 
   if (error) {
-    console.error('[Service/getInvoiceStats] Error fetching invoice stats:', error);
+    logger.error('[Service/getInvoiceStats] Error fetching invoice stats:', error);
     throw createPersistenceError(`Error fetching invoice statistics: ${error.message}`);
   }
 
