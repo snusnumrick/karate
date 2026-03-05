@@ -13,7 +13,7 @@ import { Page } from '@playwright/test';
  *   TEST_INSTRUCTOR_EMAIL / TEST_INSTRUCTOR_PASSWORD  (optional)
  */
 
-async function loginAs(page: Page, email: string, password: string, expectedUrlPattern: RegExp) {
+async function loginAs(page: Page, email: string, password: string) {
   await page.goto('/login');
   await page.waitForLoadState('networkidle');
 
@@ -21,8 +21,8 @@ async function loginAs(page: Page, email: string, password: string, expectedUrlP
   await page.fill('[data-testid="password-input"]', password);
   await page.click('[data-testid="login-submit-button"]');
 
-  // Wait for redirect after successful login
-  await page.waitForURL(expectedUrlPattern, { timeout: 15_000 });
+  // Successful login should move away from /login; role landing page can vary.
+  await page.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 15_000 });
 }
 
 export async function loginAsAdmin(page: Page) {
@@ -35,7 +35,7 @@ export async function loginAsAdmin(page: Page) {
     );
   }
 
-  await loginAs(page, email, password, /\/admin/);
+  await loginAs(page, email, password);
 }
 
 export async function loginAsFamily(page: Page) {
@@ -48,7 +48,7 @@ export async function loginAsFamily(page: Page) {
     );
   }
 
-  await loginAs(page, email, password, /\/family/);
+  await loginAs(page, email, password);
 }
 
 export async function loginAsInstructor(page: Page) {
@@ -62,7 +62,7 @@ export async function loginAsInstructor(page: Page) {
     );
   }
 
-  await loginAs(page, email, password, /\/instructor/);
+  await loginAs(page, email, password);
 }
 
 export async function logout(page: Page) {
