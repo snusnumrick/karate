@@ -1009,6 +1009,11 @@ export async function getMainPageScheduleData(
   return mainPageScheduleInflight;
 }
 
+export function __resetMainPageScheduleCacheForTests(): void {
+  mainPageScheduleCache = null;
+  mainPageScheduleInflight = null;
+}
+
 /**
  * Check for schedule conflicts when enrolling a student
  */
