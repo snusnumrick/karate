@@ -2,7 +2,7 @@ import type { LoaderFunctionArgs, ActionFunctionArgs } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
 import { useLoaderData, Link, Form } from "@remix-run/react";
 import { getSupabaseServerClient, getSupabaseAdminClient } from "~/utils/supabase.server";
-import { requireUserId } from "~/utils/auth.server";
+import { withFamilyAction, withFamilyLoader } from "~/utils/auth.server";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -55,8 +55,11 @@ type LoaderData = {
   pendingPaymentTotal: number;
 };
 
-export async function action({ request }: ActionFunctionArgs) {
-  const userId = await requireUserId(request);
+async function actionImpl({
+  request,
+  auth,
+}: ActionFunctionArgs & { auth: { user: { id: string } } }) {
+  const userId = auth.user.id;
   const { supabaseServer } = getSupabaseServerClient(request);
   
   await csrf.validate(request);
@@ -158,8 +161,13 @@ export async function action({ request }: ActionFunctionArgs) {
   return redirect(`/pay/${combinedPayment.id}`);
 }
 
-export async function loader({ request }: LoaderFunctionArgs) {
-  const userId = await requireUserId(request);
+export const action = withFamilyAction(actionImpl);
+
+async function loaderImpl({
+  request,
+  auth,
+}: LoaderFunctionArgs & { auth: { user: { id: string } } }) {
+  const userId = auth.user.id;
   const { supabaseServer } = getSupabaseServerClient(request);
 
   // Get user's family ID
@@ -347,6 +355,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
     pendingPaymentTotal
   });
 }
+
+export const loader = withFamilyLoader(loaderImpl);
 
 export default function FamilyEventsPage() {
   const { events, familyName, pendingPaymentTotal } = useLoaderData<LoaderData>();

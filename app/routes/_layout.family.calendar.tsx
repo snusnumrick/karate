@@ -21,7 +21,7 @@ import { CalendarLegend } from "~/components/calendar/CalendarLegend";
 import type { CalendarEvent } from "~/components/calendar/types";
 import { sessionsToCalendarEvents, attendanceToCalendarEvents, formatLocalDate, birthdaysToCalendarEvents, parseLocalDate, expandMultiDayEvents, filterEventsByStudent } from "~/components/calendar/utils";
 import { formatDate, getTodayLocalDateString } from "~/utils/misc";
-import { requireUserId } from "~/utils/auth.server";
+import { withFamilyLoader } from "~/utils/auth.server";
 import { breadcrumbPatterns } from "~/components/AppBreadcrumb";
 
 
@@ -120,11 +120,14 @@ type LoaderData = {
   currentMonth: string;
 };
 
-export async function loader({ request }: LoaderFunctionArgs) {
+async function loaderImpl({
+  request,
+  auth,
+}: LoaderFunctionArgs & { auth: { user: { id: string } } }) {
   try {
     // console.log('Family Calendar Loader: Starting...');
     
-    const userId = await requireUserId(request);
+    const userId = auth.user.id;
     const { supabaseServer: supabase } = getSupabaseServerClient(request);
     // console.log('Family Calendar Loader: User authenticated:', userId);
 
@@ -476,6 +479,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
     throw new Response(`Failed to load calendar data: ${message}`, { status: 500 });
   }
 }
+
+export const loader = withFamilyLoader(loaderImpl);
 
 export default function FamilyCalendarPage() {
   const { students, sessions, attendance, enrollments, events, familyName, currentMonth } = useLoaderData<LoaderData>();
