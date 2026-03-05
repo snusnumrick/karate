@@ -10,9 +10,20 @@ const __dirname = dirname(__filename);
 dotenv.config({ path: resolve(__dirname, '.env') });
 
 export default defineConfig({
-  testDir: './e2e',
+  testDir: '.',
+  testIgnore: ['**/.claude/**'],
   timeout: 60_000,
   retries: process.env.CI ? 2 : 0,
+  projects: [
+    {
+      name: 'smoke',
+      testMatch: ['e2e/generated/**/*.spec.ts'],
+    },
+    {
+      name: 'critical',
+      testMatch: ['e2e/critical/**/*.spec.ts', 'tests/e2e/**/*.spec.ts'],
+    },
+  ],
   use: {
     baseURL: 'http://localhost:5176',
     trace: 'on-first-retry',
