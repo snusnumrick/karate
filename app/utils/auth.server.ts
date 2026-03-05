@@ -2,6 +2,7 @@ import { redirect } from "@vercel/remix";
 import type { Session } from '@supabase/auth-helpers-remix';
 import { getSupabaseServerClient, getUserRole } from "~/utils/supabase.server";
 import type { UserRole } from '~/types/auth';
+import { USER_ROLE_VALUES } from '~/types/auth';
 
 export async function isLoggedIn(request: Request): Promise<boolean> {
   const { supabaseServer } = getSupabaseServerClient(request);
@@ -73,4 +74,98 @@ export async function requireAdminUser(request: Request) {
 
 export async function requireInstructorUser(request: Request) {
   return requireRole(request, ['instructor', 'admin']);
+}
+
+type RoleLoaderHandler<TArgs extends { request: Request }, TResult> = (
+  args: TArgs & { auth: RequireRoleResult }
+) => Promise<TResult> | TResult;
+
+type UserLoaderHandler<TArgs extends { request: Request }, TResult> = (
+  args: TArgs & { userId: string }
+) => Promise<TResult> | TResult;
+
+export function withRoleLoader<TArgs extends { request: Request }, TResult>(
+  allowedRoles: readonly UserRole[],
+  handler: RoleLoaderHandler<TArgs, TResult>
+) {
+  return async (args: TArgs): Promise<TResult> => {
+    const auth = await requireRole(args.request, allowedRoles);
+    return handler({ ...args, auth });
+  };
+}
+
+export function withRoleAction<TArgs extends { request: Request }, TResult>(
+  allowedRoles: readonly UserRole[],
+  handler: RoleLoaderHandler<TArgs, TResult>
+) {
+  return async (args: TArgs): Promise<TResult> => {
+    const auth = await requireRole(args.request, allowedRoles);
+    return handler({ ...args, auth });
+  };
+}
+
+export function withUserLoader<TArgs extends { request: Request }, TResult>(
+  handler: UserLoaderHandler<TArgs, TResult>
+) {
+  return async (args: TArgs): Promise<TResult> => {
+    const userId = await requireUserId(args.request);
+    return handler({ ...args, userId });
+  };
+}
+
+export function withUserAction<TArgs extends { request: Request }, TResult>(
+  handler: UserLoaderHandler<TArgs, TResult>
+) {
+  return async (args: TArgs): Promise<TResult> => {
+    const userId = await requireUserId(args.request);
+    return handler({ ...args, userId });
+  };
+}
+
+export function withAdminLoader<TArgs extends { request: Request }, TResult>(
+  handler: RoleLoaderHandler<TArgs, TResult>
+) {
+  return withRoleLoader(['admin'], handler);
+}
+
+export function withAdminAction<TArgs extends { request: Request }, TResult>(
+  handler: RoleLoaderHandler<TArgs, TResult>
+) {
+  return withRoleAction(['admin'], handler);
+}
+
+export function withFamilyLoader<TArgs extends { request: Request }, TResult>(
+  handler: RoleLoaderHandler<TArgs, TResult>
+) {
+  return withRoleLoader(['user'], handler);
+}
+
+export function withFamilyAction<TArgs extends { request: Request }, TResult>(
+  handler: RoleLoaderHandler<TArgs, TResult>
+) {
+  return withRoleAction(['user'], handler);
+}
+
+export function withInstructorLoader<TArgs extends { request: Request }, TResult>(
+  handler: RoleLoaderHandler<TArgs, TResult>
+) {
+  return withRoleLoader(['instructor', 'admin'], handler);
+}
+
+export function withInstructorAction<TArgs extends { request: Request }, TResult>(
+  handler: RoleLoaderHandler<TArgs, TResult>
+) {
+  return withRoleAction(['instructor', 'admin'], handler);
+}
+
+export function withAuthenticatedLoader<TArgs extends { request: Request }, TResult>(
+  handler: RoleLoaderHandler<TArgs, TResult>
+) {
+  return withRoleLoader(USER_ROLE_VALUES, handler);
+}
+
+export function withAuthenticatedAction<TArgs extends { request: Request }, TResult>(
+  handler: RoleLoaderHandler<TArgs, TResult>
+) {
+  return withRoleAction(USER_ROLE_VALUES, handler);
 }
