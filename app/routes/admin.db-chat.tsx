@@ -12,6 +12,7 @@ import {Badge} from "~/components/ui/badge";
 // Separator removed as it's unused
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import {getSupabaseAdminClient} from "~/utils/supabase.server";
+import { getCachedDbChatSchemaDescription, invalidateDbChatSchemaCache } from "~/services/db-chat-schema-cache.server";
 import { getTodayLocalDateString } from "~/utils/misc";
 import {
     FinishReason,
@@ -29,12 +30,6 @@ import { siteConfig } from "~/config/site";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { csrf } from "~/utils/csrf.server";
 import { AuthenticityTokenInput } from "remix-utils/csrf/react";
-
-// --- Cache for Database Schema Description ---
-let cachedSchemaDescription: string | null = null;
-let cachedSchemaTimestamp: number | null = null;
-const CACHE_DURATION_MS = 60 * 60 * 1000; // 1 hour in milliseconds
-// --- End Cache ---
 
 // This function can run for a maximum of 60 seconds
 export const config = {
@@ -65,32 +60,21 @@ type ActionResponse = {
 
 
 // --- Function to get (and cache) database schema description ---
-async function getAndCacheSchemaDescription(): Promise<string> {
-    const now = Date.now();
-
-    // Check cache validity
-    if (cachedSchemaDescription && cachedSchemaTimestamp && (now - cachedSchemaTimestamp < CACHE_DURATION_MS)) {
-        console.log("Using cached schema description.");
-        return cachedSchemaDescription;
-    }
-
+async function buildSchemaDescription(): Promise<string> {
     console.log("Fetching fresh schema description from database...");
+    const schema: DatabaseSchema = await retrieveDatabaseStructure();
 
-    try {
-        const schema: DatabaseSchema = await retrieveDatabaseStructure();
+    // Filter out functions from the schema to shorten the description
+    const shortenedSchema: DatabaseSchema = {
+        ...schema,
+        functions: [], // Remove functions by setting it to an empty array
+    };
 
-        // Filter out functions from the schema to shorten the description
-        const shortenedSchema: DatabaseSchema = {
-            ...schema,
-            functions: [], // Remove functions by setting it to an empty array
-        };
+    let schemaString = await formatSchemaAsMarkdown(shortenedSchema);
 
-        let schemaString = await formatSchemaAsMarkdown(shortenedSchema);
-        // console.log("Formatted schema description:", schemaString);
-
-        // --- Append Essential Static Notes ---
-        // These notes provide context/logic not easily derived from raw schema
-        schemaString += `
+    // --- Append Essential Static Notes ---
+    // These notes provide context/logic not easily derived from raw schema
+    schemaString += `
 
 -- General Notes:
   - Assume PK/FK relationships exist where names suggest (e.g., family_id -> families.id).
@@ -102,15 +86,20 @@ async function getAndCacheSchemaDescription(): Promise<string> {
   - Belt Ranks: To find a student's *current* belt rank, join 'students' with 'belt_awards' on 'student_id' and select the 'type' associated with the most recent 'awarded_date' for that student (e.g., using ROW_NUMBER() OVER (PARTITION BY student_id ORDER BY awarded_date DESC) as rn WHERE rn = 1).
   - Payments & Orders: Payments of type 'store_purchase' are linked to an order via 'payments.order_id'. Other payment types likely have NULL for 'order_id'.
 `;
-        // --- End Static Notes ---
+    // --- End Static Notes ---
+    return schemaString;
+}
 
-        // Update cache
-        cachedSchemaDescription = schemaString;
-        cachedSchemaTimestamp = now;
-        console.log("Schema description fetched and cached.");
+async function getAndCacheSchemaDescription(forceRefresh = false): Promise<string> {
+    if (forceRefresh) {
+        invalidateDbChatSchemaCache();
+    }
 
-        return cachedSchemaDescription;
-
+    try {
+        if (!forceRefresh) {
+            console.log("Using cached schema description when available.");
+        }
+        return await getCachedDbChatSchemaDescription(buildSchemaDescription);
     } catch (error) {
         console.error("Error fetching or formatting schema description:", error);
         // Fallback to a basic error message or potentially re-throw
@@ -139,7 +128,13 @@ export async function loader({request}: LoaderFunctionArgs) {
 export async function action({request}: ActionFunctionArgs): Promise<Response> {
     await csrf.validate(request);
     const formData = await request.formData();
+    const intent = formData.get("intent") as string | null;
     const originalQuery = formData.get("query") as string;
+
+    if (intent === "refresh_schema") {
+        invalidateDbChatSchemaCache();
+        return json({ success: true, message: "Schema cache refreshed." });
+    }
 
     if (!originalQuery) {
         return json({success: false, error: "No query provided"} satisfies ActionResponse);
