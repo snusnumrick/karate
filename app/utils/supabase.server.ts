@@ -394,50 +394,6 @@ export async function checkStudentEligibility(
     const today = getCurrentDateTimeInTimezone();
     const activeEnrollments = enrollments.filter(e => e.status === 'active');
 
-    for (const enrollment of activeEnrollments) {
-        if (enrollment.paid_until) {
-            const paidUntilDate = new Date(enrollment.paid_until);
-            if (paidUntilDate >= today) {
-                // 4. Fetch the most recent payment to determine payment type for the reason
-                const {data: paymentLinks} = await supabaseAdmin
-                    .from('payment_students')
-                    .select(`
-                        payments!inner ( payment_date, type )
-                    `)
-                    .eq('student_id', studentId)
-                    .eq('payments.status', 'succeeded')
-                    .order('payments.payment_date', {ascending: false})
-                    .limit(1);
-
-                let reason: EligibilityStatus['reason'] = 'Paid - Monthly'; // Default
-                let lastPaymentDate: string | undefined;
-                let paymentType: Database['public']['Enums']['payment_type_enum'] | undefined;
-
-                if (paymentLinks && paymentLinks.length > 0) {
-                    const lastPayment = paymentLinks[0].payments;
-                    if (lastPayment) {
-                        paymentType = lastPayment.type;
-                        lastPaymentDate = lastPayment.payment_date || undefined;
-                        reason = lastPayment.type === 'yearly_group' ? 'Paid - Yearly' : 'Paid - Monthly';
-                    }
-                }
-
-                console.log(`[checkStudentEligibility] Student ${studentId} is eligible. Paid until: ${enrollment.paid_until}`);
-                return {
-                    eligible: true,
-                    reason: reason,
-                    lastPaymentDate: lastPaymentDate,
-                    type: paymentType,
-                    paidUntil: enrollment.paid_until || undefined
-                };
-            }
-        }
-    }
-
-    // 5. If we get here, no enrollments are paid up
-    console.log(`[checkStudentEligibility] Student ${studentId} is NOT eligible. No active enrollments are paid up.`);
-
-    // Get the most recent payment info for the expired response
     const {data: paymentLinks} = await supabaseAdmin
         .from('payment_students')
         .select(`
@@ -448,24 +404,41 @@ export async function checkStudentEligibility(
         .order('payments.payment_date', {ascending: false})
         .limit(1);
 
-    let lastPaymentDate: string | undefined;
-    let paymentType: Database['public']['Enums']['payment_type_enum'] | undefined;
+    const latestPayment = paymentLinks?.[0]?.payments;
+    const latestPaymentType = latestPayment?.type as Database['public']['Enums']['payment_type_enum'] | undefined;
+    const latestPaymentDate = latestPayment?.payment_date || undefined;
 
-    if (paymentLinks && paymentLinks.length > 0) {
-        const lastPayment = paymentLinks[0].payments;
-        if (lastPayment) {
-            paymentType = lastPayment.type;
-            lastPaymentDate = lastPayment.payment_date || undefined;
+    for (const enrollment of activeEnrollments) {
+        if (enrollment.paid_until) {
+            const paidUntilDate = new Date(enrollment.paid_until);
+            if (paidUntilDate >= today) {
+                let reason: EligibilityStatus['reason'] = 'Paid - Monthly'; // Default
+                if (latestPaymentType) {
+                    reason = latestPaymentType === 'yearly_group' ? 'Paid - Yearly' : 'Paid - Monthly';
+                }
+
+                console.log(`[checkStudentEligibility] Student ${studentId} is eligible. Paid until: ${enrollment.paid_until}`);
+                return {
+                    eligible: true,
+                    reason: reason,
+                    lastPaymentDate: latestPaymentDate,
+                    type: latestPaymentType,
+                    paidUntil: enrollment.paid_until || undefined
+                };
+            }
         }
     }
+
+    // 5. If we get here, no enrollments are paid up
+    console.log(`[checkStudentEligibility] Student ${studentId} is NOT eligible. No active enrollments are paid up.`);
 
     const paidUntil = activeEnrollments[0]?.paid_until;
 
     return {
         eligible: false,
         reason: 'Expired',
-        lastPaymentDate: lastPaymentDate,
-        type: paymentType,
+        lastPaymentDate: latestPaymentDate,
+        type: latestPaymentType,
         paidUntil: paidUntil || undefined
     };
 }
