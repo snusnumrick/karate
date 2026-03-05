@@ -3,7 +3,7 @@ import { withAdminLoader } from "~/utils/auth.server";
 import { getClasses } from "~/services/class.server";
 import { getSupabaseAdminClient } from "~/utils/supabase.server";
 
-async function loaderImpl({ request, params }: LoaderFunctionArgs) {
+async function loaderImpl({ params }: LoaderFunctionArgs) {
   
   const { studentId } = params;
   

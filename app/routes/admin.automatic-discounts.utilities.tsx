@@ -1,4 +1,4 @@
-import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
+import type { ActionFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { Form, useActionData, useNavigation, Link } from "@remix-run/react";
 import { withAdminLoader, withAdminAction } from "~/utils/auth.server";
@@ -17,7 +17,7 @@ import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 
 
 
-async function loaderImpl({ request }: LoaderFunctionArgs) {
+async function loaderImpl() {
   return json({});
 }
 

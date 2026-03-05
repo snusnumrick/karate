@@ -1,4 +1,4 @@
-import { json, type LoaderFunctionArgs, type ActionFunctionArgs, redirect } from "@remix-run/node";
+import { json, type ActionFunctionArgs, redirect } from "@remix-run/node";
 import { useLoaderData, Link, useNavigation } from "@remix-run/react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -38,7 +38,7 @@ type AssignmentWithJoins = {
   } | null;
 };
 
-async function loaderImpl({ request }: LoaderFunctionArgs) {
+async function loaderImpl() {
   
   try {
     const automationRules = await AutoDiscountService.getAutomationRules();

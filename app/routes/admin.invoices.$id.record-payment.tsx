@@ -27,7 +27,7 @@ const RecordPaymentSchema = z.object({
   receipt_url: z.string().url().optional()
 });
 
-async function loaderImpl({ request, params }: LoaderFunctionArgs) {
+async function loaderImpl({ params }: LoaderFunctionArgs) {
   const supabase = getSupabaseAdminClient();
   
   if (!params.id) {

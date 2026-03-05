@@ -1,4 +1,4 @@
-import { json, redirect, type LoaderFunctionArgs, type ActionFunctionArgs } from "@remix-run/node";
+import { json, redirect, type ActionFunctionArgs } from "@remix-run/node";
 import { Form, Link, useLoaderData, useNavigation } from "@remix-run/react";
 import { useState, useEffect, useMemo } from "react";
 import { Users, GraduationCap, Calendar, FileText, CheckCircle, AlertCircle, User } from "lucide-react";
@@ -50,7 +50,7 @@ type FamilyProfileInfo = {
   missing_fields: string[];
 };
 
-async function loaderImpl({ request }: LoaderFunctionArgs) {
+async function loaderImpl() {
 
   const supabase = getSupabaseAdminClient();
 

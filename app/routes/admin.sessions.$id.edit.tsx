@@ -26,7 +26,7 @@ type ActionData = {
   };
 };
 
-async function loaderImpl({ request, params }: LoaderFunctionArgs) {
+async function loaderImpl({ params }: LoaderFunctionArgs) {
 
   const sessionId = params.id;
   if (!sessionId) {

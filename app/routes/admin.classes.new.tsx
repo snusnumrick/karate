@@ -1,4 +1,4 @@
-import { json, redirect, type LoaderFunctionArgs, type ActionFunctionArgs } from "@remix-run/node";
+import { json, redirect, type ActionFunctionArgs } from "@remix-run/node";
 import { useLoaderData, Form, useNavigation, useActionData, Link } from "@remix-run/react";
 import { useState, useEffect } from "react";
 import { AuthenticityTokenInput } from "remix-utils/csrf/react";
@@ -21,7 +21,7 @@ import { validateClassConstraints, getDefaultMaxCapacity, getSessionFrequencyDes
 import { serializeMoney } from "~/utils/money";
 
 
-async function loaderImpl({ request }: LoaderFunctionArgs) {
+async function loaderImpl() {
 
   const [programs, instructors] = await Promise.all([
     getPrograms(),

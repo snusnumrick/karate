@@ -42,7 +42,7 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
   ];
 };
 
-async function loaderImpl({ request, params }: LoaderFunctionArgs) {
+async function loaderImpl({ params }: LoaderFunctionArgs) {
   const programId = params.id;
 
   if (!programId) {

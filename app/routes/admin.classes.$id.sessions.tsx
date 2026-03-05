@@ -34,7 +34,7 @@ type ActionData = {
   success?: string;
 };
 
-async function loaderImpl({ request, params }: LoaderFunctionArgs) {
+async function loaderImpl({ params }: LoaderFunctionArgs) {
 
   const classId = params.id;
   if (!classId) {

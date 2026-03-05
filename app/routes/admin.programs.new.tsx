@@ -1,4 +1,4 @@
-import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from "@remix-run/node";
+import { json, redirect, type ActionFunctionArgs } from "@remix-run/node";
 import { Form, useActionData, useLoaderData, useNavigation, Link } from "@remix-run/react";
 import { withAdminLoader, withAdminAction } from "~/utils/auth.server";
 import { createProgram } from "~/services/program.server";
@@ -31,7 +31,7 @@ type ActionData = {
   };
 };
 
-async function loaderImpl({ request }: LoaderFunctionArgs) {
+async function loaderImpl() {
 
   // Get all available waivers
   const supabaseAdmin = getSupabaseAdminClient();

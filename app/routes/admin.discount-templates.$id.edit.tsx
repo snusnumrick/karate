@@ -39,7 +39,7 @@ import {
   AlertDialogTrigger,
 } from "~/components/ui/alert-dialog";
 
-async function loaderImpl({ request, params }: LoaderFunctionArgs) {
+async function loaderImpl({ params }: LoaderFunctionArgs) {
   const templateId = params.id;
   
   if (!templateId) {

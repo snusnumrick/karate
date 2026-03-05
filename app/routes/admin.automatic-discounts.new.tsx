@@ -1,4 +1,4 @@
-import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from "@remix-run/node";
+import { json, redirect, type ActionFunctionArgs } from "@remix-run/node";
 import { Form, useActionData, useLoaderData, useNavigation , Link } from "@remix-run/react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
@@ -20,7 +20,7 @@ import { Badge } from "~/components/ui/badge";
 import { csrf } from "~/utils/csrf.server";
 import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 
-async function loaderImpl({ request }: LoaderFunctionArgs) {
+async function loaderImpl() {
 
   try {
     const [templates, programs] = await Promise.all([

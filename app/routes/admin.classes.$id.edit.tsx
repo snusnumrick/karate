@@ -31,7 +31,7 @@ import { validateClassConstraints, getSessionFrequencyDescription } from "~/util
 import { serializeMoney } from "~/utils/money";
 
 
-async function loaderImpl({ request, params }: LoaderFunctionArgs) {
+async function loaderImpl({ params }: LoaderFunctionArgs) {
 
   const classId = params.id;
   if (!classId) {
