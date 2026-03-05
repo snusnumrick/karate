@@ -2,6 +2,7 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import invariant from "tiny-invariant";
 import type { Database } from "~/types/database.types";
 import { getSupabaseAdminClient } from "~/utils/supabase.server";
+import { createNotFoundError, createPersistenceError } from "~/utils/service-errors.server";
 
 // Define row types locally or import if shared
 type FamilyRow = Database['public']['Tables']['families']['Row'];
@@ -65,13 +66,13 @@ export async function getFamilyDetails(
     // Check for database errors (not including "not found")
     if (familyError) {
         console.error(`[Service/getFamilyDetails] Supabase error fetching family ${familyId}:`, familyError.message);
-        throw new Response(`Database error: ${familyError.message}`, { status: 500 });
+        throw createPersistenceError(`Database error: ${familyError.message}`);
     }
 
     // Check if family exists (maybeSingle returns null if not found)
     if (!familyData) {
         console.warn(`[Service/getFamilyDetails] No family data found for ID: ${familyId}. Throwing 404.`);
-        throw new Response("Family not found", { status: 404 });
+        throw createNotFoundError("Family not found");
     }
 
     // Now that we know familyData is not null and is of type FamilyWithStudents,
@@ -202,12 +203,12 @@ export async function deleteFamily(
 
     if (checkError) {
         console.error(`[Service/deleteFamily] Error checking family existence:`, checkError.message);
-        throw new Response(`Database error: ${checkError.message}`, { status: 500 });
+        throw createPersistenceError(`Database error: ${checkError.message}`);
     }
 
     if (!familyExists) {
         console.warn(`[Service/deleteFamily] Family ${familyId} not found`);
-        throw new Response("Family not found", { status: 404 });
+        throw createNotFoundError("Family not found");
     }
 
     // Get all profiles associated with this family
@@ -218,7 +219,7 @@ export async function deleteFamily(
 
     if (profilesError) {
         console.error(`[Service/deleteFamily] Error fetching family profiles:`, profilesError.message);
-        throw new Response(`Database error: ${profilesError.message}`, { status: 500 });
+        throw createPersistenceError(`Database error: ${profilesError.message}`);
     }
 
     // Separate admin and non-admin profiles
@@ -252,7 +253,7 @@ export async function deleteFamily(
 
     if (deleteError) {
         console.error(`[Service/deleteFamily] Error deleting family ${familyId}:`, deleteError.message);
-        throw new Response(`Failed to delete family: ${deleteError.message}`, { status: 500 });
+        throw createPersistenceError(`Failed to delete family: ${deleteError.message}`);
     }
 
     console.log(`[Service/deleteFamily] Successfully deleted family ${familyId}`);

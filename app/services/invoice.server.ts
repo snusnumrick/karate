@@ -30,6 +30,11 @@ import { getSupabaseAdminClient } from "~/utils/supabase.server";
 import { toCents, addMoney, subtractMoney, ZERO_MONEY, type Money } from "~/utils/money";
 import { convertRowToMoney, convertRowsToMoney, convertMoneyToRow, moneyFromRow } from "~/services/database-money.server";
 import { getTodayLocalDateString } from "~/utils/misc";
+import {
+  createNotFoundError,
+  createPersistenceError,
+  createValidationError,
+} from "~/utils/service-errors.server";
 
 type InvoiceEntityRow = Database['public']['Tables']['invoice_entities']['Row'] & Record<string, unknown>;
 type InvoiceLineItemRow = Database['public']['Tables']['invoice_line_items']['Row'];
@@ -100,7 +105,7 @@ function buildLineItemTaxAssociationsPayload(
     const breakdown = taxBreakdown.find(tb => tb.taxRate.id === taxRateId);
     
     if (!taxRate || !breakdown) {
-      throw new Error(`Tax rate not found: ${taxRateId}`);
+      throw createNotFoundError(`Tax rate not found: ${taxRateId}`);
     }
 
     return {
@@ -133,7 +138,7 @@ async function insertLineItemTaxAssociations(
 
   if (error) {
     console.error('[Service/createLineItemTaxAssociations] Error creating tax associations:', error);
-    throw new Response(`Error creating line item tax associations: ${error.message}`, { status: 500 });
+    throw createPersistenceError(`Error creating line item tax associations: ${error.message}`);
   }
   
   console.log('[Service/createLineItemTaxAssociations] Tax associations saved successfully');
@@ -334,7 +339,7 @@ export async function generateInvoiceNumber(
   
   if (error) {
     console.error('[Service/generateInvoiceNumber] Error generating invoice number:', error);
-    throw new Response(`Error generating invoice number: ${error.message}`, { status: 500 });
+    throw createPersistenceError(`Error generating invoice number: ${error.message}`);
   }
   
   return data;
@@ -374,7 +379,7 @@ export async function createInvoice(
 
   if (invoiceError) {
     console.error('[Service/createInvoice] Error creating invoice:', invoiceError);
-    throw new Response(`Error creating invoice: ${invoiceError.message}`, { status: 500 });
+    throw createPersistenceError(`Error creating invoice: ${invoiceError.message}`);
   }
 
   // Pre-fetch applicable tax rates for all item types to avoid multiple DB calls
@@ -428,7 +433,7 @@ export async function createInvoice(
     console.error('[Service/createInvoice] Error creating line items:', lineItemsError);
     // Clean up the invoice if line items failed
     await client.from('invoices').delete().eq('id', invoice.id);
-    throw new Response(`Error creating invoice line items: ${lineItemsError.message}`, { status: 500 });
+    throw createPersistenceError(`Error creating invoice line items: ${lineItemsError.message}`);
   }
 
   // Create tax associations for each line item
@@ -491,11 +496,11 @@ export async function getInvoiceById(
 
   if (invoiceError) {
     console.error(`[Service/getInvoiceById] Error fetching invoice ${invoiceId}:`, invoiceError);
-    throw new Response(`Database error: ${invoiceError.message}`, { status: 500 });
+    throw createPersistenceError(`Database error: ${invoiceError.message}`);
   }
 
   if (!invoice) {
-    throw new Response("Invoice not found", { status: 404 });
+    throw createNotFoundError("Invoice not found");
   }
 
   // Fetch tax data for line items
@@ -619,11 +624,11 @@ export async function getInvoiceByNumber(
 
   if (invoiceError) {
     console.error(`[Service/getInvoiceByNumber] Error fetching invoice ${invoiceNumber}:`, invoiceError);
-    throw new Response(`Database error: ${invoiceError.message}`, { status: 500 });
+    throw createPersistenceError(`Database error: ${invoiceError.message}`);
   }
 
   if (!invoice) {
-    throw new Response("Invoice not found", { status: 404 });
+    throw createNotFoundError("Invoice not found");
   }
 
   // Use the existing getInvoiceById function to get the complete data
@@ -713,7 +718,7 @@ export async function getInvoices(
 
   if (error) {
     console.error('[Service/getInvoices] Error fetching invoices:', error);
-    throw new Response(`Error fetching invoices: ${error.message}`, { status: 500 });
+    throw createPersistenceError(`Error fetching invoices: ${error.message}`);
   }
 
   // Fetch tax data for all line items across all invoices
@@ -832,15 +837,15 @@ export async function updateInvoice(
 
   if (fetchError) {
     console.error(`[Service/updateInvoice] Error fetching invoice:`, fetchError);
-    throw new Response(`Error fetching invoice: ${fetchError.message}`, { status: 500 });
+    throw createPersistenceError(`Error fetching invoice: ${fetchError.message}`);
   }
 
   if (!existingInvoice) {
-    throw new Response("Invoice not found", { status: 404 });
+    throw createNotFoundError("Invoice not found");
   }
 
   if (existingInvoice.status !== 'draft') {
-    throw new Response("Only draft invoices can be edited", { status: 400 });
+    throw createValidationError("Only draft invoices can be edited");
   }
 
   // Update the invoice
@@ -862,7 +867,7 @@ export async function updateInvoice(
 
   if (updateError) {
     console.error(`[Service/updateInvoice] Error updating invoice:`, updateError);
-    throw new Response(`Error updating invoice: ${updateError.message}`, { status: 500 });
+    throw createPersistenceError(`Error updating invoice: ${updateError.message}`);
   }
 
   // Update line items if provided
@@ -877,7 +882,7 @@ export async function updateInvoice(
 
     if (deleteError) {
       console.error(`[Service/updateInvoice] Error deleting existing line items:`, deleteError);
-      throw new Response(`Error updating line items: ${deleteError.message}`, { status: 500 });
+      throw createPersistenceError(`Error updating line items: ${deleteError.message}`);
     }
 
     // Pre-fetch applicable tax rates for all item types to avoid multiple DB calls
@@ -931,7 +936,7 @@ export async function updateInvoice(
 
     if (lineItemsError) {
       console.error(`[Service/updateInvoice] Error creating new line items:`, lineItemsError);
-      throw new Response(`Error updating line items: ${lineItemsError.message}`, { status: 500 });
+      throw createPersistenceError(`Error updating line items: ${lineItemsError.message}`);
     }
 
     // Create tax associations for each line item
@@ -992,11 +997,11 @@ export async function updateInvoiceStatus(
 
   if (error) {
     console.error(`[Service/updateInvoiceStatus] Error updating invoice status:`, error);
-    throw new Response(`Error updating invoice status: ${error.message}`, { status: 500 });
+    throw createPersistenceError(`Error updating invoice status: ${error.message}`);
   }
 
   if (!invoice) {
-    throw new Response("Invoice not found", { status: 404 });
+    throw createNotFoundError("Invoice not found");
   }
 
   // Add status history entry if notes provided
@@ -1034,7 +1039,7 @@ export async function deleteInvoice(
     .limit(1);
 
   if (payments && payments.length > 0) {
-    throw new Response("Cannot delete invoice with payments. Cancel instead.", { status: 400 });
+    throw createValidationError("Cannot delete invoice with payments. Cancel instead.");
   }
 
   // For draft invoices, we can actually delete them
@@ -1052,7 +1057,7 @@ export async function deleteInvoice(
 
     if (error) {
       console.error(`[Service/deleteInvoice] Error deleting invoice:`, error);
-      throw new Response(`Error deleting invoice: ${error.message}`, { status: 500 });
+      throw createPersistenceError(`Error deleting invoice: ${error.message}`);
     }
   } else {
     // For non-draft invoices, cancel them instead
@@ -1084,7 +1089,7 @@ export async function getInvoiceStats(
 
   if (error) {
     console.error('[Service/getInvoiceStats] Error fetching invoice stats:', error);
-    throw new Response(`Error fetching invoice statistics: ${error.message}`, { status: 500 });
+    throw createPersistenceError(`Error fetching invoice statistics: ${error.message}`);
   }
 
   const stats = {

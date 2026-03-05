@@ -2,6 +2,7 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import invariant from "tiny-invariant";
 import type { Database } from "~/types/database.types";
 import { getSupabaseAdminClient } from "~/utils/supabase.server";
+import { createNotFoundError, createPersistenceError } from "~/utils/service-errors.server";
 // Removed unused format import
 
 // Define types locally or import if shared
@@ -50,7 +51,7 @@ export async function getStudentDetails(
 
     if (error || !studentData) {
         console.error(`[Service/getStudentDetails] Error fetching student ${studentId}:`, error?.message);
-        throw new Response("Student not found", { status: 404 });
+        throw createNotFoundError("Student not found");
     }
 
     // Fetch the latest belt award
@@ -139,7 +140,7 @@ export async function updateStudent(
 
     if (updateError) {
         console.error(`[Service/updateStudent] Error updating student ${studentId}:`, updateError.message);
-        throw new Error(`Failed to update student: ${updateError.message}`);
+        throw createPersistenceError(`Failed to update student: ${updateError.message}`);
     }
     console.log(`[Service/updateStudent] Successfully updated student ${studentId}`);
 }
@@ -168,7 +169,7 @@ export async function deleteStudent(
 
     if (error) {
         console.error(`[Service/deleteStudent] Supabase error deleting student ${studentId}:`, error.message);
-        throw new Error(`Database error deleting student: ${error.message}`);
+        throw createPersistenceError(`Database error deleting student: ${error.message}`);
     }
     console.log(`[Service/deleteStudent] Successfully deleted student ${studentId}`);
 }
@@ -225,7 +226,7 @@ export async function recordIndividualSessionUsage(
             `[Service/recordIndividualSessionUsage] Atomic usage RPC failed for session ${sessionPurchaseId}:`,
             rpcError.message
         );
-        throw new Error(`Failed to record session usage: ${rpcError.message}`);
+        throw createPersistenceError(`Failed to record session usage: ${rpcError.message}`);
     }
 
     const updatedBalance = newBalance ?? 0;
