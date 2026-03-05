@@ -1,4 +1,5 @@
 import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
+import { withInstructorLoader, withInstructorAction } from '~/utils/auth.server';
 import { Form, Link, useFetcher, useLoaderData, useRouteError, useSearchParams, useSubmit } from '@remix-run/react';
 import { addDays, addMinutes, format, isAfter, subDays } from 'date-fns';
 import { useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
@@ -68,7 +69,7 @@ interface ActionResponse {
   error?: string;
 }
 
-export async function loader({ request }: LoaderFunctionArgs) {
+async function loaderImpl({ request }: LoaderFunctionArgs) {
   const context = await resolveInstructorPortalContext(request);
   const { role, viewInstructorId, supabaseAdmin, headers, searchParams } = context;
   const requestedSessionId = searchParams.get('sessionId');
@@ -140,7 +141,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
   }, { headers });
 }
 
-export async function action({ request }: ActionFunctionArgs) {
+export const loader = withInstructorLoader(loaderImpl);
+
+async function actionImpl({ request }: ActionFunctionArgs) {
   try {
     await csrf.validate(request);
   } catch {
@@ -312,6 +315,8 @@ export async function action({ request }: ActionFunctionArgs) {
 
   return json<ActionResponse>({ success: true, session: serializeInstructorSessionSummary(updated) }, { headers });
 }
+
+export const action = withInstructorAction(actionImpl);
 
 export default function InstructorAttendancePage() {
   const data = useLoaderData<LoaderData>();

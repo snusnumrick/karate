@@ -1,4 +1,5 @@
 import { json, type LoaderFunctionArgs } from '@vercel/remix';
+import { withInstructorLoader } from '~/utils/auth.server';
 import { Link, useLoaderData } from '@remix-run/react';
 import { addDays } from 'date-fns';
 import type { UserRole } from '~/types/auth';
@@ -28,7 +29,7 @@ export const handle: InstructorRouteHandle = {
   breadcrumb: () => [{ label: 'Materials', href: '/instructor/resources' }],
 };
 
-export async function loader({ request }: LoaderFunctionArgs) {
+async function loaderImpl({ request }: LoaderFunctionArgs) {
   const context = await resolveInstructorPortalContext(request);
   const { role, viewInstructorId, supabaseAdmin, headers } = context;
 
@@ -66,6 +67,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   return json<ResourcesLoaderData>({ role, resources }, { headers });
 }
+
+export const loader = withInstructorLoader(loaderImpl);
 
 export default function InstructorResourcesPage() {
   const data = useLoaderData<ResourcesLoaderData>();

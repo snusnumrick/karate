@@ -1,4 +1,5 @@
 import {useEffect, useRef, useState} from "react";
+import { withInstructorLoader } from '~/utils/auth.server';
 import {json, type LoaderFunctionArgs, type TypedResponse} from "@vercel/remix";
 import {useLoaderData, useRevalidator, useOutletContext} from "@remix-run/react";
 import {RealtimeChannel} from "@supabase/supabase-js";
@@ -23,7 +24,7 @@ interface LoaderData {
     userId: string | null;
 }
 
-export async function loader({request}: LoaderFunctionArgs): Promise<TypedResponse<LoaderData>> {
+async function loaderImpl({request}: LoaderFunctionArgs): Promise<TypedResponse<LoaderData>> {
     const {supabaseServer, response: {headers}, ENV} = getSupabaseServerClient(request);
     // Fetch session which includes the access token
     const {data: {session}, error: sessionError} = await supabaseServer.auth.getSession();
@@ -96,6 +97,8 @@ export async function loader({request}: LoaderFunctionArgs): Promise<TypedRespon
 
     return json({conversations: safeConversations, ENV, accessToken, refreshToken, userId}, {headers});
 }
+
+export const loader = withInstructorLoader(loaderImpl);
 
 
 export default function InstructorMessagesIndex() {

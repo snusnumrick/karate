@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { withInstructorLoader, withInstructorAction } from '~/utils/auth.server';
 import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from '@vercel/remix';
 import { Link, useFetcher, useLoaderData, useOutletContext, useRevalidator } from '@remix-run/react';
 import { getSupabaseServerClient } from '~/utils/supabase.server';
@@ -25,7 +26,7 @@ interface ActionResponse {
   error?: string;
 }
 
-export async function loader({ request, params }: LoaderFunctionArgs) {
+async function loaderImpl({ request, params }: LoaderFunctionArgs) {
   const conversationId = params.conversationId;
   if (!conversationId) {
     throw redirect('/instructor/messages');
@@ -143,7 +144,9 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   }, { headers });
 }
 
-export async function action({ request, params }: ActionFunctionArgs) {
+export const loader = withInstructorLoader(loaderImpl);
+
+async function actionImpl({ request, params }: ActionFunctionArgs) {
   const conversationId = params.conversationId;
   if (!conversationId) {
     return json({ error: 'Invalid conversation.' }, { status: 400 });
@@ -186,6 +189,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
   return json({ success: true });
 }
+
+export const action = withInstructorAction(actionImpl);
 
 export default function InstructorConversationPage() {
   const { conversation, messages, userId, accessToken, refreshToken } = useLoaderData<typeof loader>();

@@ -1,4 +1,5 @@
 import { Outlet, useLoaderData, useMatches, useOutletContext, useRouteError } from '@remix-run/react';
+import { withInstructorLoader } from '~/utils/auth.server';
 import { json, redirect, type LoaderFunctionArgs } from '@vercel/remix';
 import { useEffect, useMemo, useState } from 'react';
 import { getSupabaseServerClient, getUserRole } from '~/utils/supabase.server';
@@ -10,7 +11,7 @@ import { createBrowserClient } from '@supabase/auth-helpers-remix';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '~/types/database.types';
 
-export async function loader({ request }: LoaderFunctionArgs) {
+async function loaderImpl({ request }: LoaderFunctionArgs) {
   const { supabaseServer, response, ENV } = getSupabaseServerClient(request);
   const { data: { user } } = await supabaseServer.auth.getUser();
   const headers = Object.fromEntries(response.headers);
@@ -27,6 +28,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   return json({ role, ENV }, { headers });
 }
+
+export const loader = withInstructorLoader(loaderImpl);
 
 type InstructorRouteHandle = {
   breadcrumb?: (data: unknown) => BreadcrumbItem[];

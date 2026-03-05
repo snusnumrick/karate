@@ -1,4 +1,5 @@
 import { json, type LoaderFunctionArgs } from '@vercel/remix';
+import { withInstructorLoader } from '~/utils/auth.server';
 import { Form, Link, useLoaderData, useNavigate, useSearchParams, useSubmit } from '@remix-run/react';
 import { addDays, format } from 'date-fns';
 import { useMemo, type ComponentType } from 'react';
@@ -42,7 +43,7 @@ export const handle: InstructorRouteHandle = {
   breadcrumb: () => [{ label: 'Dashboard', href: '/instructor' }],
 };
 
-export async function loader({ request }: LoaderFunctionArgs) {
+async function loaderImpl({ request }: LoaderFunctionArgs) {
   const {
     role,
     viewInstructorId,
@@ -101,6 +102,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
     nextSession,
   }, { headers });
 }
+
+export const loader = withInstructorLoader(loaderImpl);
 
 export default function InstructorDashboard() {
   const data = useLoaderData<DashboardLoaderData>();

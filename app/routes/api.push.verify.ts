@@ -1,14 +1,13 @@
 import { json, type ActionFunctionArgs } from '@remix-run/node';
-import { requireUserId } from '~/utils/auth.server';
+import { withUserAction } from '~/utils/auth.server';
 import { getSupabaseAdminClient } from '~/utils/supabase.server';
 
-export async function action({ request }: ActionFunctionArgs) {
+async function actionImpl({ request, userId }: ActionFunctionArgs & { userId: string }) {
   if (request.method !== 'POST') {
     return json({ error: 'Method not allowed' }, { status: 405 });
   }
 
   try {
-    const userId = await requireUserId(request);
     const { endpoint } = await request.json();
 
     if (!endpoint) {
@@ -47,3 +46,5 @@ export async function action({ request }: ActionFunctionArgs) {
     return json({ error: 'Failed to verify subscription' }, { status: 500 });
   }
 }
+
+export const action = withUserAction(actionImpl);

@@ -1,9 +1,9 @@
 import { json, type ActionFunctionArgs } from '@remix-run/node';
-import { requireUserId } from '~/utils/auth.server';
+import { withUserAction } from '~/utils/auth.server';
 import { sendPushNotificationToUser } from '~/utils/push-notifications.server';
 import { getSupabaseServerClient, isUserAdmin } from '~/utils/supabase.server';
 
-export async function action({ request }: ActionFunctionArgs) {
+async function actionImpl({ request, userId }: ActionFunctionArgs & { userId: string }) {
   console.log(`Test push notification action called ${request}`);
 
   if (request.method !== 'POST') {
@@ -11,7 +11,6 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 
   try {
-    const userId = await requireUserId(request);
     const { supabaseServer } = getSupabaseServerClient(request);
 
     console.log('Test push notification requested for user:', userId);
@@ -90,3 +89,5 @@ export async function action({ request }: ActionFunctionArgs) {
     return json({ error: 'Failed to send test notification' }, { status: 500 });
   }
 }
+
+export const action = withUserAction(actionImpl);

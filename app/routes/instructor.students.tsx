@@ -1,4 +1,5 @@
 import { json, type LoaderFunctionArgs } from '@vercel/remix';
+import { withInstructorLoader } from '~/utils/auth.server';
 import { Link, useLoaderData } from '@remix-run/react';
 import { addDays, format, isAfter } from 'date-fns';
 import type { UserRole } from '~/types/auth';
@@ -43,7 +44,7 @@ function parseLocalDateTime(dateTimeString: string): Date {
   return new Date(year, month - 1, day, hours, minutes, seconds);
 }
 
-export async function loader({ request }: LoaderFunctionArgs) {
+async function loaderImpl({ request }: LoaderFunctionArgs) {
   const context = await resolveInstructorPortalContext(request);
   const { role, viewInstructorId, supabaseAdmin, headers } = context;
 
@@ -96,6 +97,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   return json<StudentsLoaderData>({ role, students }, { headers });
 }
+
+export const loader = withInstructorLoader(loaderImpl);
 
 export default function InstructorStudentsPage() {
   const data = useLoaderData<StudentsLoaderData>();
