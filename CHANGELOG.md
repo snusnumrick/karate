@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Shared server cache utility for TTL/inflight dedupe and explicit invalidation (`server-cache.server.ts`).
+- Shared cache modules for required waivers and admin db-chat schema metadata with refresh/invalidation paths.
+- Typed service-layer error primitives (`ServiceError`) and mapping helpers.
+- Auth wrapper APIs for route guards (`withAdmin*`, `withFamily*`, `withInstructor*`, `withUser*`).
+
+### Changed
+- Executed full `CODE_REVIEW_BACKLOG.md` implementation backlog (BL-1 through BL-13).
+- Migrated admin, family, and instructor/protected API routes to wrapper-based auth guards.
+- Standardized enrollment validation to a typed throw contract (`EnrollmentValidationError`).
+- Standardized invoice/family/student/class/enrollment/discount services on typed `ServiceError` throws.
+- Mapped service errors back to HTTP statuses in affected invoice/family/student routes and APIs.
+- Consolidated money utility helpers into `database-money.ts` with compatibility re-exports.
+- Enabled global `no-console` linting at warning level and migrated selected high-impact server logs.
+- Removed `select('*')` wildcard usage from `app/services`.
+- Unified classes/home schedule summary flow to canonical main-page schedule data path.
+
 ### Planned
 - **Email Automation:** Invoice delivery and payment reminder automation
 - **Enhanced Reporting:** Advanced analytics and reporting for invoice management

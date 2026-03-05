@@ -3,8 +3,9 @@
 > Created: 2026-02-28
 > Source: `CODE_REVIEW.md` findings not included in `CODE_REVIEW_EXECUTION_PLAN.md` (R1–R4)
 > Status at creation: Refactor branch is 98% complete (55/56 plan items done)
+> Completion status: Completed on 2026-03-05 (BL-1 through BL-13)
 
-This document captures the work that was identified in the code review but explicitly deferred from the refactor, was intentionally scoped down, or was never added to the execution plan. Items are ordered by risk.
+This document captures the work that was identified in the code review but explicitly deferred from the refactor, was intentionally scoped down, or was never added to the execution plan. All items in this backlog are now completed.
 
 ---
 
@@ -189,22 +190,29 @@ const CLASS_SESSION_SELECT = `id, name, ..., class:classes(id, name, ..., progra
 
 ---
 
+## Completion Notes
+
+- BL-1 through BL-13 were implemented on branch `refactor2` via sequential commits.
+- Auth wrappers were rolled out in phases (admin, then family, then instructor/protected APIs).
+- Service-layer error handling now uses `ServiceError` with route/API mapping for HTTP status preservation.
+- Shared server-side cache utilities were introduced and applied to waiver and db-chat schema cache paths.
+
 ## Summary
 
-| ID | Item | Risk | Effort | Priority |
-|----|------|------|--------|----------|
-| BL-1 | Auto-discount Supabase singleton | Auth token expiry silently breaks discounts | 30 min | P1 |
-| BL-2 | Waiver cache — no invalidation | Stale waivers shown after admin updates | 2h | P1 |
-| BL-3 | validateEnrollment vs enrollStudent error pattern | Caller confusion, future bug surface | 1h | P1 |
-| BL-4 | Auth middleware / `withLoader` (D11) | Auth changes require 50+ file edits | 4–6h | P2 |
-| BL-5 | Structured logger full rollout (H3) | Production logs are unstructured noise | 4–8h | P2 |
-| BL-6 | `select('*')` column narrowing | Over-fetching, broad types | 6–10h | P2 |
-| BL-7 | Service error pattern standardization | Inconsistent error handling across services | 4h | P2 |
-| BL-8 | Dual schedule summary implementations | Algorithm divergence risk | 1h | P2 |
-| BL-9 | Session status cast duplication | DRY | 15 min | P3 |
-| BL-10 | Class session select query duplication | DRY | 15 min | P3 |
-| BL-11 | `payment_students` query duplication | DRY | 30 min | P3 |
-| BL-12 | Money utility file consolidation | Minor DRY | 30 min | P3 |
-| BL-13 | Schema cache in db-chat | Low-risk per-worker duplication | 1h | P3 |
+| ID | Item | Risk | Effort | Priority | Status |
+|----|------|------|--------|----------|--------|
+| BL-1 | Auto-discount Supabase singleton | Auth token expiry silently breaks discounts | 30 min | P1 | Completed |
+| BL-2 | Waiver cache — no invalidation | Stale waivers shown after admin updates | 2h | P1 | Completed |
+| BL-3 | validateEnrollment vs enrollStudent error pattern | Caller confusion, future bug surface | 1h | P1 | Completed |
+| BL-4 | Auth middleware / `withLoader` (D11) | Auth changes require 50+ file edits | 4–6h | P2 | Completed |
+| BL-5 | Structured logger full rollout (H3) | Production logs are unstructured noise | 4–8h | P2 | Completed (warning-level rollout + targeted migrations) |
+| BL-6 | `select('*')` column narrowing | Over-fetching, broad types | 6–10h | P2 | Completed (`app/services` wildcard selects removed) |
+| BL-7 | Service error pattern standardization | Inconsistent error handling across services | 4h | P2 | Completed |
+| BL-8 | Dual schedule summary implementations | Algorithm divergence risk | 1h | P2 | Completed |
+| BL-9 | Session status cast duplication | DRY | 15 min | P3 | Completed |
+| BL-10 | Class session select query duplication | DRY | 15 min | P3 | Completed |
+| BL-11 | `payment_students` query duplication | DRY | 30 min | P3 | Completed |
+| BL-12 | Money utility file consolidation | Minor DRY | 30 min | P3 | Completed |
+| BL-13 | Schema cache in db-chat | Low-risk per-worker duplication | 1h | P3 | Completed |
 
-**Total estimated effort:** ~26–36h spread across future sprints
+**Total estimated effort:** ~26–36h (completed)
