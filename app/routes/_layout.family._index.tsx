@@ -5,6 +5,7 @@ import {type EligibilityStatus, getSupabaseServerClient} from "~/utils/supabase.
 import { performance } from "node:perf_hooks";
 import { parse } from "cookie";
 import {getIncompleteRegistrations, dismissIncompleteRegistration} from "~/services/incomplete-registration.server";
+import { getRequiredWaivers } from "~/services/required-waivers-cache.server";
 import { getCurrentDateTimeInTimezone, formatDate, getTodayLocalDateString } from "~/utils/misc";
 import type { Database } from "~/types/database.types";
 
@@ -58,10 +59,6 @@ interface FamilyData {
     relationship: string;
   }>;
 }
-
-// Simple in-memory cache for required waivers (rarely changes)
-const REQUIRED_WAIVERS_CACHE_TTL = 15 * 60 * 1000; // 15 minutes
-let requiredWaiversCache: { data: Array<{id: string; title: string}>; expiresAt: number } | null = null;
 
 // Batch check eligibility for multiple students
 async function batchCheckStudentEligibility(
@@ -320,11 +317,6 @@ export async function loader({request}: LoaderFunctionArgs) {
     }
 
     // 2-4. Fetch family data, payment, and waivers in parallel
-    // Check cache for required waivers first
-    const now = Date.now();
-    const cachedWaivers = requiredWaiversCache && requiredWaiversCache.expiresAt > now
-        ? requiredWaiversCache.data
-        : null;
 
     const parallelStart = performance.now();
     const familyQueryStart = performance.now();
@@ -353,24 +345,9 @@ export async function loader({request}: LoaderFunctionArgs) {
         .maybeSingle();
 
     const waiversQueryStart = performance.now();
-    const waiversQuery = cachedWaivers
-        ? Promise.resolve({ data: cachedWaivers, error: null })
-        : (async () => {
-            const result = await supabaseServer
-                .from('waivers')
-                .select('id, title')
-                .eq('required', true);
-
-            // Cache the result
-            if (!result.error && result.data) {
-                requiredWaiversCache = {
-                    data: result.data,
-                    expiresAt: Date.now() + REQUIRED_WAIVERS_CACHE_TTL
-                };
-            }
-
-            return result;
-        })();
+    const waiversQuery = getRequiredWaivers()
+        .then((data) => ({ data, error: null }))
+        .catch((error: unknown) => ({ data: null, error }));
 
     const signaturesQueryStart = performance.now();
     const signaturesQuery = supabaseServer

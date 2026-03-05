@@ -4,6 +4,7 @@ import {useEffect, useRef} from "react";
 import type {SupabaseClient} from '@supabase/supabase-js'; // Import SupabaseClient type
 import type {Database} from "~/types/database.types";
 import {getSupabaseAdminClient} from "~/utils/supabase.server";
+import { invalidateRequiredWaiversCache } from "~/services/required-waivers-cache.server";
 import {sendEmail} from '~/utils/email.server'; // Import email utility
 import {Button} from "~/components/ui/button";
 import {Input} from "~/components/ui/input";
@@ -123,6 +124,7 @@ export async function action({request, params}: ActionFunctionArgs) {
         }
 
         console.log(`Waiver ${waiverId} updated successfully.`);
+        invalidateRequiredWaiversCache();
 
         // --- Send Notification if waiver became required ---
         const newRequired = required; // Use the value from formData

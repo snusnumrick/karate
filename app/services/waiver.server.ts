@@ -1,5 +1,6 @@
 import { getSupabaseAdminClient } from '~/utils/supabase.server';
 import type { Database } from '~/types/database.types';
+import { invalidateRequiredWaiversCache } from '~/services/required-waivers-cache.server';
 
 type WaiverRow = Database['public']['Tables']['waivers']['Row'];
 type ProgramWaiverRow = Database['public']['Tables']['program_waivers']['Row'];
@@ -24,6 +25,10 @@ export interface ProgramWaiverStatus {
   is_complete: boolean;
   missing_waivers: WaiverRequirement[];
   signed_waiver_ids: string[];
+}
+
+export function invalidateWaiverCaches(): void {
+  invalidateRequiredWaiversCache();
 }
 
 /**

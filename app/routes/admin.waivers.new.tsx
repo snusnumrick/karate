@@ -5,6 +5,7 @@ import {getSupabaseAdminClient} from '~/utils/supabase.server';
 import {type SupabaseClient} from '@supabase/supabase-js';
 import type {Database} from "~/types/database.types";
 import {sendEmail} from '~/utils/email.server';
+import { invalidateRequiredWaiversCache } from "~/services/required-waivers-cache.server";
 import {Button} from "~/components/ui/button";
 import {Input} from "~/components/ui/input";
 import {Label} from "~/components/ui/label";
@@ -56,6 +57,7 @@ export async function action({request}: ActionFunctionArgs) {
         }
 
         console.log(`Waiver created successfully with ID: ${newWaiver.id}`);
+        invalidateRequiredWaiversCache();
 
         // Send notification if waiver is required
         if (required) {
