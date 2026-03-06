@@ -18,14 +18,31 @@ type ClassWithStats = ClassWithDetails & {
   enrollmentStats: EnrollmentStats;
 };
 
+type EngagementFilter = "program" | "seminar";
+
+function parseEngagementFilter(value: string | null): EngagementFilter | undefined {
+  if (value === "program" || value === "seminar") {
+    return value;
+  }
+
+  return undefined;
+}
+
 async function loaderImpl({ request }: LoaderFunctionArgs) {
 
   const url = new URL(request.url);
   const programId = url.searchParams.get("program");
+  const selectedEngagement = parseEngagementFilter(url.searchParams.get("engagement"));
+  const classFilters = {
+    is_active: true,
+    ...(programId ? { program_id: programId } : {}),
+    ...(selectedEngagement ? { engagement_type: selectedEngagement } : {}),
+  };
+  const programFilters = selectedEngagement ? { engagement_type: selectedEngagement } : {};
 
   const [classes, programs] = await Promise.all([
-    getClasses(programId ? { program_id: programId, is_active: true } : { is_active: true }),
-    getPrograms()
+    getClasses(classFilters),
+    getPrograms(programFilters)
   ]);
 
   // Get enrollment stats and detailed info for each class
@@ -51,26 +68,46 @@ async function loaderImpl({ request }: LoaderFunctionArgs) {
     individual_session_fee: program.individual_session_fee ? serializeMoney(program.individual_session_fee) : undefined,
   }));
 
-  return json({ classes: classesWithStats, programs: serializedPrograms, selectedProgramId: programId });
+  return json({
+    classes: classesWithStats,
+    programs: serializedPrograms,
+    selectedProgramId: programId,
+    selectedEngagement: selectedEngagement ?? null,
+  });
 }
 
 export const loader = withAdminLoader(loaderImpl);
 
 export default function AdminClassesIndex() {
-  const { classes, programs, selectedProgramId } = useLoaderData<typeof loader>();
+  const { classes, programs, selectedProgramId, selectedEngagement } = useLoaderData<typeof loader>();
   const [searchParams, setSearchParams] = useSearchParams();
+  const isSeminarView = selectedEngagement === "seminar";
 
   // Infer types from the loader data
   type ProgramType = typeof programs[number];
   type ClassType = typeof classes[number];
 
   const handleProgramFilter = (programId: string) => {
+    const nextSearchParams = new URLSearchParams(searchParams);
     if (programId === "all") {
-      searchParams.delete("program");
+      nextSearchParams.delete("program");
     } else {
-      searchParams.set("program", programId);
+      nextSearchParams.set("program", programId);
     }
-    setSearchParams(searchParams);
+    setSearchParams(nextSearchParams);
+  };
+
+  const handleEngagementFilter = (engagement: "all" | "program" | "seminar") => {
+    const nextSearchParams = new URLSearchParams(searchParams);
+    if (engagement === "all") {
+      nextSearchParams.delete("engagement");
+    } else {
+      nextSearchParams.set("engagement", engagement);
+    }
+
+    // Reset program selection when changing engagement to avoid stale filter combos.
+    nextSearchParams.delete("program");
+    setSearchParams(nextSearchParams);
   };
 
 
@@ -81,13 +118,28 @@ export default function AdminClassesIndex() {
 
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Classes</h1>
+          <h1 className="text-3xl font-bold tracking-tight">
+            {isSeminarView ? "Seminar Series" : "Classes"}
+          </h1>
           <p className="text-muted-foreground">
-            Manage class schedules, capacity, and enrollment.
+            {isSeminarView
+              ? "Manage seminar series schedules, capacity, and enrollment."
+              : "Manage class schedules, capacity, and enrollment."}
           </p>
         </div>
 
         <div className="flex gap-2">
+          <Select value={selectedEngagement || "all"} onValueChange={handleEngagementFilter}>
+            <SelectTrigger className="w-48 input-custom-styles">
+              <SelectValue placeholder="Filter by type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="program">Program Classes</SelectItem>
+              <SelectItem value="seminar">Seminar Series</SelectItem>
+            </SelectContent>
+          </Select>
+
           <Select value={selectedProgramId || "all"} onValueChange={handleProgramFilter}>
             <SelectTrigger className="w-48 input-custom-styles">
               <SelectValue placeholder="Filter by program" />
@@ -199,10 +251,11 @@ export default function AdminClassesIndex() {
             <Calendar className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">No classes found</h3>
             <p className="text-muted-foreground text-center mb-4">
-              {selectedProgramId 
+              {selectedProgramId
                 ? "No classes found for the selected program."
-                : "Get started by creating your first class."
-              }
+                : selectedEngagement === "seminar"
+                  ? "No seminar series found for the selected filters."
+                  : "Get started by creating your first class."}
             </p>
             <Button asChild>
               <Link to="/admin/classes/new">

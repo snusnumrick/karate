@@ -6,16 +6,33 @@ import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
 import { Checkbox } from "~/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Plus, Edit, Calendar, Archive, Users } from "lucide-react";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { serializeMoney, fromCents, formatMoney, isPositive } from "~/utils/money";
+
+type EngagementFilter = "program" | "seminar";
+
+function parseEngagementFilter(value: string | null): EngagementFilter | undefined {
+  if (value === "program" || value === "seminar") {
+    return value;
+  }
+
+  return undefined;
+}
 
 async function loaderImpl({ request }: LoaderFunctionArgs) {
 
   const url = new URL(request.url);
   const showInactive = url.searchParams.get('showInactive') === 'true';
+  const engagementParam = url.searchParams.get('engagement') ?? url.searchParams.get('filter');
+  const selectedEngagement = parseEngagementFilter(engagementParam);
+  const programFilters = {
+    ...(showInactive ? {} : { is_active: true }),
+    ...(selectedEngagement ? { engagement_type: selectedEngagement } : {}),
+  };
 
-  const programs = await getPrograms(showInactive ? {} : { is_active: true });
+  const programs = await getPrograms(programFilters);
 
   // Serialize Money objects for JSON transmission
   const serializedPrograms = programs.map(program => ({
@@ -26,14 +43,15 @@ async function loaderImpl({ request }: LoaderFunctionArgs) {
     registration_fee: program.registration_fee ? serializeMoney(program.registration_fee) : undefined,
   }));
 
-  return json({ programs: serializedPrograms, showInactive });
+  return json({ programs: serializedPrograms, showInactive, selectedEngagement: selectedEngagement ?? null });
 }
 
 export const loader = withAdminLoader(loaderImpl);
 
 export default function ProgramsIndex() {
-  const { programs, showInactive } = useLoaderData<typeof loader>();
+  const { programs, showInactive, selectedEngagement } = useLoaderData<typeof loader>();
   const [searchParams, setSearchParams] = useSearchParams();
+  const isSeminarView = selectedEngagement === "seminar";
 
   // Helper to format money from serialized MoneyJSON
   const formatProgramFee = (moneyJson: { amount: number; currency: string } | undefined) => {
@@ -42,12 +60,24 @@ export default function ProgramsIndex() {
   };
 
   const handleToggleInactive = (checked: boolean) => {
+    const nextSearchParams = new URLSearchParams(searchParams);
     if (checked) {
-      searchParams.set('showInactive', 'true');
+      nextSearchParams.set('showInactive', 'true');
     } else {
-      searchParams.delete('showInactive');
+      nextSearchParams.delete('showInactive');
     }
-    setSearchParams(searchParams);
+    setSearchParams(nextSearchParams);
+  };
+
+  const handleEngagementFilter = (engagement: "all" | "program" | "seminar") => {
+    const nextSearchParams = new URLSearchParams(searchParams);
+    nextSearchParams.delete('filter');
+    if (engagement === "all") {
+      nextSearchParams.delete('engagement');
+    } else {
+      nextSearchParams.set('engagement', engagement);
+    }
+    setSearchParams(nextSearchParams);
   };
 
   return (
@@ -55,12 +85,24 @@ export default function ProgramsIndex() {
       <AppBreadcrumb items={breadcrumbPatterns.adminPrograms()} className="mb-6" />
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Programs</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{isSeminarView ? "Seminar Templates" : "Programs"}</h1>
           <p className="text-muted-foreground">
-            Manage your martial arts programs and their configurations
+            {isSeminarView
+              ? "Manage seminar templates and their configurations"
+              : "Manage your martial arts programs and their configurations"}
           </p>
         </div>
         <div className="flex items-center gap-4">
+          <Select value={selectedEngagement || "all"} onValueChange={handleEngagementFilter}>
+            <SelectTrigger className="w-48 input-custom-styles">
+              <SelectValue placeholder="Filter by type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="program">Programs</SelectItem>
+              <SelectItem value="seminar">Seminar Templates</SelectItem>
+            </SelectContent>
+          </Select>
           <div className="flex items-center space-x-2">
             <Checkbox
               id="show-inactive"
@@ -92,12 +134,18 @@ export default function ProgramsIndex() {
               <Users className="h-12 w-12 text-muted-foreground mb-4" />
             )}
             <h3 className="text-lg font-semibold mb-2">
-              {showInactive ? "No programs found" : "No active programs found"}
+              {showInactive
+                ? isSeminarView ? "No seminar templates found" : "No programs found"
+                : isSeminarView ? "No active seminar templates found" : "No active programs found"}
             </h3>
             <p className="text-muted-foreground text-center mb-4">
               {showInactive
-                ? "Create your first program to start managing classes and enrollments"
-                : "All programs are currently inactive, or create your first program to get started"
+                ? isSeminarView
+                  ? "Create your first seminar template to start managing seminar series."
+                  : "Create your first program to start managing classes and enrollments"
+                : isSeminarView
+                  ? "All seminar templates are currently inactive, or create your first seminar template to get started."
+                  : "All programs are currently inactive, or create your first program to get started"
               }
             </p>
             <div className="flex gap-2">
