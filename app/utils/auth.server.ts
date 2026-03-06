@@ -3,6 +3,7 @@ import type { Session } from '@supabase/auth-helpers-remix';
 import { getSupabaseServerClient, getUserRole } from "~/utils/supabase.server";
 import type { UserRole } from '~/types/auth';
 import { USER_ROLE_VALUES } from '~/types/auth';
+import { clearSupabaseAuthCookies, isRefreshTokenNotFoundError } from "~/utils/auth-cookies.server";
 
 export async function isLoggedIn(request: Request): Promise<boolean> {
   const { supabaseServer } = getSupabaseServerClient(request);
@@ -24,11 +25,15 @@ export async function requireUserId(request: Request): Promise<string> {
     const { data, error } = await supabaseServer.auth.getUser();
     if (error) throw error;
     user = data.user;
-  } catch {
+  } catch (error) {
+    if (isRefreshTokenNotFoundError(error)) {
+      clearSupabaseAuthCookies(request, headers);
+    }
     throw redirect(`/login?redirectTo=${encodeURIComponent(redirectTo)}`, { headers });
   }
 
   if (!user) {
+    clearSupabaseAuthCookies(request, headers);
     throw redirect(`/login?redirectTo=${encodeURIComponent(redirectTo)}`, { headers });
   }
 
@@ -50,11 +55,15 @@ export async function requireRole(request: Request, allowedRoles: readonly UserR
     const { data, error } = await supabaseServer.auth.getUser();
     if (error) throw error;
     user = data.user;
-  } catch {
+  } catch (error) {
+    if (isRefreshTokenNotFoundError(error)) {
+      clearSupabaseAuthCookies(request, headers);
+    }
     throw redirect(`/login?redirectTo=${encodeURIComponent(redirectTo)}`, { headers });
   }
 
   if (!user) {
+    clearSupabaseAuthCookies(request, headers);
     throw redirect(`/login?redirectTo=${encodeURIComponent(redirectTo)}`, { headers });
   }
 

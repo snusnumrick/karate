@@ -7,14 +7,26 @@ import * as React from "react";
 import { createBrowserClient } from "@supabase/auth-helpers-remix";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "~/types/database.types";
+import { clearSupabaseAuthCookies, isRefreshTokenNotFoundError } from "~/utils/auth-cookies.server";
 
 // This is a pathless layout route that will wrap all routes in the admin directory
 export async function loader({request}: LoaderFunctionArgs) {
     const {supabaseServer, response, ENV} = getSupabaseServerClient(request);
-    const {data: {user}} = await supabaseServer.auth.getUser();
     const headers = response.headers;
+    let user = null;
+
+    try {
+        const { data, error } = await supabaseServer.auth.getUser();
+        if (error) throw error;
+        user = data.user;
+    } catch (error) {
+        if (isRefreshTokenNotFoundError(error)) {
+            clearSupabaseAuthCookies(request, headers);
+        }
+    }
 
     if (!user) {
+        clearSupabaseAuthCookies(request, headers);
         console.warn("Admin layout loader: No user found, redirecting to login.");
         return redirect('/login?redirectTo=/admin', {headers});
     }

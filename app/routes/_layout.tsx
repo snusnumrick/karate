@@ -13,6 +13,7 @@ import { setSiteData } from "~/utils/site-data.client";
 import type { Database } from "~/types/database.types";
 import InstructorNavbar from "~/components/InstructorNavbar";
 import { isAdminRole, isInstructorRole, type UserRole } from '~/types/auth';
+import { clearSupabaseAuthCookies, isRefreshTokenNotFoundError } from "~/utils/auth-cookies.server";
 
 
 // Debug: Track loader calls to detect loops
@@ -50,10 +51,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
     const { supabaseServer, response: { headers }, ENV } = getSupabaseServerClient(request);
     let session = null;
     try {
-        const { data } = await supabaseServer.auth.getSession();
+        const { data, error } = await supabaseServer.auth.getSession();
+        if (error) throw error;
         session = data.session;
-    } catch {
-        // Invalid refresh token — treat as no session
+    } catch (error) {
+        // Invalid refresh token — clear stale auth cookies and treat as no session.
+        if (isRefreshTokenNotFoundError(error)) {
+            clearSupabaseAuthCookies(request, headers);
+        }
     }
     let userRole: UserRole | null = null;
     if (session?.user) {

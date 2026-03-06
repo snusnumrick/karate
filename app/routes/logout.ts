@@ -1,5 +1,6 @@
 import {type ActionFunctionArgs, type LoaderFunctionArgs, redirect} from "@remix-run/node";
 import {getSupabaseServerClient} from "~/utils/supabase.server";
+import { clearSupabaseAuthCookies } from "~/utils/auth-cookies.server";
 
 // Action function to handle the POST request for logout
 export async function action({request}: ActionFunctionArgs) {
@@ -16,7 +17,13 @@ export async function action({request}: ActionFunctionArgs) {
     }
 
     console.warn("/logout action - Signing out user...");
-    const {error} = await supabaseServer.auth.signOut();
+    let error: { message?: string } | null = null;
+    try {
+        const result = await supabaseServer.auth.signOut();
+        error = result.error;
+    } catch (caught) {
+        error = caught as { message?: string };
+    }
 
     if (error) {
         console.error("Error during sign out:", error.message);
@@ -25,6 +32,9 @@ export async function action({request}: ActionFunctionArgs) {
     } else {
         // console.log("/logout action - Sign out successful.");
     }
+
+    // Ensure stale auth cookies are removed even when signOut fails due invalid refresh token.
+    clearSupabaseAuthCookies(request, headers);
 
     // console.log("/logout action - Redirecting to /login...");
     // Redirect to the login page after sign out, passing headers to clear session cookies
