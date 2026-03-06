@@ -23,6 +23,32 @@ Classes are specific scheduled instances of programs:
 - **Calendar Integration**: Session scheduling and attendance tracking
 - **Instructor Assignment**: Staff management per class
 
+## Curriculum & Adult Registration Extensions
+
+### Program/Series Segmentation
+- Programs support curriculum segmentation through:
+  - `engagement_type`: `program | seminar`
+  - `audience_scope`: `youth | adults | mixed`
+- Public curriculum loaders only expose adult-facing content (`adults`, `mixed`) for this rollout.
+
+### Self-Enrollment Flags
+- Classes expose `allow_self_enrollment` for adult/self-family registration paths.
+- Self-enrollment entry points must continue using existing eligibility and validation services (`enrollStudent`, `selfEnrollAdult`) so belt/age/prerequisite rules stay centralized.
+
+### Adult Registration Flows
+- **Self-family class/seminar flow**
+  1. Resolve or create self registrant (`families.family_type='self'`, adult `students` row).
+  2. Enroll via service-layer validation path.
+  3. Reuse existing payment/tax checkout path when fee > 0.
+- **Self participant event flow**
+  1. Resolve self participant student/profile.
+  2. Create `event_registrations` with `participant_profile_id`.
+  3. Block duplicates by both `participant_profile_id` and `student_id`.
+
+### Waiver Compatibility
+- Adult/self flows require signature-backed waiver enforcement where required.
+- For self families without guardian rows, signer resolution falls back to profile/user metadata/email prefix in waiver signing routes.
+
 ## Enhanced Database Schema Design
 
 ### Programs Table (Updated with Belt Requirements)

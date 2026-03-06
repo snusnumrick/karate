@@ -12,6 +12,30 @@ This guide covers deploying the karate class management system to production env
 
 ## Supabase Deployment
 
+### Curriculum/Adult Registration Migration Rollout (`042`)
+
+Migration `supabase/migrations/042_add_curriculum_adult_registration_indexes.sql` is index-only and can be applied online.
+
+#### Rollout Steps
+1. Apply migration in staging and production through your standard Supabase migration pipeline.
+2. Confirm index creation:
+   - `idx_programs_audience_scope_active`
+   - `idx_classes_self_enrollment_active`
+   - `idx_event_registrations_participant_profile`
+3. Deploy application code that uses curriculum/adult registration routes and services.
+
+#### Post-Deploy Verification Checklist
+- Curriculum page shows adult/mixed programs and seminars only.
+- Seminar registration route loads for configured self-enrollable seminar series.
+- Event self-participant registration writes `participant_profile_id`.
+- Waiver signing works for `family_type='self'` accounts without guardian rows.
+- Required command gate passes on deployment candidate:
+  - `npm run lint`
+  - `npm run typecheck`
+  - `npm run test:unit`
+  - `npx playwright test tests/e2e/curriculum-adult-registration.spec.ts`
+  - `npm run build`
+
 ### Automated Script Deployment
 
 Use the included deployment script for easy Supabase component deployment:

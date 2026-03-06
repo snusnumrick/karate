@@ -85,6 +85,33 @@ public/
 └── icons/              # App icons for various sizes
 ```
 
+## Curriculum Route Map & Adult Registration Flow
+
+### Route Map
+- Public curriculum index:
+  - `/curriculum` (`app/routes/_layout.curriculum._index.tsx`)
+- Seminar detail:
+  - `/curriculum/seminars/:slug` (`app/routes/_layout.curriculum.seminars.$slug._index.tsx`)
+- Seminar registration:
+  - `/curriculum/seminars/:slug/register?seriesId=:classId` (`app/routes/_layout.curriculum.seminars.$slug.register.tsx`)
+- Event registration (canonical household + self flow):
+  - `/events/:eventId/register` (`app/routes/_layout.events.$eventId_.register.tsx`)
+
+### Adult Registration Data Flow
+1. Curriculum loaders query `programs` using `engagement_type` and `audience_scope` to expose adult/mixed offerings.
+2. Self-family provisioning resolves through `self-registration.server.ts`:
+  - idempotent `family_type='self'` family creation/reuse
+  - idempotent adult student mapping to profile
+3. Class/seminar self-enrollment runs through service validation path (`enrollment.server.ts`) to preserve:
+  - belt/age/prerequisite checks
+  - waiver checks
+  - capacity/waitlist logic
+4. Event self-participant registration persists:
+  - `event_registrations.participant_profile_id`
+  - `student_id` (self participant record)
+  - duplicate protection on both profile and student keys
+5. Existing payment/tax flows are reused for both household and self registrations.
+
 ## Database Architecture
 
 ### Hybrid JSONB + Explicit Columns Design

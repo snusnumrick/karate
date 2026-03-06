@@ -29,6 +29,13 @@ export function mapProgramNullToUndefined(program: any): Program {
 export function mapProgram(program: Program): Program {
   return {
     ...program,
+    engagement_type: program.engagement_type ?? 'program',
+    audience_scope: program.audience_scope ?? 'youth',
+    ability_category: program.ability_category ?? undefined,
+    delivery_format: program.delivery_format ?? undefined,
+    seminar_type: program.seminar_type ?? undefined,
+    slug: program.slug ?? undefined,
+    min_capacity: program.min_capacity ?? undefined,
     description: program.description ?? undefined,
     duration_minutes: program.duration_minutes ?? undefined,
     max_capacity: program.max_capacity ?? undefined,
@@ -47,6 +54,9 @@ export function mapProgram(program: Program): Program {
     yearly_fee: program.yearly_fee ?? undefined,
     monthly_fee: program.monthly_fee ?? undefined,
     registration_fee: program.registration_fee ?? undefined,
+    single_purchase_price: program.single_purchase_price ?? undefined,
+    subscription_monthly_price: program.subscription_monthly_price ?? undefined,
+    subscription_yearly_price: program.subscription_yearly_price ?? undefined,
   };
 }
 
@@ -57,6 +67,9 @@ export function mapProgramFromRow(program: ProgramRow): Program {
     registration_fee: program.registration_fee_cents != null ? fromCents(program.registration_fee_cents) : undefined,
     yearly_fee: program.yearly_fee_cents != null ? fromCents(program.yearly_fee_cents) : undefined,
     individual_session_fee: program.individual_session_fee_cents != null ? fromCents(program.individual_session_fee_cents) : undefined,
+    single_purchase_price: program.single_purchase_price_cents != null ? fromCents(program.single_purchase_price_cents) : undefined,
+    subscription_monthly_price: program.subscription_monthly_price_cents != null ? fromCents(program.subscription_monthly_price_cents) : undefined,
+    subscription_yearly_price: program.subscription_yearly_price_cents != null ? fromCents(program.subscription_yearly_price_cents) : undefined,
   } as unknown as Program);
 }
 

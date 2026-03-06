@@ -46,6 +46,7 @@ interface FamilyData {
   id: string;
   name: string;
   email: string;
+  family_type?: Database['public']['Tables']['families']['Row']['family_type'];
   address?: string | null;
   city?: string | null;
   province?: string | null;
@@ -189,6 +190,7 @@ import {cacheAttendanceData, cacheFamilyData, cacheUpcomingClasses} from "~/util
 import {useClientReady} from "~/hooks/use-client-ready";
 import {FamilyLoadingScreen} from "~/components/LoadingScreen";
 import {IncompleteRegistrationBanner} from "~/components/IncompleteRegistrationBanner";
+import {SeminarEnrollmentsCard} from "~/components/SeminarEnrollmentsCard";
 
 // Define upcoming class session type
 type UpcomingClassSession = {
@@ -216,6 +218,29 @@ type PendingWaiver = {
     program_name?: string;
     student_name?: string;
     enrollment_id?: string;
+};
+
+type SeminarEnrollment = {
+    id: string;
+    status: string;
+    class: {
+        id: string;
+        name: string;
+        series_label?: string;
+        series_start_on?: string;
+        series_end_on?: string;
+        series_session_quota?: number;
+        program: {
+            name: string;
+            engagement_type: string;
+        };
+    };
+    student: {
+        id: string;
+        first_name: string;
+        last_name: string;
+        is_adult: boolean;
+    };
 };
 
 // Action handler for dismissing incomplete registrations
@@ -323,7 +348,7 @@ export async function loader({request}: LoaderFunctionArgs) {
     const familyQuery = supabaseServer
         .from('families')
         .select(`
-          id, name, email, address, city, province, postal_code, primary_phone,
+          id, name, email, family_type, address, city, province, postal_code, primary_phone,
           students!inner(id, first_name, last_name),
           guardians(id, first_name, last_name, relationship)
         `)
@@ -465,6 +490,7 @@ export async function loader({request}: LoaderFunctionArgs) {
         id: familyBaseData.id,
         name: familyBaseData.name,
         email: familyBaseData.email,
+        family_type: familyBaseData.family_type ?? undefined,
         address: familyBaseData.address,
         city: familyBaseData.city,
         province: familyBaseData.province,
@@ -567,6 +593,49 @@ export async function loader({request}: LoaderFunctionArgs) {
         }
         // Default waiver status if there's an error
         allWaiversSigned = false;
+    }
+
+    // Fetch seminar enrollments for family students.
+    const seminarEnrollments: SeminarEnrollment[] = [];
+    if (studentsWithEligibility.length > 0) {
+        try {
+            const studentIds = studentsWithEligibility.map((student) => student.id);
+            const { data: enrollmentsData, error } = await supabaseServer
+                .from('enrollments')
+                .select(`
+                    id,
+                    status,
+                    class:classes!inner(
+                        id,
+                        name,
+                        series_label,
+                        series_start_on,
+                        series_end_on,
+                        series_session_quota,
+                        program:programs!inner(
+                            name,
+                            engagement_type
+                        )
+                    ),
+                    student:students!inner(
+                        id,
+                        first_name,
+                        last_name,
+                        is_adult
+                    )
+                `)
+                .in('student_id', studentIds)
+                .eq('classes.programs.engagement_type', 'seminar')
+                .in('status', ['active', 'trial', 'waitlist']);
+
+            if (error) {
+                console.error('Error fetching seminar enrollments:', error);
+            } else {
+                seminarEnrollments.push(...((enrollmentsData || []) as SeminarEnrollment[]));
+            }
+        } catch (error) {
+            console.error('Error processing seminar enrollments:', error);
+        }
     }
 
     // 7-8. Fetch upcoming classes, attendance, and incomplete registrations with batch optimization
@@ -729,6 +798,7 @@ export async function loader({request}: LoaderFunctionArgs) {
         family: finalFamilyData, // Critical - render immediately
         allWaiversSigned,
         pendingWaivers,
+        seminarEnrollments,
         upcomingClasses, // Non-critical - stream when ready
         studentAttendanceData, // Non-critical - stream when ready
         profileComplete,
@@ -934,8 +1004,9 @@ AttendanceCard.displayName = 'AttendanceCard';
 export default function FamilyDashboard() {
     // Always call hooks at the top level
     const loaderData = useLoaderData<typeof loader>();
-    const {family, error, allWaiversSigned, pendingWaivers, upcomingClasses, studentAttendanceData, profileComplete, missingProfileFields, incompleteRegistrations} = loaderData;
+    const {family, error, allWaiversSigned, pendingWaivers, seminarEnrollments, upcomingClasses, studentAttendanceData, profileComplete, missingProfileFields, incompleteRegistrations} = loaderData;
     const isClientReady = useClientReady();
+    const isSelfFamily = family?.family_type === 'self';
 
     // Cache data for offline access when component mounts
     useClientEffect(() => {
@@ -995,7 +1066,10 @@ export default function FamilyDashboard() {
 
     // Use the fetched family name or a generic fallback
     // We don't have profile.first_name here anymore
-    const familyDisplayName = family.name || `Your Family Portal`;
+    const familyDisplayName = family.name || (isSelfFamily ? 'Your Seminar Portal' : 'Your Family Portal');
+    const portalTagline = isSelfFamily
+        ? 'Welcome to your seminar portal. Manage your registrations, schedules, and waivers.'
+        : 'Welcome to your family portal. Manage students, view schedules, and track progress.';
 
     return (
         <OfflineErrorBoundary>
@@ -1034,18 +1108,22 @@ export default function FamilyDashboard() {
                         <Alert className="mb-6 bg-green-50 dark:bg-green-900/20 border-green-500">
                             <Users className="h-5 w-5 text-green-600 dark:text-green-400"/>
                             <AlertTitle className="text-green-900 dark:text-green-100 font-semibold">
-                                Almost there! Add your first student
+                                {isSelfFamily ? 'Your seminar profile is almost ready' : 'Almost there! Add your first student'}
                             </AlertTitle>
                             <AlertDescription className="text-green-700 dark:text-green-300 mt-2">
                                 <p className="mb-3">
-                                    To enroll in classes and access the full family portal, you&apos;ll need to add at least one student to your family account.
+                                    {isSelfFamily
+                                        ? 'Complete your intake details to unlock seminar self-registration and waiver workflows.'
+                                        : 'To enroll in classes and access the full family portal, you&apos;ll need to add at least one student to your family account.'}
                                 </p>
-                                <Button asChild className="bg-green-600 hover:bg-green-700 text-white">
-                                    <Link to="/family/add-student" className="inline-flex items-center gap-2">
-                                        <Plus className="h-4 w-4"/>
-                                        Add Student Now
-                                    </Link>
-                                </Button>
+                                {!isSelfFamily && (
+                                    <Button asChild className="bg-green-600 hover:bg-green-700 text-white">
+                                        <Link to="/family/add-student" className="inline-flex items-center gap-2">
+                                            <Plus className="h-4 w-4"/>
+                                            Add Student Now
+                                        </Link>
+                                    </Button>
+                                )}
                             </AlertDescription>
                         </Alert>
                     )}
@@ -1056,7 +1134,7 @@ export default function FamilyDashboard() {
                             {familyDisplayName}
                         </h1>
                         <p className="mt-4 text-lg text-gray-600 dark:text-gray-300">
-                            Welcome to your family portal. Manage students, view schedules, and track progress.
+                            {portalTagline}
                         </p>
                     </div>
 
@@ -1068,7 +1146,9 @@ export default function FamilyDashboard() {
                                 <div className="p-2 bg-green-600 rounded-lg">
                                     <Users className="h-5 w-5 text-white"/>
                                 </div>
-                                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">My Students</h2>
+                                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                                    {isSelfFamily ? 'Your Profile' : 'My Students'}
+                                </h2>
                             </div>
                             {/* Display students as cards or a message if none */}
                             {family.students && family.students.length > 0 ? (
@@ -1080,19 +1160,24 @@ export default function FamilyDashboard() {
                             ) : (
                                 <div className="text-center py-8">
                                     <Users className="h-12 w-12 text-gray-400 mx-auto mb-3"/>
-                                    <p className="text-gray-600 dark:text-gray-400 mb-4">No students registered yet.</p>
-                                    <p className="text-sm text-gray-500 dark:text-gray-500">Add your first student to
-                                        get started!</p>
+                                    <p className="text-gray-600 dark:text-gray-400 mb-4">
+                                        {isSelfFamily ? 'Your seminar profile is almost ready.' : 'No students registered yet.'}
+                                    </p>
+                                    <p className="text-sm text-gray-500 dark:text-gray-500">
+                                        {isSelfFamily ? 'Complete your intake form details to get started.' : 'Add your first student to get started!'}
+                                    </p>
                                 </div>
                             )}
                             {/* Link to the new dedicated page for adding a student to the current family */}
-                            <Button asChild
-                                    className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-300">
-                                <Link to="/family/add-student" className="flex items-center justify-center gap-2">
-                                    <Plus className="h-5 w-5"/>
-                                    Add Student
-                                </Link>
-                            </Button>
+                            {!isSelfFamily && (
+                                <Button asChild
+                                        className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-300">
+                                    <Link to="/family/add-student" className="flex items-center justify-center gap-2">
+                                        <Plus className="h-5 w-5"/>
+                                        Add Student
+                                    </Link>
+                                </Button>
+                            )}
                         </div>
 
                         {/* Next Classes Section */}
@@ -1134,6 +1219,16 @@ export default function FamilyDashboard() {
                                 </div>
                             )}
                         </div>
+
+                        {/* Seminar Enrollments Section */}
+                        {seminarEnrollments && seminarEnrollments.length > 0 && (
+                            <div className="form-container-styles backdrop-blur-lg">
+                                <SeminarEnrollmentsCard
+                                    enrollments={seminarEnrollments as SeminarEnrollment[]}
+                                    isAdult={isSelfFamily}
+                                />
+                            </div>
+                        )}
 
                         {/* Attendance Panel */}
                         <div
@@ -1178,6 +1273,7 @@ export default function FamilyDashboard() {
                         </div>
 
                         {/* Guardians Section */}
+                        {!isSelfFamily && (
                         <div
                             className="form-container-styles p-6 backdrop-blur-lg hover:shadow-lg transition-shadow duration-300">
                             <div className="flex items-center gap-3 mb-6">
@@ -1245,6 +1341,7 @@ export default function FamilyDashboard() {
                                 </p>
                             )}
                         </div>
+                        )}
 
                         {/* Waivers Section */}
                         <div

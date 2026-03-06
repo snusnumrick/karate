@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Public curriculum route set for adult offerings (`/curriculum`, seminar detail/register routes).
+- Adult/self registration service surface: `getAdultPrograms`, `getSelfEnrollableClasses`, `selfEnrollAdult`, and `registerAdultForEvent`.
+- Self-registration service support for idempotent self-family/self-student provisioning.
+- Migration `042_add_curriculum_adult_registration_indexes.sql` for curriculum and adult registration query paths.
+- Regression coverage for curriculum/adult flows (service, route/integration, and dedicated e2e spec).
 - Shared server cache utility for TTL/inflight dedupe and explicit invalidation (`server-cache.server.ts`).
 - Shared cache modules for required waivers and admin db-chat schema metadata with refresh/invalidation paths.
 - Typed service-layer error primitives (`ServiceError`) and mapping helpers.
@@ -17,6 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New unit/regression test coverage for cache behavior, wrapper adoption, `ServiceError` mapping, schedule summary pipeline, eligibility dedupe, money compatibility, and `select('*')` regressions.
 
 ### Changed
+- Event registration flow now supports profile-based self participants with `participant_profile_id` and duplicate protection.
+- Family waiver signer resolution now falls back to profile/user metadata/email prefix when guardian rows are absent (`family_type='self'` compatibility).
+- Public and admin navigation now include curriculum/seminar rollout links.
 - Executed full `CODE_REVIEW_BACKLOG.md` implementation backlog (BL-1 through BL-13).
 - Migrated admin, family, and instructor/protected API routes to wrapper-based auth guards.
 - Standardized enrollment validation to a typed throw contract (`EnrollmentValidationError`).

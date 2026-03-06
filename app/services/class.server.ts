@@ -161,9 +161,23 @@ export async function createClass(
       program_id: classData.program_id,
       name: classData.name,
       description: classData.description,
+      topic: classData.topic ?? null,
       max_capacity: classData.max_capacity,
+      min_capacity: classData.min_capacity ?? null,
       instructor_id: classData.instructor_id,
       is_active: classData.is_active ?? true,
+      series_status: classData.series_status ?? 'tentative',
+      registration_status: classData.registration_status ?? 'closed',
+      allow_self_enrollment: classData.allow_self_enrollment ?? false,
+      series_label: classData.series_label ?? null,
+      series_start_on: classData.series_start_on ?? null,
+      series_end_on: classData.series_end_on ?? null,
+      sessions_per_week_override: classData.sessions_per_week_override ?? null,
+      session_duration_minutes: classData.session_duration_minutes ?? null,
+      series_session_quota: classData.series_session_quota ?? null,
+      price_override_cents: classData.price_override_cents ?? null,
+      registration_fee_override_cents: classData.registration_fee_override_cents ?? null,
+      on_demand: classData.on_demand ?? false,
     })
     .select(`
       *,
@@ -200,9 +214,23 @@ export async function updateClass(
   // Only include fields that are provided
   if (updates.name !== undefined) updateData.name = updates.name;
   if (updates.description !== undefined) updateData.description = updates.description;
+  if (updates.topic !== undefined) updateData.topic = updates.topic ?? null;
   if (updates.max_capacity !== undefined) updateData.max_capacity = updates.max_capacity;
+  if (updates.min_capacity !== undefined) updateData.min_capacity = updates.min_capacity;
   if (updates.instructor_id !== undefined) updateData.instructor_id = updates.instructor_id;
   if (updates.is_active !== undefined) updateData.is_active = updates.is_active;
+  if (updates.series_status !== undefined) updateData.series_status = updates.series_status;
+  if (updates.registration_status !== undefined) updateData.registration_status = updates.registration_status;
+  if (updates.allow_self_enrollment !== undefined) updateData.allow_self_enrollment = updates.allow_self_enrollment;
+  if (updates.series_label !== undefined) updateData.series_label = updates.series_label ?? null;
+  if (updates.series_start_on !== undefined) updateData.series_start_on = updates.series_start_on ?? null;
+  if (updates.series_end_on !== undefined) updateData.series_end_on = updates.series_end_on ?? null;
+  if (updates.sessions_per_week_override !== undefined) updateData.sessions_per_week_override = updates.sessions_per_week_override ?? null;
+  if (updates.session_duration_minutes !== undefined) updateData.session_duration_minutes = updates.session_duration_minutes ?? null;
+  if (updates.series_session_quota !== undefined) updateData.series_session_quota = updates.series_session_quota ?? null;
+  if (updates.price_override_cents !== undefined) updateData.price_override_cents = updates.price_override_cents ?? null;
+  if (updates.registration_fee_override_cents !== undefined) updateData.registration_fee_override_cents = updates.registration_fee_override_cents ?? null;
+  if (updates.on_demand !== undefined) updateData.on_demand = updates.on_demand;
 
   const { error } = await supabase
     .from('classes')
@@ -287,6 +315,14 @@ export async function getClasses(
     query = query.eq('is_active', filters.is_active);
   }
 
+  if (filters.allow_self_enrollment !== undefined) {
+    query = query.eq('allow_self_enrollment', filters.allow_self_enrollment);
+  }
+
+  if (filters.registration_status) {
+    query = query.eq('registration_status', filters.registration_status);
+  }
+
 
 
   if (filters.search) {
@@ -301,16 +337,34 @@ export async function getClasses(
     throw createPersistenceError(`Failed to fetch classes: ${error.message}`);
   }
 
-  return (data || []).map(item => ({
+  const classes = (data || []).map(item => ({
     ...item,
     description: item.description ?? undefined,
+    topic: item.topic ?? undefined,
     max_capacity: item.max_capacity ?? undefined,
+    min_capacity: item.min_capacity ?? undefined,
     instructor_id: item.instructor_id ?? undefined,
+    series_label: item.series_label ?? undefined,
+    series_start_on: item.series_start_on ?? undefined,
+    series_end_on: item.series_end_on ?? undefined,
+    sessions_per_week_override: item.sessions_per_week_override ?? undefined,
+    series_session_quota: item.series_session_quota ?? undefined,
+    session_duration_minutes: item.session_duration_minutes ?? undefined,
+    price_override_cents: item.price_override_cents ?? undefined,
+    registration_fee_override_cents: item.registration_fee_override_cents ?? undefined,
+    allow_self_enrollment: item.allow_self_enrollment ?? false,
+    on_demand: item.on_demand ?? false,
     instructor: item.instructor ? mapInstructorNullToUndefined(item.instructor) : undefined,
     program: item.program
       ? mapProgramFromRow(item.program as Database['public']['Tables']['programs']['Row'])
       : item.program
   }));
+
+  if (filters.engagement_type) {
+    return classes.filter((classItem) => classItem.program?.engagement_type === filters.engagement_type);
+  }
+
+  return classes;
 }
 
 /**
@@ -434,8 +488,20 @@ export async function getClassById(
   return {
     ...data,
     description: data.description ?? undefined,
+    topic: data.topic ?? undefined,
     max_capacity: data.max_capacity ?? undefined,
+    min_capacity: data.min_capacity ?? undefined,
     instructor_id: data.instructor_id ?? undefined,
+    series_label: data.series_label ?? undefined,
+    series_start_on: data.series_start_on ?? undefined,
+    series_end_on: data.series_end_on ?? undefined,
+    sessions_per_week_override: data.sessions_per_week_override ?? undefined,
+    series_session_quota: data.series_session_quota ?? undefined,
+    session_duration_minutes: data.session_duration_minutes ?? undefined,
+    price_override_cents: data.price_override_cents ?? undefined,
+    registration_fee_override_cents: data.registration_fee_override_cents ?? undefined,
+    allow_self_enrollment: data.allow_self_enrollment ?? false,
+    on_demand: data.on_demand ?? false,
     program: mapProgramFromRow(data.program as Database['public']['Tables']['programs']['Row']),
     instructor: data.instructor ? mapInstructorNullToUndefined(data.instructor) : undefined,
     enrollment_count: enrollments.length,
@@ -453,6 +519,24 @@ export async function getClassesByProgram(
   supabase = getSupabaseAdminClient()
 ): Promise<Class[]> {
   return getClasses({ program_id: programId, is_active: true }, supabase);
+}
+
+/**
+ * Get classes that allow adult self-enrollment for curriculum flows.
+ */
+export async function getSelfEnrollableClasses(
+  programId?: string,
+  supabase = getSupabaseAdminClient()
+): Promise<Class[]> {
+  return getClasses(
+    {
+      program_id: programId,
+      allow_self_enrollment: true,
+      is_active: true,
+      registration_status: 'open',
+    },
+    supabase
+  );
 }
 
 /**

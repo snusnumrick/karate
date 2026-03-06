@@ -31,7 +31,8 @@ type UpcomingEventRow = Pick<EventRow,
   'late_registration_fee_cents' |
   'registration_deadline' |
   'external_url' |
-  'visibility'
+  'visibility' |
+  'allow_self_participants'
 >;
 
 export type UpcomingEvent = Omit<UpcomingEventRow, 'registration_fee' | 'late_registration_fee'> & EventMoneyFields & {
@@ -119,6 +120,7 @@ export class EventService {
         registration_deadline,
         external_url,
         visibility,
+        allow_self_participants,
         event_type:event_types(
           name,
           display_name,
@@ -219,6 +221,7 @@ export class EventService {
         registration_deadline,
         external_url,
         visibility,
+        allow_self_participants,
         event_type:event_types(
           name,
           display_name,
@@ -250,7 +253,7 @@ export class EventService {
   static async canUserRegister(eventId: string, isLoggedIn: boolean): Promise<boolean> {
     const { data: event, error } = await getSupabase()
       .from('events')
-      .select('visibility')
+      .select('visibility, allow_self_participants')
       .eq('id', eventId)
       .single();
 
@@ -266,12 +269,16 @@ export class EventService {
       return isLoggedIn;
     }
 
+    if (event.allow_self_participants && isLoggedIn) {
+      return true;
+    }
+
     return true; // public and limited events allow registration for everyone
   }
 
-  static async getAllUpcomingEvents(): Promise<UpcomingEvent[]> {
+  static async getAllUpcomingEvents(filters?: { allowSelfParticipants?: boolean }): Promise<UpcomingEvent[]> {
     const today = getTodayLocalDateString();
-    const { data: events, error } = await getSupabase()
+    let query = getSupabase()
       .from('events')
       .select(`
         id,
@@ -292,6 +299,7 @@ export class EventService {
         registration_deadline,
         external_url,
         visibility,
+        allow_self_participants,
         event_type:event_types(
           name,
           display_name,
@@ -304,8 +312,13 @@ export class EventService {
       .eq('visibility', 'public')
       .in('status', ['published', 'registration_open'])
       .or(`end_date.gte.${today},end_date.is.null`)
-      .gte('start_date', today)
-      .order('start_date', { ascending: true });
+      .gte('start_date', today);
+
+    if (filters?.allowSelfParticipants !== undefined) {
+      query = query.eq('allow_self_participants', filters.allowSelfParticipants);
+    }
+
+    const { data: events, error } = await query.order('start_date', { ascending: true });
 
     if (error) {
       console.error('Error fetching all upcoming events:', error);
@@ -338,6 +351,7 @@ export class EventService {
         registration_deadline,
         external_url,
         visibility,
+        allow_self_participants,
         event_type:event_types(
           name,
           display_name,
@@ -364,5 +378,76 @@ export class EventService {
   static clearCache() {
     eventCache.clear();
     loggedInEventCache.clear();
+  }
+
+  static async registerAdultForEvent(
+    eventId: string,
+    profileId: string,
+    options: {
+      familyId?: string;
+      studentId?: string;
+      paymentAmountCents?: number;
+      registrationStatus?: Database['public']['Enums']['registration_status_enum'];
+    } = {}
+  ) {
+    let studentId = options.studentId;
+    let familyId = options.familyId;
+
+    if (!studentId || !familyId) {
+      const { data: student, error: studentError } = await getSupabase()
+        .from('students')
+        .select('id, family_id')
+        .eq('profile_id', profileId)
+        .eq('is_adult', true)
+        .single();
+
+      if (studentError || !student) {
+        throw new Error('Adult participant profile is missing a self-registrant student');
+      }
+
+      studentId = student.id;
+      familyId = student.family_id;
+    }
+
+    const { data: existingByProfile } = await getSupabase()
+      .from('event_registrations')
+      .select('id')
+      .eq('event_id', eventId)
+      .eq('participant_profile_id', profileId)
+      .maybeSingle();
+
+    if (existingByProfile) {
+      throw new Error('Adult participant is already registered for this event');
+    }
+
+    const { data: existingByStudent } = await getSupabase()
+      .from('event_registrations')
+      .select('id')
+      .eq('event_id', eventId)
+      .eq('student_id', studentId)
+      .maybeSingle();
+
+    if (existingByStudent) {
+      throw new Error('Student is already registered for this event');
+    }
+
+    const { data, error } = await getSupabase()
+      .from('event_registrations')
+      .insert({
+        event_id: eventId,
+        family_id: familyId,
+        student_id: studentId,
+        participant_profile_id: profileId,
+        registration_status: options.registrationStatus ?? 'pending',
+        payment_amount_cents: options.paymentAmountCents ?? 0,
+      })
+      .select('id, event_id, family_id, student_id, participant_profile_id, registration_status, payment_amount_cents, payment_required, payment_id')
+      .single();
+
+    if (error) {
+      throw new Error(`Failed to register adult for event: ${error.message}`);
+    }
+
+    return data;
   }
 }

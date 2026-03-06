@@ -16,6 +16,7 @@ import { mapEnrollmentClassNullToUndefined } from '~/utils/mappers';
 import { fromCents } from '~/utils/money';
 import { getFamilyRegistrationWaiverStatus, getProgramWaiverStatus } from './waiver.server';
 import { createNotFoundError, createPersistenceError, createValidationError } from '~/utils/service-errors.server';
+import { createSelfRegistrant, getSelfRegistrantByProfileId } from './self-registration.server';
 
 type EnrollmentOperation = 'enrollment' | 're-enrollment';
 type EnrollmentStatus = Database['public']['Tables']['enrollments']['Row']['status'];
@@ -300,6 +301,81 @@ export async function enrollStudent(
          }
     }
   };
+}
+
+/**
+ * Self-enroll an authenticated adult into a class that allows self enrollment.
+ */
+export async function selfEnrollAdult(
+  classId: string,
+  profileId: string,
+  options: { status?: CreateEnrollmentData['status']; notes?: string } = {},
+  supabaseAdmin = getSupabaseAdminClient(),
+  deps: {
+    getSelfRegistrantByProfileIdFn?: typeof getSelfRegistrantByProfileId;
+    createSelfRegistrantFn?: typeof createSelfRegistrant;
+    enrollStudentFn?: typeof enrollStudent;
+  } = {}
+): Promise<ClassEnrollment> {
+  const {
+    getSelfRegistrantByProfileIdFn = getSelfRegistrantByProfileId,
+    createSelfRegistrantFn = createSelfRegistrant,
+    enrollStudentFn = enrollStudent,
+  } = deps;
+
+  const { data: classRecord, error: classError } = await supabaseAdmin
+    .from('classes')
+    .select('id, program_id, is_active, allow_self_enrollment')
+    .eq('id', classId)
+    .single();
+
+  if (classError || !classRecord) {
+    throw createNotFoundError('Class not found');
+  }
+
+  if (!classRecord.is_active) {
+    throw createValidationError('Class is not active');
+  }
+
+  if (!classRecord.allow_self_enrollment) {
+    throw createValidationError('This class does not allow self enrollment');
+  }
+
+  const { data: profile, error: profileError } = await supabaseAdmin
+    .from('profiles')
+    .select('id, first_name, last_name, email')
+    .eq('id', profileId)
+    .single();
+
+  if (profileError || !profile) {
+    throw createNotFoundError('Profile not found');
+  }
+
+  let selfRegistrant = await getSelfRegistrantByProfileIdFn(profileId, supabaseAdmin);
+  if (!selfRegistrant) {
+    const fallbackName = profile.email?.split('@')[0] || 'Adult';
+    selfRegistrant = await createSelfRegistrantFn(
+      {
+        profileId,
+        firstName: profile.first_name?.trim() || fallbackName,
+        lastName: profile.last_name?.trim() || 'Registrant',
+        email: profile.email || '',
+        phone: '',
+      },
+      supabaseAdmin
+    );
+  }
+
+  return enrollStudentFn(
+    {
+      class_id: classRecord.id,
+      student_id: selfRegistrant.student.id,
+      program_id: classRecord.program_id,
+      status: options.status,
+      notes: options.notes,
+    },
+    supabaseAdmin
+  );
 }
 
 /**

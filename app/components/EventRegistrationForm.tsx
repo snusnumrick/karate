@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useFetcher, useNavigate, Link } from '@remix-run/react';
 import { Button } from '~/components/ui/button';
 import { Input } from '~/components/ui/input';
@@ -56,6 +56,20 @@ interface RegistrationFormData {
   waiverAccepted: boolean;
   marketingOptIn: boolean;
   specialRequests?: string;
+  registerSelf: boolean;
+  selfParticipant?: {
+    firstName: string;
+    lastName: string;
+    email: string;
+  };
+  selfParticipantStudentId?: string;
+  familyType?: string | null;
+}
+
+interface Waiver {
+  id: string;
+  title: string;
+  content: string;
 }
 
 interface EventRegistrationFormProps {
@@ -75,6 +89,16 @@ interface EventRegistrationFormProps {
       beltRank: string;
     }>;
   };
+  requiredWaivers?: Waiver[];
+  signedWaiverIds?: string[];
+  selfRegistrationAllowed?: boolean;
+  profileInfo?: {
+    firstName: string;
+    lastName: string;
+    email: string;
+  };
+  existingSelfStudentId?: string;
+  familyType?: 'household' | 'self' | 'organization' | null;
   onSuccess?: (registrationId: string) => void;
   preSelectedStudentIds?: string[];
 }
@@ -143,12 +167,27 @@ export function EventRegistrationForm({
   event,
   isAuthenticated,
   familyData,
+  requiredWaivers = [],
+  signedWaiverIds = [],
+  selfRegistrationAllowed = false,
+  profileInfo,
+  existingSelfStudentId,
+  familyType,
   onSuccess,
   preSelectedStudentIds
 }: EventRegistrationFormProps) {
   const fetcher = useFetcher<ActionResponse>();
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState<'registration' | 'payment' | 'success'>('registration');
+  const defaultRegisterSelf = selfRegistrationAllowed && (!familyData?.students?.length || familyType === 'self');
+  const defaultSelfParticipant = useMemo(
+    () => ({
+      firstName: profileInfo?.firstName?.trim() ?? '',
+      lastName: profileInfo?.lastName?.trim() ?? '',
+      email: profileInfo?.email ?? '',
+    }),
+    [profileInfo]
+  );
 
   // Detect if coming from waiver flow (students pre-selected and waivers signed)
   const isWaiverFlow = !!preSelectedStudentIds && preSelectedStudentIds.length > 0;
@@ -165,13 +204,17 @@ export function EventRegistrationForm({
       allergies: '',
       isExistingStudent: false
     }],
-    parentFirstName: familyData?.parentFirstName || '',
-    parentLastName: familyData?.parentLastName || '',
-    parentEmail: familyData?.parentEmail || '',
+    parentFirstName: familyData?.parentFirstName || profileInfo?.firstName || '',
+    parentLastName: familyData?.parentLastName || profileInfo?.lastName || '',
+    parentEmail: familyData?.parentEmail || profileInfo?.email || '',
     parentPhone: familyData?.parentPhone || '',
     waiverAccepted: false,
     marketingOptIn: false,
-    specialRequests: ''
+    specialRequests: '',
+    registerSelf: defaultRegisterSelf,
+    selfParticipant: defaultRegisterSelf ? { ...defaultSelfParticipant } : undefined,
+    selfParticipantStudentId: existingSelfStudentId,
+    familyType: familyType ?? null,
   });
   const [selectedExistingStudents, setSelectedExistingStudents] = useState<Set<string>>(
     new Set(preSelectedStudentIds || [])
@@ -186,6 +229,19 @@ export function EventRegistrationForm({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [registrationResult, setRegistrationResult] = useState<{ familyId: string; studentIds: string[] } | null>(null);
   const [processedResponseId, setProcessedResponseId] = useState<string | null>(null);
+
+  const activeStudents = useMemo(
+    () =>
+      formData.students.filter((student) =>
+        Boolean(student.firstName?.trim() || student.lastName?.trim() || student.id || student.isExistingStudent)
+      ),
+    [formData.students]
+  );
+  const hasExistingFamilyStudents = Boolean(familyData?.students?.length);
+  const hasManualStudents = activeStudents.length > 0;
+  const showStudentInfoCard = !formData.registerSelf || hasExistingFamilyStudents || hasManualStudents;
+  const missingWaivers = requiredWaivers.filter(waiver => !signedWaiverIds.includes(waiver.id));
+  const hasAllRequiredWaivers = missingWaivers.length === 0;
 
   // Pre-populate form with preselected students (from waiver flow)
   useEffect(() => {
@@ -234,15 +290,31 @@ export function EventRegistrationForm({
           console.log('PaymentId:', response.paymentId);
           console.log('RegistrationId:', response.registrationId);
           // Payment required - prepare payment data
-          const studentPaymentDetails: StudentPaymentDetail[] = formData.students.map((student, index) => ({
-            studentId: student.id || `temp-${index}`,
-            firstName: student.firstName,
-            lastName: student.lastName,
+          const participants = [
+            ...activeStudents.map((student, index) => ({
+              studentId: student.id || `student-${index}`,
+              firstName: student.firstName,
+              lastName: student.lastName,
+            })),
+          ];
+
+          if (formData.registerSelf) {
+            participants.push({
+              studentId: existingSelfStudentId || 'self-participant',
+              firstName: formData.selfParticipant?.firstName || profileInfo?.firstName || 'Self',
+              lastName: formData.selfParticipant?.lastName || profileInfo?.lastName || '',
+            });
+          }
+
+          const studentPaymentDetails: StudentPaymentDetail[] = participants.map((participant) => ({
+            studentId: participant.studentId,
+            firstName: participant.firstName,
+            lastName: participant.lastName,
             eligibility: { eligible: true, reason: 'Trial' },
             needsPayment: true,
             nextPaymentAmount: event.registration_fee || ZERO_MONEY,
             nextPaymentTierLabel: 'Event Registration Fee',
-            pastPaymentCount: 0
+            pastPaymentCount: 0,
           }));
 
           setPaymentData({
@@ -291,7 +363,20 @@ export function EventRegistrationForm({
         setErrors(response.fieldErrors);
       }
     }
-  }, [fetcher.data, formData.students, event.registration_fee, onSuccess, familyData?.familyId, processedResponseId]);
+  }, [
+    fetcher.data,
+    event.registration_fee,
+    onSuccess,
+    familyData?.familyId,
+    processedResponseId,
+    activeStudents,
+    existingSelfStudentId,
+    formData.registerSelf,
+    formData.selfParticipant?.firstName,
+    formData.selfParticipant?.lastName,
+    profileInfo?.firstName,
+    profileInfo?.lastName,
+  ]);
 
   // Add a new student to the registration
   const addStudent = () => {
@@ -392,6 +477,37 @@ export function EventRegistrationForm({
     setSelectedExistingStudents(newSelected);
   };
 
+  const handleRegisterSelfToggle = (checked: boolean) => {
+    const isChecked = Boolean(checked);
+    setFormData((prev) => ({
+      ...prev,
+      registerSelf: isChecked,
+      selfParticipant: isChecked
+        ? { ...(prev.selfParticipant ?? defaultSelfParticipant) }
+        : prev.selfParticipant,
+    }));
+  };
+
+  const handleSelfParticipantChange = (
+    field: 'firstName' | 'lastName' | 'email',
+    value: string
+  ) => {
+    setFormData((prev) => ({
+      ...prev,
+      selfParticipant: {
+        ...(prev.selfParticipant ?? defaultSelfParticipant),
+        [field]: value,
+      },
+    }));
+  };
+
+  const handleAddAnotherParticipant = () => {
+    setFormData((prev) => ({
+      ...prev,
+      registerSelf: false,
+    }));
+  };
+
   // Validate form data
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -414,8 +530,22 @@ export function EventRegistrationForm({
       }
     }
 
-    // Validate students
+    let activeStudentCount = 0;
+
     formData.students.forEach((student, index) => {
+      const hasData = Boolean(
+        student.firstName?.trim() ||
+        student.lastName?.trim() ||
+        student.id ||
+        student.isExistingStudent
+      );
+
+      if (!hasData) {
+        return;
+      }
+
+      activeStudentCount++;
+
       if (!student.firstName?.trim()) {
         newErrors[`student-${index}-firstName`] = 'First name is required';
       }
@@ -433,7 +563,31 @@ export function EventRegistrationForm({
       }
     });
 
-    // Waiver validation removed - now handled in loader before reaching this page
+    if (activeStudentCount === 0 && !formData.registerSelf) {
+      newErrors.students = 'Please add at least one participant.';
+    }
+
+    if (formData.registerSelf) {
+      const first = formData.selfParticipant?.firstName?.trim();
+      const last = formData.selfParticipant?.lastName?.trim();
+      const email = formData.selfParticipant?.email?.trim();
+
+      if (!first) {
+        newErrors.selfParticipantFirstName = 'Your first name is required';
+      }
+      if (!last) {
+        newErrors.selfParticipantLastName = 'Your last name is required';
+      }
+      if (!email) {
+        newErrors.selfParticipantEmail = 'A contact email is required';
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        newErrors.selfParticipantEmail = 'Please provide a valid email address';
+      }
+    }
+
+    if (requiredWaivers.length > 0 && !hasAllRequiredWaivers) {
+      newErrors.waiverAccepted = 'You must sign all required waivers before registering';
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -450,7 +604,21 @@ export function EventRegistrationForm({
     // Prepare form data for submission
     const submitData = new FormData();
     submitData.append('intent', 'register');
-    submitData.append('registrationData', JSON.stringify(formData));
+    const cleanedSelfParticipant = formData.selfParticipant
+      ? {
+          firstName: formData.selfParticipant.firstName.trim(),
+          lastName: formData.selfParticipant.lastName.trim(),
+          email: formData.selfParticipant.email.trim(),
+        }
+      : undefined;
+
+    const payload: RegistrationFormData = {
+      ...formData,
+      students: activeStudents,
+      selfParticipant: formData.registerSelf ? cleanedSelfParticipant : undefined,
+    };
+
+    submitData.append('registrationData', JSON.stringify(payload));
     
     if (isAuthenticated && familyData) {
       submitData.append('familyId', familyData.familyId);
@@ -511,7 +679,7 @@ export function EventRegistrationForm({
                 Event: {event.title}
               </p>
               <p className="text-sm text-green-700 dark:text-green-300">
-                Students Registered: {formData.students.length}
+                Participants Registered: {activeStudents.length + (formData.registerSelf ? 1 : 0)}
               </p>
               {(paymentData?.registrationId || fetcher.data?.registrationId) && (
                 <p className="text-sm text-green-700 dark:text-green-300">
@@ -568,10 +736,28 @@ export function EventRegistrationForm({
                   Event: {event.title}
                 </p>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Students: {formData.students.map(s => `${s.firstName} ${s.lastName}`).join(', ')}
+                  Participants: {
+                    [
+                      ...activeStudents.map((s) => `${s.firstName} ${s.lastName}`.trim()),
+                      ...(formData.registerSelf
+                        ? [
+                            `${formData.selfParticipant?.firstName || profileInfo?.firstName || 'Self'} ${
+                              formData.selfParticipant?.lastName || profileInfo?.lastName || ''
+                            }`.trim(),
+                          ]
+                        : []),
+                    ]
+                      .filter(Boolean)
+                      .join(', ') || 'None'
+                  }
                 </p>
                 <p className="text-sm font-medium">
-                  Total: ${formatMoney(multiplyMoney(event.registration_fee || ZERO_MONEY, formData.students.length))}
+                  Total: ${formatMoney(
+                    multiplyMoney(
+                      event.registration_fee || ZERO_MONEY,
+                      activeStudents.length + (formData.registerSelf ? 1 : 0)
+                    )
+                  )}
                 </p>
               </div>
             </div>
@@ -580,7 +766,7 @@ export function EventRegistrationForm({
               eventId={event.id}
               eventTitle={event.title}
               registrationFee={event.registration_fee || ZERO_MONEY}
-              studentCount={formData.students.length}
+              studentCount={activeStudents.length + (formData.registerSelf ? 1 : 0)}
               familyId={registrationResult.familyId}
               registrationId={paymentData?.registrationId || ''}
               studentIds={registrationResult.studentIds || []}
@@ -628,6 +814,9 @@ export function EventRegistrationForm({
               </CardDescription>
             </CardHeader>
             <CardContent>
+              {errors.students && (
+                <p className="text-sm text-red-500 mb-3">{errors.students}</p>
+              )}
               <div className="space-y-3">
                 {familyData.students.map((student) => (
                   <div key={student.id} className="flex items-center space-x-3">
@@ -654,6 +843,92 @@ export function EventRegistrationForm({
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {selfRegistrationAllowed && (
+          <Card className="form-container-styles">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <User className="h-5 w-5" />
+                Register Yourself
+              </CardTitle>
+              <CardDescription>
+                Adults and instructors can register themselves using their account information.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-start space-x-3">
+                <Checkbox
+                  id="register-self"
+                  className="checkbox-custom-styles mt-1"
+                  checked={formData.registerSelf}
+                  onCheckedChange={(checked) => handleRegisterSelfToggle(checked as boolean)}
+                />
+                <Label htmlFor="register-self" className="space-y-1">
+                  <p className="font-medium">
+                    {profileInfo?.firstName || 'Self'} {profileInfo?.lastName || ''}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    We&apos;ll start with your account details. Update them below if needed.
+                  </p>
+                </Label>
+              </div>
+
+              {formData.registerSelf && (
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="selfFirstName">First name</Label>
+                    <Input
+                      id="selfFirstName"
+                      value={formData.selfParticipant?.firstName ?? ''}
+                      onChange={(e) => handleSelfParticipantChange('firstName', e.target.value)}
+                      aria-invalid={Boolean(errors.selfParticipantFirstName)}
+                      className="input-custom-styles"
+                    />
+                    {errors.selfParticipantFirstName && (
+                      <p className="text-sm text-destructive">{errors.selfParticipantFirstName}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="selfLastName">Last name</Label>
+                    <Input
+                      id="selfLastName"
+                      value={formData.selfParticipant?.lastName ?? ''}
+                      onChange={(e) => handleSelfParticipantChange('lastName', e.target.value)}
+                      aria-invalid={Boolean(errors.selfParticipantLastName)}
+                      className="input-custom-styles"
+                    />
+                    {errors.selfParticipantLastName && (
+                      <p className="text-sm text-destructive">{errors.selfParticipantLastName}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="selfEmail">Email</Label>
+                    <Input
+                      id="selfEmail"
+                      type="email"
+                      value={formData.selfParticipant?.email ?? ''}
+                      onChange={(e) => handleSelfParticipantChange('email', e.target.value)}
+                      aria-invalid={Boolean(errors.selfParticipantEmail)}
+                      className="input-custom-styles"
+                    />
+                    {errors.selfParticipantEmail && (
+                      <p className="text-sm text-destructive">{errors.selfParticipantEmail}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {!showStudentInfoCard && (
+          <div className="flex items-center justify-between rounded-lg border border-dashed border-border px-4 py-3 text-sm text-muted-foreground">
+            <span>Need to register someone else?</span>
+            <Button type="button" variant="outline" size="sm" onClick={handleAddAnotherParticipant}>
+              Add participant
+            </Button>
+          </div>
         )}
 
         {/* Parent Information (for guest users) */}
@@ -728,6 +1003,7 @@ export function EventRegistrationForm({
         )}
 
         {/* Student Information */}
+        {showStudentInfoCard && (
         <Card>
           <CardHeader>
             <CardTitle>Student Information</CardTitle>
@@ -738,6 +1014,12 @@ export function EventRegistrationForm({
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            {errors.students && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{errors.students}</AlertDescription>
+              </Alert>
+            )}
             {/* Waiver Flow Notice */}
             {isWaiverFlow && (
               <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-900/20">
@@ -815,7 +1097,7 @@ export function EventRegistrationForm({
                     <Input
                       id={`student-${index}-dateOfBirth`}
                       type="date"
-                      value={student.dateOfBirth}
+                      value={student.dateOfBirth || ''}
                       onChange={(e) => updateStudent(index, 'dateOfBirth', e.target.value)}
                       className={`input-custom-styles ${errors[`student-${index}-dateOfBirth`] ? 'border-red-500' : ''}`}
                       disabled={student.isExistingStudent || isWaiverFlow}
@@ -941,6 +1223,7 @@ export function EventRegistrationForm({
             )}
           </CardContent>
         </Card>
+        )}
 
         {/* Additional Information */}
         <Card>
@@ -986,10 +1269,17 @@ export function EventRegistrationForm({
 
         {/* Submit Button */}
         <div className="space-y-3">
+          {!hasAllRequiredWaivers && requiredWaivers.length > 0 && (
+            <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded">
+              <p className="text-sm text-red-800 dark:text-red-200">
+                Please sign all required waivers before proceeding with registration.
+              </p>
+            </div>
+          )}
           <div className="flex justify-end space-x-4">
             <Button
               type="submit"
-              disabled={fetcher.state === 'submitting'}
+              disabled={fetcher.state === 'submitting' || !hasAllRequiredWaivers}
               className="min-w-32"
             >
               {fetcher.state === 'submitting' ? 'Registering...' : 'Register for Event'}

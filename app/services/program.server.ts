@@ -7,6 +7,47 @@ import {
 import { toCents } from '~/utils/money';
 import { mapProgramFromRow } from '~/utils/mappers';
 
+const PROGRAM_SELECT_COLUMNS = `
+  id,
+  name,
+  description,
+  duration_minutes,
+  engagement_type,
+  ability_category,
+  delivery_format,
+  seminar_type,
+  audience_scope,
+  slug,
+  min_capacity,
+  max_capacity,
+  sessions_per_week,
+  min_sessions_per_week,
+  max_sessions_per_week,
+  min_belt_rank,
+  max_belt_rank,
+  belt_rank_required,
+  prerequisite_programs,
+  min_age,
+  max_age,
+  gender_restriction,
+  special_needs_support,
+  monthly_fee,
+  monthly_fee_cents,
+  registration_fee,
+  registration_fee_cents,
+  yearly_fee,
+  yearly_fee_cents,
+  individual_session_fee,
+  individual_session_fee_cents,
+  single_purchase_price_cents,
+  subscription_monthly_price_cents,
+  subscription_yearly_price_cents,
+  required_waiver_id,
+  is_active,
+  created_at,
+  updated_at
+`;
+
 /**
  * Create a new program
  */
@@ -18,7 +59,14 @@ export async function createProgram(
     name: programData.name,
     description: programData.description,
     duration_minutes: programData.duration_minutes,
+    engagement_type: programData.engagement_type ?? 'program',
+    ability_category: programData.ability_category ?? null,
+    delivery_format: programData.delivery_format ?? null,
+    seminar_type: programData.seminar_type ?? null,
+    audience_scope: programData.audience_scope ?? 'youth',
+    slug: programData.slug ?? null,
     // Capacity constraints
+    min_capacity: programData.min_capacity ?? null,
     max_capacity: programData.max_capacity,
     // Frequency constraints
     sessions_per_week: programData.sessions_per_week,
@@ -40,6 +88,9 @@ export async function createProgram(
     registration_fee_cents: programData.registration_fee ? toCents(programData.registration_fee) : null,
     yearly_fee_cents: programData.yearly_fee ? toCents(programData.yearly_fee) : null,
     individual_session_fee_cents: programData.individual_session_fee ? toCents(programData.individual_session_fee) : null,
+    single_purchase_price_cents: programData.single_purchase_price ? toCents(programData.single_purchase_price) : null,
+    subscription_monthly_price_cents: programData.subscription_monthly_price ? toCents(programData.subscription_monthly_price) : null,
+    subscription_yearly_price_cents: programData.subscription_yearly_price ? toCents(programData.subscription_yearly_price) : null,
     // System fields
     is_active: programData.is_active ?? true,
   };
@@ -76,7 +127,14 @@ export async function updateProgram(
   if (updates.name !== undefined) updateData.name = updates.name;
   if (updates.description !== undefined) updateData.description = updates.description;
   if (updates.duration_minutes !== undefined) updateData.duration_minutes = updates.duration_minutes;
+  if (updates.engagement_type !== undefined) updateData.engagement_type = updates.engagement_type;
+  if (updates.ability_category !== undefined) updateData.ability_category = updates.ability_category ?? null;
+  if (updates.delivery_format !== undefined) updateData.delivery_format = updates.delivery_format ?? null;
+  if (updates.seminar_type !== undefined) updateData.seminar_type = updates.seminar_type ?? null;
+  if (updates.audience_scope !== undefined) updateData.audience_scope = updates.audience_scope;
+  if (updates.slug !== undefined) updateData.slug = updates.slug || null;
   // Capacity constraints
+  if (updates.min_capacity !== undefined) updateData.min_capacity = updates.min_capacity;
   if (updates.max_capacity !== undefined) updateData.max_capacity = updates.max_capacity;
   // Frequency constraints
   if (updates.sessions_per_week !== undefined) updateData.sessions_per_week = updates.sessions_per_week;
@@ -98,6 +156,9 @@ export async function updateProgram(
   if (updates.registration_fee !== undefined) updateData.registration_fee_cents = updates.registration_fee ? toCents(updates.registration_fee) : null;
   if (updates.yearly_fee !== undefined) updateData.yearly_fee_cents = updates.yearly_fee ? toCents(updates.yearly_fee) : null;
   if (updates.individual_session_fee !== undefined) updateData.individual_session_fee_cents = updates.individual_session_fee ? toCents(updates.individual_session_fee) : null;
+  if (updates.single_purchase_price !== undefined) updateData.single_purchase_price_cents = updates.single_purchase_price ? toCents(updates.single_purchase_price) : null;
+  if (updates.subscription_monthly_price !== undefined) updateData.subscription_monthly_price_cents = updates.subscription_monthly_price ? toCents(updates.subscription_monthly_price) : null;
+  if (updates.subscription_yearly_price !== undefined) updateData.subscription_yearly_price_cents = updates.subscription_yearly_price ? toCents(updates.subscription_yearly_price) : null;
   // System fields
   if (updates.is_active !== undefined) updateData.is_active = updates.is_active;
 
@@ -121,7 +182,14 @@ export async function updateProgram(
  * Get all programs with optional filtering
  */
 export async function getPrograms(
-  filters: { is_active?: boolean; search?: string } = {},
+  filters: {
+    is_active?: boolean;
+    search?: string;
+    engagement_type?: 'program' | 'seminar';
+    ability_category?: 'able' | 'adaptive';
+    delivery_format?: 'group' | 'private' | 'competition_individual' | 'competition_team' | 'introductory';
+    audience_scope?: 'youth' | 'adults' | 'mixed';
+  } = {},
   supabase = getSupabaseAdminClient()
 ): Promise<Program[]> {
   let query = supabase.from('programs').select();
@@ -129,6 +197,22 @@ export async function getPrograms(
   // Apply filters
   if (filters.is_active !== undefined) {
     query = query.eq('is_active', filters.is_active);
+  }
+
+  if (filters.engagement_type) {
+    query = query.eq('engagement_type', filters.engagement_type);
+  }
+
+  if (filters.ability_category) {
+    query = query.eq('ability_category', filters.ability_category);
+  }
+
+  if (filters.delivery_format) {
+    query = query.eq('delivery_format', filters.delivery_format);
+  }
+
+  if (filters.audience_scope) {
+    query = query.eq('audience_scope', filters.audience_scope);
   }
 
   if (filters.search) {
@@ -320,4 +404,192 @@ export async function getProgramsForStudent(
   }
   
   return eligiblePrograms;
+}
+
+/**
+ * Get public-facing adult (and mixed) programs for curriculum browsing.
+ */
+export async function getAdultPrograms(
+  supabase = getSupabaseAdminClient(),
+  engagementType?: 'program' | 'seminar'
+): Promise<Program[]> {
+  let query = supabase
+    .from('programs')
+    .select(PROGRAM_SELECT_COLUMNS)
+    .eq('is_active', true)
+    .in('audience_scope', ['adults', 'mixed'])
+    .order('name');
+
+  if (engagementType) {
+    query = query.eq('engagement_type', engagementType);
+  }
+
+  const { data, error } = await query;
+  if (error) {
+    throw new Error(`Failed to fetch adult programs: ${error.message}`);
+  }
+
+  return (data || []).map(mapProgramFromRow);
+}
+
+/**
+ * Get seminar templates (programs with engagement_type='seminar')
+ */
+export async function getSeminars(
+  filters: {
+    is_active?: boolean;
+    search?: string;
+    ability_category?: 'able' | 'adaptive';
+    seminar_type?: 'introductory' | 'intermediate' | 'advanced';
+    audience_scope?: 'youth' | 'adults' | 'mixed';
+  } = {},
+  supabase = getSupabaseAdminClient()
+): Promise<Program[]> {
+  let query = supabase.from('programs').select(PROGRAM_SELECT_COLUMNS).eq('engagement_type', 'seminar');
+
+  if (filters.is_active !== undefined) {
+    query = query.eq('is_active', filters.is_active);
+  }
+  if (filters.ability_category) {
+    query = query.eq('ability_category', filters.ability_category);
+  }
+  if (filters.seminar_type) {
+    query = query.eq('seminar_type', filters.seminar_type);
+  }
+  if (filters.audience_scope) {
+    query = query.eq('audience_scope', filters.audience_scope);
+  }
+  if (filters.search) {
+    query = query.or(`name.ilike.%${filters.search}%,description.ilike.%${filters.search}%`);
+  }
+
+  query = query.order('name');
+
+  const { data, error } = await query;
+  if (error) {
+    throw new Error(`Failed to fetch seminars: ${error.message}`);
+  }
+
+  return (data || []).map(mapProgramFromRow);
+}
+
+/**
+ * Get a seminar with its series and ordered sessions.
+ */
+export async function getSeminarWithSeries(
+  seminarId: string,
+  supabase = getSupabaseAdminClient()
+) {
+  const { data, error } = await supabase
+    .from('programs')
+    .select(`
+      *,
+      classes (
+        id,
+        name,
+        description,
+        topic,
+        series_label,
+        series_status,
+        registration_status,
+        series_start_on,
+        series_end_on,
+        sessions_per_week_override,
+        session_duration_minutes,
+        series_session_quota,
+        price_override_cents,
+        registration_fee_override_cents,
+        allow_self_enrollment,
+        min_capacity,
+        max_capacity,
+        on_demand,
+        is_active,
+        class_sessions (
+          id,
+          session_date,
+          start_time,
+          end_time,
+          sequence_number,
+          status
+        )
+      )
+    `)
+    .eq('id', seminarId)
+    .eq('engagement_type', 'seminar')
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return null;
+    }
+    throw new Error(`Failed to fetch seminar with series: ${error.message}`);
+  }
+
+  const seminar = mapProgramFromRow(data);
+
+  const classes = (data.classes || []).map((cls) => {
+    const sortedSessions = (cls.class_sessions || []).sort((a, b) => {
+      if (
+        a.sequence_number !== null &&
+        b.sequence_number !== null &&
+        a.sequence_number !== undefined &&
+        b.sequence_number !== undefined
+      ) {
+        return a.sequence_number - b.sequence_number;
+      }
+      return new Date(a.session_date).getTime() - new Date(b.session_date).getTime();
+    });
+
+    return {
+      ...cls,
+      description: cls.description ?? undefined,
+      topic: cls.topic ?? undefined,
+      series_label: cls.series_label ?? undefined,
+      series_status: cls.series_status ?? 'tentative',
+      registration_status: cls.registration_status ?? 'closed',
+      series_start_on: cls.series_start_on ?? undefined,
+      series_end_on: cls.series_end_on ?? undefined,
+      sessions_per_week_override: cls.sessions_per_week_override ?? undefined,
+      session_duration_minutes: cls.session_duration_minutes ?? undefined,
+      series_session_quota: cls.series_session_quota ?? undefined,
+      price_override_cents: cls.price_override_cents ?? undefined,
+      registration_fee_override_cents: cls.registration_fee_override_cents ?? undefined,
+      min_capacity: cls.min_capacity ?? undefined,
+      max_capacity: cls.max_capacity ?? undefined,
+      allow_self_enrollment: cls.allow_self_enrollment ?? false,
+      on_demand: cls.on_demand ?? false,
+      class_sessions: sortedSessions.map((session) => ({
+        ...session,
+        sequence_number: session.sequence_number ?? undefined,
+      })),
+    };
+  });
+
+  return {
+    ...seminar,
+    classes,
+  };
+}
+
+/**
+ * Get program by slug
+ */
+export async function getProgramBySlug(
+  slug: string,
+  supabase = getSupabaseAdminClient()
+): Promise<Program | null> {
+  const { data, error } = await supabase
+    .from('programs')
+    .select(PROGRAM_SELECT_COLUMNS)
+    .eq('slug', slug)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return null;
+    }
+    throw new Error(`Failed to fetch program by slug: ${error.message}`);
+  }
+
+  return mapProgramFromRow(data);
 }

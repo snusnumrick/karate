@@ -20,6 +20,38 @@ Establish a practical, maintainable test suite (unit, integration, e2e) that pre
 - [ ] Server header assertions via Supertest.
 - [ ] E2E expansion (auth/admin non‑destructive flows).
 
+## Curriculum & Adult Registration Regression Suite
+
+### Scope
+- Program/class service filters:
+  - `getAdultPrograms(...)` (`engagement_type`, `audience_scope`)
+  - `getSelfEnrollableClasses(...)` (`allow_self_enrollment`, open/active filters)
+- Adult enrollment/event helpers:
+  - `selfEnrollAdult(...)` happy path and guardrails
+  - `registerAdultForEvent(...)` duplicate protection and `participant_profile_id` persistence
+- Route-level behavior:
+  - Event registration action household + self flow coverage
+  - Curriculum loader adults/mixed inclusion and youth exclusion
+  - Waiver signer fallback for `family_type='self'` (no guardian row)
+- E2E journey:
+  - `tests/e2e/curriculum-adult-registration.spec.ts`
+
+### Ownership
+- Service/unit tests: platform/backend maintainers
+- Route/integration tests: feature owner for registration/curriculum routes
+- E2E smoke for curriculum/adult registration: release owner before deploy cut
+
+### Required Command Gate
+Run all commands before shipping curriculum/adult registration changes:
+
+```bash
+npm run lint
+npm run typecheck
+npm run test:unit
+npx playwright test tests/e2e/curriculum-adult-registration.spec.ts
+npm run build
+```
+
 ## Phases
 1) Foundation
 - Add scripts: `test:unit` (Vitest), `test:e2e` (Playwright), `test` (aggregate), optional `coverage`.

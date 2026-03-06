@@ -90,6 +90,16 @@ A materialized view that provides real-time status of waiver requirements for ea
 6. Submit the signature
 7. Return to the dashboard
 
+#### Signer Resolution for `family_type='self'`
+For self-family adult accounts, there may be no guardian row in `guardians`.
+Signer identity for waiver UX/PDF generation is resolved in this order:
+1. Guardian first/last name (if present)
+2. Profile first/last name
+3. Auth user metadata (`first_name`, `last_name`)
+4. Email local-part fallback (e.g., `alex` from `alex@example.com`)
+
+This ensures waiver signing, PDF generation, and confirmation email content continue to work for adult self-registrants without requiring synthetic guardian records.
+
 #### Event Registration with Waivers
 For events that require waivers, families follow a three-step process:
 

@@ -17,7 +17,15 @@ export interface Program {
   name: string;
   description?: string;
   duration_minutes?: number;
+  // Curriculum and seminar fields
+  engagement_type: 'program' | 'seminar';
+  ability_category?: 'able' | 'adaptive' | null;
+  delivery_format?: 'group' | 'private' | 'competition_individual' | 'competition_team' | 'introductory' | null;
+  seminar_type?: 'introductory' | 'intermediate' | 'advanced' | null;
+  audience_scope: 'youth' | 'adults' | 'mixed';
+  slug?: string | null;
   // Capacity constraints
+  min_capacity?: number | null;
   max_capacity?: number;
   // Frequency constraints
   sessions_per_week?: number;
@@ -39,6 +47,9 @@ export interface Program {
   registration_fee?: Money;
   yearly_fee?: Money;
   individual_session_fee?: Money;
+  single_purchase_price?: Money;
+  subscription_monthly_price?: Money;
+  subscription_yearly_price?: Money;
   // System fields
   is_active: boolean;
   created_at: string;
@@ -49,12 +60,27 @@ export interface Class {
   id: string;
   program_id: string;
   name: string;
-  description?: string;
+  description?: string | null;
   max_capacity?: number;
   instructor_id?: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  // Seminar-series fields
+  topic?: string | null;
+  series_label?: string | null;
+  series_status: 'tentative' | 'confirmed' | 'cancelled' | 'in_progress' | 'completed';
+  registration_status: 'open' | 'closed' | 'waitlisted';
+  series_start_on?: string | null;
+  series_end_on?: string | null;
+  sessions_per_week_override?: number | null;
+  session_duration_minutes?: number | null;
+  series_session_quota?: number | null;
+  price_override_cents?: number | null;
+  registration_fee_override_cents?: number | null;
+  min_capacity?: number | null;
+  allow_self_enrollment: boolean;
+  on_demand?: boolean;
   // Relations
   program?: Program; // Optional program reference
   instructor?: {
@@ -85,7 +111,7 @@ export interface ClassEnrollment {
     id: string;
     first_name: string;
     last_name: string;
-    birth_date: string;
+    birth_date: string | null;
     family_id: string;
   };
 }
@@ -124,7 +150,14 @@ export interface CreateProgramData {
   name: string;
   description?: string;
   duration_minutes?: number;
+  engagement_type?: 'program' | 'seminar';
+  ability_category?: 'able' | 'adaptive';
+  delivery_format?: 'group' | 'private' | 'competition_individual' | 'competition_team' | 'introductory';
+  seminar_type?: 'introductory' | 'intermediate' | 'advanced';
+  audience_scope?: 'youth' | 'adults' | 'mixed';
+  slug?: string;
   // Capacity constraints
+  min_capacity?: number;
   max_capacity?: number;
   // Frequency constraints
   sessions_per_week?: number;
@@ -146,6 +179,9 @@ export interface CreateProgramData {
   registration_fee?: Money;
   yearly_fee?: Money;
   individual_session_fee?: Money;
+  single_purchase_price?: Money;
+  subscription_monthly_price?: Money;
+  subscription_yearly_price?: Money;
   // System fields
   is_active?: boolean;
 }
@@ -158,9 +194,23 @@ export interface CreateClassData {
   program_id: string; // Required
   name: string;
   description?: string;
+  topic?: string;
   max_capacity?: number;
   instructor_id?: string;
   is_active?: boolean;
+  series_status?: 'tentative' | 'confirmed' | 'cancelled' | 'in_progress' | 'completed';
+  registration_status?: 'open' | 'closed' | 'waitlisted';
+  allow_self_enrollment?: boolean;
+  series_label?: string;
+  series_start_on?: string;
+  series_end_on?: string;
+  sessions_per_week_override?: number;
+  session_duration_minutes?: number;
+  series_session_quota?: number;
+  price_override_cents?: number;
+  registration_fee_override_cents?: number;
+  min_capacity?: number;
+  on_demand?: boolean;
 }
 
 export interface UpdateClassData extends Partial<CreateClassData> {
@@ -201,6 +251,8 @@ export interface UpdateSessionData extends Partial<CreateSessionData> {
 export interface ProgramFilters {
   is_active?: boolean;
   search?: string;
+  engagement_type?: 'program' | 'seminar';
+  audience_scope?: 'youth' | 'adults' | 'mixed';
 }
 
 export interface ClassFilters {
@@ -208,6 +260,9 @@ export interface ClassFilters {
   instructor_id?: string;
   is_active?: boolean;
   search?: string;
+  allow_self_enrollment?: boolean;
+  engagement_type?: 'program' | 'seminar';
+  registration_status?: 'open' | 'closed' | 'waitlisted';
 }
 
 export interface EnrollmentFilters {

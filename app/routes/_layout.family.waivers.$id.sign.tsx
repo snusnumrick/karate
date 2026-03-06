@@ -114,7 +114,7 @@ export async function loader({request, params}: LoaderFunctionArgs) {
     // Fetch user profile to get family_id
     const {data: profile, error: profileError} = await supabaseServer
         .from('profiles')
-        .select('family_id')
+        .select('family_id, first_name, last_name, email')
         .eq('id', user.id)
         .single();
 
@@ -125,19 +125,22 @@ export async function loader({request, params}: LoaderFunctionArgs) {
         throw new Response("User profile or family association not found.", {status: 404});
     }
 
-    // Fetch the first guardian associated with the family to get the name
-    // Assumption: The logged-in user is one of the guardians. We take the first one found.
     const {data: guardian, error: guardianError} = await supabaseServer
         .from('guardians')
         .select('first_name, last_name')
         .eq('family_id', profile.family_id)
-        .limit(1) // Get the first guardian listed for the family
-        .single();
+        .limit(1)
+        .maybeSingle();
 
-    if (guardianError || !guardian) {
+    if (guardianError && guardianError.code !== 'PGRST116') {
         console.error('Error fetching guardian for family_id:', profile.family_id, guardianError);
-        // Handle appropriately - maybe show an error
-        throw new Response("Guardian information not found for this family.", {status: 404});
+        throw new Response("Unable to load signer information for this family.", {status: 500});
+    }
+
+    let signerFirstName = guardian?.first_name || profile.first_name || user.user_metadata?.first_name || '';
+    const signerLastName = guardian?.last_name || profile.last_name || user.user_metadata?.last_name || '';
+    if (!signerFirstName && !signerLastName) {
+        signerFirstName = (profile.email || user.email || 'Participant').split('@')[0];
     }
 
     // Check if waiver exists
@@ -204,8 +207,8 @@ export async function loader({request, params}: LoaderFunctionArgs) {
     return json({
         waiver,
         userId: user.id,
-        firstName: guardian.first_name,
-        lastName: guardian.last_name,
+        firstName: signerFirstName,
+        lastName: signerLastName,
         studentsNeedingWaiver,
         redirectTo
     });
@@ -264,7 +267,7 @@ export async function action({request, params}: ActionFunctionArgs) {
 
     const {data: profile} = await supabaseAdmin
         .from('profiles')
-        .select('family_id')
+        .select('family_id, first_name, last_name, email')
         .eq('id', user.id)
         .single();
 
@@ -278,15 +281,21 @@ export async function action({request, params}: ActionFunctionArgs) {
         .select('first_name, last_name')
         .eq('family_id', profile.family_id)
         .limit(1)
-        .single();
+        .maybeSingle();
+
+    let signerFirstName = guardian?.first_name || profile.first_name || user.user_metadata?.first_name || '';
+    const signerLastName = guardian?.last_name || profile.last_name || user.user_metadata?.last_name || '';
+    if (!signerFirstName && !signerLastName) {
+        signerFirstName = (profile.email || user.email || 'Participant').split('@')[0];
+    }
 
     const {data: students} = await supabaseAdmin
         .from('students')
         .select('id, first_name, last_name')
         .in('id', studentIds);
 
-    if (!waiver || !guardian || !students) {
-        console.error('Missing data for PDF generation:', {waiver: !!waiver, guardian: !!guardian, students: !!students});
+    if (!waiver || !students) {
+        console.error('Missing data for PDF generation:', {waiver: !!waiver, students: !!students});
         return json({success: false, error: 'Failed to retrieve waiver data'});
     }
 
@@ -308,8 +317,8 @@ export async function action({request, params}: ActionFunctionArgs) {
                 signatureImage: signature,
             },
             guardian: {
-                firstName: guardian.first_name,
-                lastName: guardian.last_name,
+                firstName: signerFirstName,
+                lastName: signerLastName,
             },
             students: students.map(s => ({
                 id: s.id,
@@ -356,7 +365,7 @@ export async function action({request, params}: ActionFunctionArgs) {
 
             if (family?.email) {
                 const studentNames = students.map(s => `${s.first_name} ${s.last_name}`).join(', ');
-                const guardianName = `${guardian.first_name} ${guardian.last_name}`;
+                const guardianName = `${signerFirstName} ${signerLastName}`.trim();
 
                 await sendEmail({
                     to: family.email,

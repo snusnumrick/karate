@@ -77,6 +77,8 @@ const programsClassesNavItems = [
     {to: "/admin/programs", label: "Programs", icon: GraduationCap},
     {to: "/admin/classes", label: "Classes", icon: CalendarCheck},
     {to: "/admin/sessions", label: "Sessions", icon: Calendar},
+    {to: "/admin/programs?filter=seminar", label: "Seminar Templates", icon: BookOpen},
+    {to: "/admin/classes?engagement=seminar", label: "Seminar Series", icon: BookOpen},
 ];
 
 // Define Discount navigation items
