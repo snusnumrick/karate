@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { json, type LoaderFunctionArgs } from "@remix-run/node";
 import { useLoaderData, Link } from "@remix-run/react";
 import { getSupabaseServerClient, getSupabaseAdminClient } from "~/utils/supabase.server";
@@ -5,7 +6,6 @@ import { getAdultPrograms } from "~/services/program.server";
 import { EventService } from "~/services/event.server";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { formatMoney, fromCents, toCents } from "~/utils/money";
 import { siteConfig } from "~/config/site";
 import { DEFAULT_SCHEDULE, getDefaultAgeRangeLabel } from "~/constants/schedule";
@@ -186,6 +186,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 export default function CurriculumIndex() {
   const { programs, seminars, events, classes, scheduleSummary } = useLoaderData<typeof loader>();
+  const [activeTab, setActiveTab] = useState<'programs' | 'seminars' | 'events'>('programs');
 
   const formatCents = (value: number | null | undefined) =>
     value != null ? formatMoney(fromCents(value), { showCurrency: true, trimTrailingZeros: true }) : null;
@@ -282,15 +283,29 @@ export default function CurriculumIndex() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <Tabs defaultValue="programs" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="programs">Programs</TabsTrigger>
-            <TabsTrigger value="seminars">Seminars</TabsTrigger>
-            <TabsTrigger value="events">Events</TabsTrigger>
-          </TabsList>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full">
+          <nav className="flex justify-center border-b border-gray-200 dark:border-gray-700 mb-8">
+            {([
+              { value: 'programs', label: 'Programs' },
+              { value: 'seminars', label: 'Seminars' },
+              { value: 'events',   label: 'Events' },
+            ] as const).map(({ value, label}) => (
+              <button
+                key={value}
+                onClick={() => setActiveTab(value)}
+                className={`flex items-center gap-2 px-6 py-3 text-3xl border-b-2 -mb-px transition-colors duration-150 ${
+                  activeTab === value
+                    ? 'border-green-600 text-green-700 dark:border-green-400 dark:text-green-400 font-semibold'
+                    : 'border-transparent text-gray-500 hover:text-gray-800 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:border-gray-600 font-medium'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </nav>
 
-          <TabsContent value="programs" className="mt-6">
+          {activeTab === 'programs' && <>
             {/* Tab Header */}
             <div className="text-center mb-12">
 {/*              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
@@ -720,9 +735,9 @@ export default function CurriculumIndex() {
                 </div>
               </div>
             </section>
-          </TabsContent>
+          </>}
 
-        <TabsContent value="seminars" className="mt-6">
+          {activeTab === 'seminars' && <>
           {/* Tab Header */}
           <div className="text-center mb-12">
 {/*            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
@@ -831,9 +846,9 @@ export default function CurriculumIndex() {
               ))
             )}
           </div>
-        </TabsContent>
+          </>}
 
-        <TabsContent value="events" className="mt-6">
+          {activeTab === 'events' && <>
           {/* Tab Header */}
           <div className="text-center mb-12">
 {/*            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
@@ -904,8 +919,8 @@ export default function CurriculumIndex() {
               ))
             )}
           </div>
-        </TabsContent>
-        </Tabs>
+          </>}
+        </div>
       </div>
     </div>
   );
