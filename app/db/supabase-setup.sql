@@ -5939,6 +5939,51 @@ BEGIN
 END
 $$;
 
+-- Migration 042: Curriculum and adult self-registration query indexes
+DO
+$$
+BEGIN
+    -- public.programs(audience_scope, is_active) partial index
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'programs'
+          AND column_name = 'audience_scope'
+    ) THEN
+        CREATE INDEX IF NOT EXISTS idx_programs_audience_scope_active
+            ON public.programs (audience_scope, is_active)
+            WHERE is_active = true;
+    END IF;
+
+    -- public.classes(program_id, allow_self_enrollment, is_active) partial index
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'classes'
+          AND column_name = 'allow_self_enrollment'
+    ) THEN
+        CREATE INDEX IF NOT EXISTS idx_classes_self_enrollment_active
+            ON public.classes (program_id, allow_self_enrollment, is_active)
+            WHERE allow_self_enrollment = true AND is_active = true;
+    END IF;
+
+    -- public.event_registrations(participant_profile_id) partial index
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'event_registrations'
+          AND column_name = 'participant_profile_id'
+    ) THEN
+        CREATE INDEX IF NOT EXISTS idx_event_registrations_participant_profile
+            ON public.event_registrations (participant_profile_id)
+            WHERE participant_profile_id IS NOT NULL;
+    END IF;
+END
+$$;
+
 -- Add RLS policies
 ALTER TABLE events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE event_registrations ENABLE ROW LEVEL SECURITY;
