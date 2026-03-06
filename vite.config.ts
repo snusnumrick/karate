@@ -103,20 +103,38 @@ export default defineConfig({
     })
   ],
   optimizeDeps: {
+    // Prevent mid-session dep-optimizer cache rewrites that can cause transient
+    // "chunk-*.js does not exist" errors when Vite discovers new deps at runtime.
+    noDiscovery: true,
     include: [
       "react",
       "react-dom",
       "react-dom/client",
       "@remix-run/react",
+      "@sentry/remix",
+      "@supabase/auth-helpers-remix",
+      "@supabase/supabase-js",
+      "@vercel/speed-insights/react",
+      "remix-utils/csrf/react",
+      "sonner",
       "lucide-react",
       "@radix-ui/react-slot",
       "@radix-ui/react-dropdown-menu",
+      "@radix-ui/react-dialog",
+      "@radix-ui/react-tooltip",
+      "@radix-ui/react-separator",
+      "@radix-ui/react-label",
+      "@radix-ui/react-checkbox",
       "class-variance-authority",
       "clsx",
-      "tailwind-merge"
+      "tailwind-merge",
+      "dinero.js",
+      "date-fns",
+      "date-fns/locale"
     ]
   },
   server: {
+    preTransformRequests: false,
     port: 5176,
     host: devServerHost,
     allowedHosts: devAllowedHosts,
