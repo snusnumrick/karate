@@ -1,5 +1,22 @@
--- Curriculum and adult self-registration query performance indexes.
--- This migration intentionally adds indexes only; schema columns/enums already exist.
+-- Curriculum and adult self-registration: add missing columns/enums then indexes.
+
+-- audience_scope enum
+DO $$ BEGIN
+  CREATE TYPE public.audience_scope AS ENUM ('youth', 'adults', 'mixed');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- programs.audience_scope
+ALTER TABLE public.programs
+  ADD COLUMN IF NOT EXISTS audience_scope public.audience_scope NOT NULL DEFAULT 'youth';
+
+-- classes.allow_self_enrollment
+ALTER TABLE public.classes
+  ADD COLUMN IF NOT EXISTS allow_self_enrollment boolean NOT NULL DEFAULT false;
+
+-- event_registrations.participant_profile_id
+ALTER TABLE public.event_registrations
+  ADD COLUMN IF NOT EXISTS participant_profile_id uuid REFERENCES public.profiles(id) ON DELETE SET NULL;
 
 -- Efficient filtering of adult/mixed programs for public curriculum browsing.
 CREATE INDEX IF NOT EXISTS idx_programs_audience_scope_active

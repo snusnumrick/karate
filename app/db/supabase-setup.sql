@@ -3808,6 +3808,12 @@ END $$;
 -- --- Multi-Class System ---
 
 -- Programs Table
+-- audience_scope enum
+DO $$ BEGIN
+  CREATE TYPE public.audience_scope AS ENUM ('youth', 'adults', 'mixed');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
 CREATE TABLE IF NOT EXISTS public.programs (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     name text NOT NULL,
@@ -3835,6 +3841,8 @@ CREATE TABLE IF NOT EXISTS public.programs (
     registration_fee_cents INT4 NOT NULL DEFAULT 0,
     yearly_fee_cents INT4 NOT NULL DEFAULT 0,
     individual_session_fee_cents INT4 NOT NULL DEFAULT 0,
+    -- Audience targeting
+    audience_scope public.audience_scope NOT NULL DEFAULT 'youth',
     -- System fields
     is_active boolean NOT NULL DEFAULT true,
     created_at timestamptz NOT NULL DEFAULT now(),
@@ -3854,6 +3862,7 @@ CREATE TABLE IF NOT EXISTS public.classes (
     description text NULL,
     max_capacity integer NULL,
     instructor_id uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+    allow_self_enrollment boolean NOT NULL DEFAULT false,
     is_active boolean NOT NULL DEFAULT true,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now()
@@ -5853,7 +5862,8 @@ CREATE TABLE IF NOT EXISTS event_registrations (
     -- Additional info
     notes text,
     emergency_contact text,
-    
+    participant_profile_id uuid REFERENCES profiles(id) ON DELETE SET NULL,
+
     UNIQUE(event_id, student_id)
 );
 
