@@ -261,6 +261,9 @@ ALTER TABLE families
     ADD COLUMN IF NOT EXISTS registration_waivers_complete boolean DEFAULT false,
     ADD COLUMN IF NOT EXISTS registration_waivers_completed_at timestamptz;
 
+ALTER TABLE families
+    ADD COLUMN IF NOT EXISTS family_type public.family_type NOT NULL DEFAULT 'household';
+
 
 -- Guardians table
 CREATE TABLE IF NOT EXISTS guardians
@@ -311,7 +314,9 @@ CREATE TABLE IF NOT EXISTS students
     immunization_notes       text,
     allergies                text,
     medications              text,
-    special_needs            text
+    special_needs            text,
+    is_adult                 boolean NOT NULL DEFAULT false,
+    profile_id               uuid REFERENCES profiles(id) ON DELETE SET NULL
 );
 
 DO
@@ -682,7 +687,8 @@ CREATE TABLE IF NOT EXISTS payments
     status            payment_status                                  NOT NULL DEFAULT 'pending',
     stripe_session_id text                                            NULL,                               -- Added for Stripe integration
     receipt_url       text                                            NULL,                               -- Added for Stripe integration
-    card_last4        text                                            NULL                                -- Added for card last 4 digits display,
+    card_last4        text                                            NULL,                               -- Added for card last 4 digits display
+    stripe_payment_intent_id text                                    NULL
 );
 
 -- Add columns idempotently if table already exists
@@ -3814,6 +3820,42 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
+-- engagement_type enum
+DO $$ BEGIN
+  CREATE TYPE public.engagement_type AS ENUM ('program', 'seminar');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE public.ability_category AS ENUM ('able', 'adaptive');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE public.delivery_format AS ENUM ('group', 'private', 'competition_individual', 'competition_team', 'introductory');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE public.family_type AS ENUM ('household', 'self', 'organization');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE public.seminar_type AS ENUM ('introductory', 'intermediate', 'advanced');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE public.series_status AS ENUM ('tentative', 'confirmed', 'cancelled', 'in_progress', 'completed');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE public.registration_status AS ENUM ('open', 'closed', 'waitlisted');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
 CREATE TABLE IF NOT EXISTS public.programs (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     name text NOT NULL,
@@ -3843,6 +3885,15 @@ CREATE TABLE IF NOT EXISTS public.programs (
     individual_session_fee_cents INT4 NOT NULL DEFAULT 0,
     -- Audience targeting
     audience_scope public.audience_scope NOT NULL DEFAULT 'youth',
+    engagement_type public.engagement_type NOT NULL DEFAULT 'program',
+    ability_category public.ability_category NULL,
+    delivery_format public.delivery_format NULL,
+    seminar_type public.seminar_type NULL,
+    min_capacity integer NULL,
+    slug text NULL,
+    single_purchase_price_cents integer NULL,
+    subscription_monthly_price_cents integer NULL,
+    subscription_yearly_price_cents integer NULL,
     -- System fields
     is_active boolean NOT NULL DEFAULT true,
     created_at timestamptz NOT NULL DEFAULT now(),
@@ -3863,6 +3914,19 @@ CREATE TABLE IF NOT EXISTS public.classes (
     max_capacity integer NULL,
     instructor_id uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
     allow_self_enrollment boolean NOT NULL DEFAULT false,
+    min_capacity integer NULL,
+    on_demand boolean NOT NULL DEFAULT false,
+    price_override_cents integer NULL,
+    registration_fee_override_cents integer NULL,
+    registration_status public.registration_status NOT NULL DEFAULT 'open',
+    series_end_on date NULL,
+    series_label text NULL,
+    series_session_quota integer NULL,
+    series_start_on date NULL,
+    series_status public.series_status NOT NULL DEFAULT 'tentative',
+    session_duration_minutes integer NULL,
+    sessions_per_week_override integer NULL,
+    topic text NULL,
     is_active boolean NOT NULL DEFAULT true,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now()
@@ -4169,6 +4233,7 @@ CREATE TABLE IF NOT EXISTS public.class_sessions (
     status VARCHAR(20) NOT NULL DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'completed', 'cancelled')),
     instructor_id uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
     notes TEXT,
+    sequence_number integer NULL,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),
     UNIQUE(class_id, session_date, start_time) -- Prevent duplicate sessions
@@ -5030,6 +5095,7 @@ CREATE TABLE IF NOT EXISTS invoice_line_items (
     service_period_start DATE,
     service_period_end DATE,
     sort_order INTEGER DEFAULT 0,
+    tax_amount_cents INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -5839,7 +5905,8 @@ CREATE TABLE IF NOT EXISTS events (
     -- Additional metadata
     external_url text, -- For external registration or info
     notes text,
-    visibility event_visibility_enum NOT NULL DEFAULT 'public' -- Event visibility level
+    visibility event_visibility_enum NOT NULL DEFAULT 'public', -- Event visibility level
+    allow_self_participants boolean NOT NULL DEFAULT false
 );
 
 -- Create event registrations table

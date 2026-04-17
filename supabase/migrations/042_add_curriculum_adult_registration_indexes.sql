@@ -6,9 +6,23 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
+-- engagement_type enum
+DO $$ BEGIN
+  CREATE TYPE public.engagement_type AS ENUM ('program', 'seminar');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
 -- programs.audience_scope
 ALTER TABLE public.programs
   ADD COLUMN IF NOT EXISTS audience_scope public.audience_scope NOT NULL DEFAULT 'youth';
+
+-- programs.engagement_type
+ALTER TABLE public.programs
+  ADD COLUMN IF NOT EXISTS engagement_type public.engagement_type NOT NULL DEFAULT 'program';
+
+-- events.allow_self_participants
+ALTER TABLE public.events
+  ADD COLUMN IF NOT EXISTS allow_self_participants boolean NOT NULL DEFAULT false;
 
 -- classes.allow_self_enrollment
 ALTER TABLE public.classes
