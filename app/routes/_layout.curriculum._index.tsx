@@ -2,7 +2,7 @@ import { useState } from "react";
 import { json, type LoaderFunctionArgs } from "@remix-run/node";
 import { useLoaderData, Link } from "@remix-run/react";
 import { getSupabaseServerClient, getSupabaseAdminClient } from "~/utils/supabase.server";
-import { getAdultPrograms } from "~/services/program.server";
+import { getPrograms } from "~/services/program.server";
 import { EventService } from "~/services/event.server";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -38,8 +38,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   // Fetch active programs, seminars, events, and classes with schedules
   const [programs, seminars, events] = await Promise.all([
-    getAdultPrograms(supabaseServer, 'program'),
-    getAdultPrograms(supabaseServer, 'seminar'),
+    getPrograms({ is_active: true, engagement_type: 'program' }),
+    getPrograms({ is_active: true, engagement_type: 'seminar' }),
     EventService.getUpcomingEvents(),
   ]);
 
