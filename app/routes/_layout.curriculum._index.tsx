@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { json, type LoaderFunctionArgs } from "@remix-run/node";
+import { json } from "@remix-run/node";
 import { useLoaderData, Link } from "@remix-run/react";
-import { getSupabaseServerClient, getSupabaseAdminClient } from "~/utils/supabase.server";
+import { getSupabaseAdminClient } from "~/utils/supabase.server";
 import { getPrograms } from "~/services/program.server";
 import { EventService } from "~/services/event.server";
 import { Badge } from "~/components/ui/badge";
@@ -32,8 +32,7 @@ type ClassWithSchedule = {
     }>;
 };
 
-export async function loader({ request }: LoaderFunctionArgs) {
-  const { supabaseServer } = getSupabaseServerClient(request);
+export async function loader() {
   const supabaseAdmin = getSupabaseAdminClient();
 
   // Fetch active programs, seminars, events, and classes with schedules
