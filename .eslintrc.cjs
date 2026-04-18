@@ -60,7 +60,7 @@ module.exports = {
       plugins: ["@typescript-eslint", "import"],
       parser: "@typescript-eslint/parser",
       rules: {
-        "no-console": "warn",
+        "no-console": "off",
       },
       settings: {
         "import/internal-regex": "^~/",
