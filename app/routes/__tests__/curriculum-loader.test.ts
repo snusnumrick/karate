@@ -1,18 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { LoaderFunctionArgs } from '@remix-run/node';
 
-const mockGetSupabaseServerClient = vi.fn();
 const mockGetSupabaseAdminClient = vi.fn();
-const mockGetAdultPrograms = vi.fn();
+const mockGetPrograms = vi.fn();
 const mockGetUpcomingEvents = vi.fn();
 
 vi.mock('~/utils/supabase.server', () => ({
-  getSupabaseServerClient: (...args: unknown[]) => mockGetSupabaseServerClient(...args),
+  getSupabaseServerClient: vi.fn(),
   getSupabaseAdminClient: () => mockGetSupabaseAdminClient(),
 }));
 
 vi.mock('~/services/program.server', () => ({
-  getAdultPrograms: (...args: unknown[]) => mockGetAdultPrograms(...args),
+  getPrograms: (...args: unknown[]) => mockGetPrograms(...args),
 }));
 
 vi.mock('~/services/event.server', () => ({
@@ -39,7 +37,7 @@ describe('curriculum loader filters', () => {
     vi.clearAllMocks();
   });
 
-  it('includes adult/mixed program classes and excludes youth/seminar classes', async () => {
+  it('includes program-type classes (all audience scopes) and excludes seminar classes', async () => {
     const classesQuery = makeQuery({
       data: [
         {
@@ -142,26 +140,21 @@ describe('curriculum loader filters', () => {
       }),
     };
 
-    const supabaseServer = {};
-    mockGetSupabaseServerClient.mockReturnValue({ supabaseServer, response: new Response() });
     mockGetSupabaseAdminClient.mockReturnValue(supabaseAdmin);
-    mockGetAdultPrograms
+    mockGetPrograms
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([]);
     mockGetUpcomingEvents.mockResolvedValue([]);
 
-    const response = await loader({
-      request: new Request('http://localhost/curriculum'),
-      params: {},
-    } as LoaderFunctionArgs);
+    const response = await loader();
     const payload = await response.json();
 
-    expect(mockGetAdultPrograms).toHaveBeenNthCalledWith(1, supabaseServer, 'program');
-    expect(mockGetAdultPrograms).toHaveBeenNthCalledWith(2, supabaseServer, 'seminar');
+    expect(mockGetPrograms).toHaveBeenNthCalledWith(1, { is_active: true, engagement_type: 'program' });
+    expect(mockGetPrograms).toHaveBeenNthCalledWith(2, { is_active: true, engagement_type: 'seminar' });
     expect(payload.classes.map((classItem: { id: string }) => classItem.id)).toEqual([
       'class-1',
       'class-2',
+      'class-3',
     ]);
   });
 });
-
