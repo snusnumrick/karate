@@ -461,11 +461,11 @@ export default function CurriculumIndex() {
                           </div>
 
                           {classItem.schedules.length > 0 && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div className="flex flex-wrap justify-center gap-4">
                               {classItem.schedules.map((schedule, index) => (
                                 <div
                                   key={index}
-                                  className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 border border-gray-200 dark:border-gray-600"
+                                  className="w-64 bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 border border-gray-200 dark:border-gray-600"
                                 >
                                   <div className="flex items-center justify-between mb-2">
                                     <span className="text-green-600 dark:text-green-400 font-bold text-lg">
