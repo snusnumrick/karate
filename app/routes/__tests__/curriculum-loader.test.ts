@@ -37,7 +37,7 @@ describe('curriculum loader filters', () => {
     vi.clearAllMocks();
   });
 
-  it('includes adult/mixed program classes and excludes youth and seminar classes from schedule', async () => {
+  it('includes all program-type classes and excludes seminar classes from schedule', async () => {
     const classesQuery = makeQuery({
       data: [
         {
@@ -154,6 +154,7 @@ describe('curriculum loader filters', () => {
     expect(payload.classes.map((classItem: { id: string }) => classItem.id)).toEqual([
       'class-1',
       'class-2',
+      'class-3',
     ]);
   });
 });

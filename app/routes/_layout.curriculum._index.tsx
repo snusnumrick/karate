@@ -111,10 +111,6 @@ export async function loader() {
       return null;
     }
 
-    if (!['adults', 'mixed'].includes(rawProgram.audience_scope || '')) {
-      return null;
-    }
-
     const normalizedProgram = rawProgram
       ? {
         id: rawProgram.id,
