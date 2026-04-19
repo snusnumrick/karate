@@ -155,9 +155,9 @@ export default function AdminClassesIndex() {
           </Select>
 
           <Button asChild>
-            <Link to="/admin/classes/new">
+            <Link to={isSeminarView ? "/admin/classes/new?engagement=seminar" : "/admin/classes/new"}>
               <Plus className="h-4 w-4 mr-2" />
-              Create Class
+              {isSeminarView ? "Create Seminar Series" : "Create Class"}
             </Link>
           </Button>
         </div>
@@ -258,9 +258,9 @@ export default function AdminClassesIndex() {
                   : "Get started by creating your first class."}
             </p>
             <Button asChild>
-              <Link to="/admin/classes/new">
+              <Link to={isSeminarView ? "/admin/classes/new?engagement=seminar" : "/admin/classes/new"}>
                 <Plus className="h-4 w-4 mr-2" />
-                Create Class
+                {isSeminarView ? "Create Seminar Series" : "Create Class"}
               </Link>
             </Button>
           </CardContent>
