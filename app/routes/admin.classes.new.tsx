@@ -1,4 +1,4 @@
-import { json, redirect, type ActionFunctionArgs } from "@remix-run/node";
+import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from "@remix-run/node";
 import { useLoaderData, Form, useNavigation, useActionData, Link } from "@remix-run/react";
 import { useState, useEffect } from "react";
 import { AuthenticityTokenInput } from "remix-utils/csrf/react";
@@ -21,10 +21,12 @@ import { validateClassConstraints, getDefaultMaxCapacity, getSessionFrequencyDes
 import { serializeMoney } from "~/utils/money";
 
 
-async function loaderImpl() {
+async function loaderImpl({ request }: LoaderFunctionArgs) {
+  const url = new URL(request.url);
+  const engagement = url.searchParams.get("engagement") === "seminar" ? "seminar" : "program";
 
   const [programs, instructors] = await Promise.all([
-    getPrograms(),
+    getPrograms({ is_active: true, engagement_type: engagement }),
     getInstructors()
   ]);
 
@@ -37,7 +39,7 @@ async function loaderImpl() {
     individual_session_fee: program.individual_session_fee ? serializeMoney(program.individual_session_fee) : undefined,
   }));
 
-  return json({ programs: serializedPrograms, instructors });
+  return json({ programs: serializedPrograms, instructors, engagement });
 }
 
 export const loader = withAdminLoader(loaderImpl);
@@ -53,6 +55,8 @@ async function actionImpl({ request }: ActionFunctionArgs) {
 
     const programId = formData.get("program_id") as string;
     const className = formData.get("name") as string;
+    const engagementValue = formData.get("engagement") as string;
+    const engagement = engagementValue === "seminar" ? "seminar" : "program";
 
     // Get program data to use program name as default if class name is empty
     const [programs] = await Promise.all([getPrograms()]);
@@ -122,7 +126,7 @@ async function actionImpl({ request }: ActionFunctionArgs) {
        }
      }
 
-    return redirect("/admin/classes");
+    return redirect(engagement === "seminar" ? "/admin/classes?engagement=seminar" : "/admin/classes");
   } catch (error) {
     return json(
       { error: error instanceof Error ? error.message : "Failed to create class" },
@@ -134,7 +138,8 @@ async function actionImpl({ request }: ActionFunctionArgs) {
 export const action = withAdminAction(actionImpl);
 
 export default function NewClass() {
-  const { programs, instructors } = useLoaderData<typeof loader>();
+  const { programs, instructors, engagement } = useLoaderData<typeof loader>();
+  const isSeminarView = engagement === "seminar";
   const navigation = useNavigation();
   const actionData = useActionData<typeof action>();
   const isSubmitting = navigation.state === "submitting";
@@ -233,9 +238,13 @@ export default function NewClass() {
 
       <div className="flex items-center gap-4 mb-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Create New Class</h1>
+          <h1 className="text-3xl font-bold tracking-tight">
+            {isSeminarView ? "Create Seminar Series" : "Create New Class"}
+          </h1>
           <p className="text-muted-foreground">
-            Set up a new class with schedule and capacity limits.
+            {isSeminarView
+              ? "Set up a new seminar series with sessions, capacity, and pricing."
+              : "Set up a new class with schedule and capacity limits."}
           </p>
         </div>
       </div>
@@ -248,15 +257,16 @@ export default function NewClass() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Class Details</CardTitle>
+          <CardTitle>{isSeminarView ? "Seminar Series Details" : "Class Details"}</CardTitle>
         </CardHeader>
         <CardContent>
           <Form method="post" className="space-y-4">
             <AuthenticityTokenInput />
+            <input type="hidden" name="engagement" value={engagement} />
             {/* Compact grid layout */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="program_id">Program *</Label>
+                <Label htmlFor="program_id">{isSeminarView ? "Seminar Template *" : "Program *"}</Label>
                 <Select
                   name="program_id"
                   required
@@ -465,13 +475,13 @@ export default function NewClass() {
 
               <div className="flex gap-3">
                 <Button type="button" variant="outline" asChild>
-                  <Link to="/admin/classes">Cancel</Link>
+                  <Link to={isSeminarView ? "/admin/classes?engagement=seminar" : "/admin/classes"}>Cancel</Link>
                 </Button>
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   disabled={isSubmitting || !validationResult.isValid}
                 >
-                  {isSubmitting ? "Creating..." : "Create Class"}
+                  {isSubmitting ? "Creating..." : isSeminarView ? "Create Seminar Series" : "Create Class"}
                 </Button>
               </div>
             </div>

@@ -32,13 +32,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     seminarData = await getSeminarWithSeries(program.id, supabaseServer);
   }
 
-  const isAdultFacingSeminar = Boolean(
-    seminarData
-    && seminarData.engagement_type === 'seminar'
-    && ['adults', 'mixed'].includes(seminarData.audience_scope ?? '')
-  );
-
-  if (!isAdultFacingSeminar) {
+  if (!seminarData || seminarData.engagement_type !== 'seminar') {
     throw new Response("Seminar not found", { status: 404 });
   }
 
