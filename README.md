@@ -105,7 +105,7 @@ See [MONETARY_STORAGE.md](docs/MONETARY_STORAGE.md) for detailed documentation a
 
 ## 📋 System Requirements
 
-- Node.js 18+
+- Node.js 22+
 - npm or yarn
 - Supabase account
 - Stripe account

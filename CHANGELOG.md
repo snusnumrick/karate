@@ -7,24 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Planned
+- **Email Automation:** Invoice delivery and payment reminder automation
+- **Enhanced Reporting:** Advanced analytics and reporting for invoice management
+- **Family Portal Integration:** Invoice viewing and payment history in family portal
+
+## [3.4.0] - 2026-04-18
+
 ### Added
+- Instructor portal routes and workflows for schedules, attendance, messaging, and student context.
+- Public events listing page (`/events`) plus stronger event registration flows for household and self-service participants.
 - Public curriculum route set for adult offerings (`/curriculum`, seminar detail/register routes).
 - Adult/self registration service surface: `getAdultPrograms`, `getSelfEnrollableClasses`, `selfEnrollAdult`, and `registerAdultForEvent`.
 - Self-registration service support for idempotent self-family/self-student provisioning.
 - Migration `042_add_curriculum_adult_registration_indexes.sql` for curriculum and adult registration query paths.
+- Follow-up curriculum schema alignment via `043_add_missing_curriculum_columns.sql`.
+- Waiver PDF generation, storage, download support, and per-student signature flow updates.
 - Regression coverage for curriculum/adult flows (service, route/integration, and dedicated e2e spec).
 - Shared server cache utility for TTL/inflight dedupe and explicit invalidation (`server-cache.server.ts`).
 - Shared cache modules for required waivers and admin db-chat schema metadata with refresh/invalidation paths.
 - Typed service-layer error primitives (`ServiceError`) and mapping helpers.
 - Auth wrapper APIs for route guards (`withAdmin*`, `withFamily*`, `withInstructor*`, `withUser*`).
 - Critical Playwright contract suite for auth guards, waiver/enrollment flows, and HTTP status contracts (`e2e/critical/*`).
+- Generated Playwright coverage scaffolding, feature-catalog generation scripts, and CI workflow updates for broader automated verification.
 - Seeded E2E fixture helpers for dynamic-route coverage (`e2e/utils/fixtures.ts`).
 - New unit/regression test coverage for cache behavior, wrapper adoption, `ServiceError` mapping, schedule summary pipeline, eligibility dedupe, money compatibility, and `select('*')` regressions.
 
 ### Changed
+- Node.js runtime baseline moved to 22.x to match the checked-in engine requirement and lockfile.
+- Family, admin, and instructor route surfaces now consistently rely on wrapper-based auth guards and typed service errors.
 - Event registration flow now supports profile-based self participants with `participant_profile_id` and duplicate protection.
 - Family waiver signer resolution now falls back to profile/user metadata/email prefix when guardian rows are absent (`family_type='self'` compatibility).
 - Public and admin navigation now include curriculum/seminar rollout links.
+- Family dashboard, payment, and registration flows were reworked around incomplete-registration recovery, stronger CSRF handling, and batched data access.
+- Invoice, discount, enrollment, and webhook internals were consolidated around shared mappers, `database-money.ts`, and provider-agnostic payment helpers.
+- Family/homepage/calendar and schedule data paths were optimized with batching, caching, and canonical summary generation.
 - Executed full `CODE_REVIEW_BACKLOG.md` implementation backlog (BL-1 through BL-13).
 - Migrated admin, family, and instructor/protected API routes to wrapper-based auth guards.
 - Standardized enrollment validation to a typed throw contract (`EnrollmentValidationError`).
@@ -37,10 +54,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Playwright discovery now separates `smoke` (`e2e/generated`) and `critical` (`e2e/critical` + `tests/e2e`) projects in `playwright.config.ts`.
 - Hardened E2E role login helper to wait for post-login navigation away from `/login` instead of strict role landing URL assumptions.
 
-### Planned
-- **Email Automation:** Invoice delivery and payment reminder automation
-- **Enhanced Reporting:** Advanced analytics and reporting for invoice management
-- **Family Portal Integration:** Invoice viewing and payment history in family portal
+### Fixed
+- Square payment tokenization, CSP nonce handling, webhook signature verification, and webhook idempotency edge cases.
+- Invoice status emails, overdue/pending statistics, preview/footer rendering, and payment amount serialization issues.
+- Auth refresh-token loops, protected-route sign-out handling, Safari/chunk-load failures, and realtime reconnection noise.
+- Family payment CSRF expiry handling, event registration redirect issues, and waiver display/signer fallbacks.
+- Curriculum visibility/navigation regressions, including youth-program visibility on schedule pages and seminar admin filtering.
 
 ## [3.0.0] - 2025-07-22
 
