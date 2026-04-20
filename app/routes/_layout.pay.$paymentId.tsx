@@ -118,7 +118,14 @@ type ActionErrorResponse = {
 type ApiActionResponse = ActionSuccessResponse | ActionErrorResponse;
 
 // Helper function to get user-friendly product description
-function getPaymentProductDescription(type: Database['public']['Enums']['payment_type_enum'] | undefined | null): string {
+function getPaymentProductDescription(
+    type: Database['public']['Enums']['payment_type_enum'] | undefined | null,
+    notes?: string | null,
+): string {
+    if (type === 'individual_session' && isSeminarPayment(notes)) {
+        return 'Seminar Registration';
+    }
+
     switch (type) {
         case 'monthly_group':
             return 'Monthly Group Class Fee';
@@ -135,6 +142,13 @@ function getPaymentProductDescription(type: Database['public']['Enums']['payment
         default:
             return 'Unknown Item';
     }
+}
+
+function isSeminarPayment(notes?: string | null) {
+    return Boolean(
+        notes?.includes('[seminar_registration:') ||
+        notes?.toLowerCase().includes('seminar registration')
+    );
 }
 
 // --- Loader ---
@@ -178,7 +192,7 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
     const {data: payment, error} = await supabaseAdmin
         .from('payments')
         .select(`
-            id, family_id, subtotal_amount, total_amount, payment_date, payment_method, status, stripe_session_id, payment_intent_id, receipt_url, notes, type, order_id,
+            id, created_at, family_id, subtotal_amount, total_amount, payment_date, payment_method, status, stripe_session_id, payment_intent_id, receipt_url, notes, type, order_id,
             family:family_id (name, email, postal_code),
             payment_students ( student_id ),
             payment_taxes (
@@ -243,6 +257,20 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
 
     let individualSessionUnitAmountCents: number | null = null;
     let individualSessionQuantity: number | null = null;
+    let displayNotes = payment.notes;
+
+    if (payment.type === 'individual_session' && !isSeminarPayment(payment.notes)) {
+        const { data: seminarEnrollment } = await supabaseAdmin
+            .from('enrollments')
+            .select('id')
+            .ilike('notes', `%[seminar_pending_payment:${payment.id}:%`)
+            .limit(1)
+            .maybeSingle();
+
+        if (seminarEnrollment) {
+            displayNotes = 'Seminar registration';
+        }
+    }
 
     if (payment.type === 'individual_session') {
         console.log(`[Payment Loader] Processing individual session pricing for payment ${paymentId}, family ${payment.family_id}`);
@@ -334,6 +362,7 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
         subtotal_amount: subtotalMoney,
         total_amount: totalMoney,
         tax_amount: totalTaxMoney,
+        notes: displayNotes,
         family: payment.family ? {
             name: payment.family.name ?? undefined,
             email: payment.family.email ?? undefined,
@@ -815,7 +844,13 @@ export default function PaymentPage() {
     const paymentStatusLabel = formatPaymentStatus(payment.status);
     const isInitializingPayment = paymentIntentFetcher.state === "submitting";
     const hasDiscount = Boolean(payment.discount_amount && payment.discount_amount > 0);
-    const paymentProductDescription = getPaymentProductDescription(payment.type);
+    const paymentProductDescription = getPaymentProductDescription(payment.type, payment.notes);
+    const paymentStartedAt = formatPaymentStartedAt(payment.created_at);
+    const checkoutEnvironmentLabel = formatCheckoutEnvironment(providerConfig.environment);
+    const linkedStudentCount = payment.payment_students.length;
+    const taxesIncludedLabel = groupedTaxes.length > 0
+        ? groupedTaxes.map((tax) => tax.description).join(', ')
+        : 'No tax applied';
 
 
     return (
@@ -963,49 +998,40 @@ export default function PaymentPage() {
                                     <Receipt className="h-6 w-6" />
                                 </div>
                                 <div>
-                                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Payment Details</h2>
+                                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Payment Reference</h2>
                                     <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
-                                        Review the details associated with this payment session.
+                                        Details specific to this checkout session.
                                     </p>
                                 </div>
                             </div>
 
                             <div className="space-y-4">
-                                <PaymentDetailRow label="Account" value={payment.family?.name ?? "N/A"} />
+                                <PaymentDetailRow
+                                    label="Reference ID"
+                                    value={<span className="font-mono text-sm">{payment.id}</span>}
+                                />
+                                <PaymentDetailRow label="Started" value={paymentStartedAt} />
                                 {payment.family?.email && (
-                                    <PaymentDetailRow label="Email" value={payment.family.email} />
+                                    <PaymentDetailRow label="Billing Email" value={payment.family.email} />
                                 )}
-                                <PaymentDetailRow label="Product" value={paymentProductDescription} />
-                                <PaymentDetailRow label="Provider" value={providerName} />
+                                <PaymentDetailRow label="Checkout" value={`${providerName} · ${checkoutEnvironmentLabel}`} />
                                 <PaymentDetailRow
-                                    label="Status"
-                                    value={
-                                        <span className={getPaymentStatusClasses(payment.status)}>
-                                            {paymentStatusLabel}
-                                        </span>
-                                    }
+                                    label="Taxes Included"
+                                    value={taxesIncludedLabel}
                                 />
                                 <PaymentDetailRow
-                                    label="Subtotal"
-                                    value={formatMoney(payment.subtotal_amount)}
+                                    label="Discount"
+                                    value={hasDiscount ? 'Already included in subtotal' : 'No discount applied'}
                                 />
-                                {hasDiscount && (
+                                {linkedStudentCount > 0 && (
                                     <PaymentDetailRow
-                                        label="Discount"
-                                        value="Included in subtotal"
+                                        label="Linked Students"
+                                        value={`${linkedStudentCount} ${linkedStudentCount === 1 ? 'student' : 'students'}`}
                                     />
                                 )}
-                                {groupedTaxes.map((tax) => (
-                                    <PaymentDetailRow
-                                        key={tax.description}
-                                        label={tax.description}
-                                        value={formatMoney(tax.amount)}
-                                    />
-                                ))}
                                 <PaymentDetailRow
-                                    label="Total"
-                                    value={formatMoney(payment.total_amount)}
-                                    emphasized
+                                    label="Status Check"
+                                    value={payment.status === 'failed' ? 'Previous payment attempt failed and can be retried here.' : 'You can leave this page and come back later to finish this payment.'}
                                 />
                             </div>
                         </div>
@@ -1063,6 +1089,37 @@ function formatPaymentStatus(status: string | null | undefined) {
     if (status === "succeeded") return "Paid";
     if (status === "failed") return "Failed";
     return "Pending";
+}
+
+function formatPaymentStartedAt(value: string | null | undefined) {
+    if (!value) {
+        return "Recently created";
+    }
+
+    return new Date(value).toLocaleString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+    });
+}
+
+function formatCheckoutEnvironment(environment?: string | null) {
+    if (!environment) {
+        return 'Standard checkout';
+    }
+
+    const normalized = environment.toLowerCase();
+    if (normalized === 'sandbox' || normalized === 'test') {
+        return 'Test environment';
+    }
+
+    if (normalized === 'production' || normalized === 'live') {
+        return 'Live environment';
+    }
+
+    return environment;
 }
 
 function getPaymentStatusClasses(status: string | null | undefined) {

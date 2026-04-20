@@ -115,13 +115,24 @@ export function buildSeminarPendingPaymentMarker({
 }
 
 export function buildSeminarPaymentNotes({
+  existingNotes,
   seriesId,
   studentId,
 }: {
+  existingNotes?: string | null;
   seriesId: string;
   studentId: string;
 }) {
-  return `Seminar registration ${buildSeminarPaymentMarker({ seriesId, studentId })}`;
+  const marker = buildSeminarPaymentMarker({ seriesId, studentId });
+
+  if (existingNotes?.includes(marker)) {
+    return existingNotes;
+  }
+
+  const seminarNotes = `Seminar registration ${marker}`;
+  return existingNotes?.trim()
+    ? `${existingNotes}\n${seminarNotes}`
+    : seminarNotes;
 }
 
 export function buildEnrollmentPendingPaymentNotes({
@@ -197,14 +208,14 @@ async function findPendingPaymentById({
 }) {
   const { data: payment } = await supabase
     .from('payments')
-    .select('id')
+    .select('id, notes')
     .eq('id', paymentId)
     .eq('family_id', familyId)
     .eq('type', 'individual_session')
     .eq('status', 'pending')
     .maybeSingle();
 
-  return payment?.id ?? null;
+  return payment ?? null;
 }
 
 async function findExistingPendingSeminarPayment({
@@ -243,7 +254,7 @@ async function findExistingPendingSeminarPayment({
   );
 
   if (exactNoteMatch) {
-    return exactNoteMatch.id;
+    return exactNoteMatch;
   }
 
   const matchingTotalPayments = pendingPayments.filter((payment) => payment.total_amount === expectedTotalCents);
@@ -252,7 +263,7 @@ async function findExistingPendingSeminarPayment({
   );
 
   if (studentLinkedPayments.length === 1) {
-    return studentLinkedPayments[0].id;
+    return studentLinkedPayments[0];
   }
 
   const enrollmentCreatedAtTime = new Date(enrollmentCreatedAt).getTime();
@@ -269,15 +280,15 @@ async function findExistingPendingSeminarPayment({
   });
 
   if (legacyCandidates.length === 1) {
-    return legacyCandidates[0].id;
+    return legacyCandidates[0];
   }
 
   if (matchingTotalPayments.length === 1) {
-    return matchingTotalPayments[0].id;
+    return matchingTotalPayments[0];
   }
 
   if (pendingPayments.length === 1) {
-    return pendingPayments[0].id;
+    return pendingPayments[0];
   }
 
   return null;
@@ -642,8 +653,9 @@ async function handleSeminarRegistration(formData: FormData, request: Request) {
           })
         : null;
 
-      const existingPendingPaymentId = verifiedPendingPaymentId
-        ?? await findExistingPendingSeminarPayment({
+      const existingPendingPayment = verifiedPendingPaymentId
+        ? verifiedPendingPaymentId
+        : await findExistingPendingSeminarPayment({
           familyId,
           studentId,
           seriesId,
@@ -652,10 +664,23 @@ async function handleSeminarRegistration(formData: FormData, request: Request) {
           supabase: supabaseAdmin,
         });
 
-      if (existingPendingPaymentId) {
+      if (existingPendingPayment) {
+        const updatedPaymentNotes = buildSeminarPaymentNotes({
+          existingNotes: existingPendingPayment.notes,
+          seriesId,
+          studentId,
+        });
+
+        if (updatedPaymentNotes !== existingPendingPayment.notes) {
+          await supabaseAdmin
+            .from('payments')
+            .update({ notes: updatedPaymentNotes })
+            .eq('id', existingPendingPayment.id);
+        }
+
         const updatedEnrollmentNotes = buildEnrollmentPendingPaymentNotes({
           existingNotes: existingEnrollment.notes,
-          paymentId: existingPendingPaymentId,
+          paymentId: existingPendingPayment.id,
           seriesId,
           studentId,
         });
@@ -667,7 +692,7 @@ async function handleSeminarRegistration(formData: FormData, request: Request) {
             .eq('id', existingEnrollment.id);
         }
 
-        return redirect(`/pay/${existingPendingPaymentId}`, { headers });
+        return redirect(`/pay/${existingPendingPayment.id}`, { headers });
       }
     }
 
