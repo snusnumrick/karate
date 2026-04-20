@@ -574,85 +574,91 @@ export default function NewProgram() {
             <div className="space-y-6">
               <div className="border-b pb-4">
                 <h3 className="text-lg font-semibold text-foreground">Pricing Structure</h3>
-                <p className="text-sm text-muted-foreground mt-1">Set up the fee structure for this program</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {isSeminarView ? "Set the default registration fee for this seminar" : "Set up the fee structure for this program"}
+                </p>
               </div>
 
+              {!isSeminarView && (
+                <div className="grid gap-6 md:grid-cols-2">
+                  <div className="space-y-3">
+                    <Label htmlFor="monthly_fee" className="text-sm font-medium">Monthly Fee ($)</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">$</span>
+                      <Input
+                        id="monthly_fee"
+                        name="monthly_fee"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="120.00"
+                        className={`h-11 pl-8 ${actionData?.errors?.monthly_fee ? "border-red-500" : ""}`}
+                        tabIndex={9}
+                      />
+                    </div>
+                    {actionData?.errors?.monthly_fee && (
+                      <p className="text-sm text-red-500 flex items-center gap-1">
+                        <span className="text-xs">⚠</span>
+                        {actionData.errors.monthly_fee}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label htmlFor="yearly_fee" className="text-sm font-medium">Yearly Fee ($)</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">$</span>
+                      <Input
+                        id="yearly_fee"
+                        name="yearly_fee"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="1200.00"
+                        className={`h-11 pl-8 ${actionData?.errors?.yearly_fee ? "border-red-500" : ""}`}
+                        tabIndex={10}
+                      />
+                    </div>
+                    {actionData?.errors?.yearly_fee && (
+                      <p className="text-sm text-red-500 flex items-center gap-1">
+                        <span className="text-xs">⚠</span>
+                        {actionData.errors.yearly_fee}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <div className="grid gap-6 md:grid-cols-2">
+                {!isSeminarView && (
+                  <div className="space-y-3">
+                    <Label htmlFor="individual_session_fee" className="text-sm font-medium">Individual Session Fee ($)</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">$</span>
+                      <Input
+                        id="individual_session_fee"
+                        name="individual_session_fee"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="30.00"
+                        className={`h-11 pl-8 ${actionData?.errors?.individual_session_fee ? "border-red-500" : ""}`}
+                        tabIndex={11}
+                      />
+                    </div>
+                    {actionData?.errors?.individual_session_fee && (
+                      <p className="text-sm text-red-500 flex items-center gap-1">
+                        <span className="text-xs">⚠</span>
+                        {actionData.errors.individual_session_fee}
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 <div className="space-y-3">
-                  <Label htmlFor="monthly_fee" className="text-sm font-medium flex items-center gap-2">
-                    <span>Monthly Fee ($)</span>
+                  <Label htmlFor="registration_fee" className="text-sm font-medium">
+                    {isSeminarView ? "Registration Fee ($)" : "Registration Fee ($)"}
                   </Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">$</span>
-                    <Input
-                      id="monthly_fee"
-                      name="monthly_fee"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder="120.00"
-                      className={`h-11 pl-8 ${actionData?.errors?.monthly_fee ? "border-red-500" : ""}`}
-                      tabIndex={9}
-                    />
-                  </div>
-                  {actionData?.errors?.monthly_fee && (
-                    <p className="text-sm text-red-500 flex items-center gap-1">
-                      <span className="text-xs">⚠</span>
-                      {actionData.errors.monthly_fee}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-3">
-                  <Label htmlFor="yearly_fee" className="text-sm font-medium">Yearly Fee ($)</Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">$</span>
-                    <Input
-                      id="yearly_fee"
-                      name="yearly_fee"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder="1200.00"
-                      className={`h-11 pl-8 ${actionData?.errors?.yearly_fee ? "border-red-500" : ""}`}
-                      tabIndex={10}
-                    />
-                  </div>
-                  {actionData?.errors?.yearly_fee && (
-                    <p className="text-sm text-red-500 flex items-center gap-1">
-                      <span className="text-xs">⚠</span>
-                      {actionData.errors.yearly_fee}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid gap-6 md:grid-cols-2">
-                <div className="space-y-3">
-                  <Label htmlFor="individual_session_fee" className="text-sm font-medium">Individual Session Fee ($)</Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">$</span>
-                    <Input
-                      id="individual_session_fee"
-                      name="individual_session_fee"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder="30.00"
-                      className={`h-11 pl-8 ${actionData?.errors?.individual_session_fee ? "border-red-500" : ""}`}
-                      tabIndex={11}
-                    />
-                  </div>
-                  {actionData?.errors?.individual_session_fee && (
-                    <p className="text-sm text-red-500 flex items-center gap-1">
-                      <span className="text-xs">⚠</span>
-                      {actionData.errors.individual_session_fee}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-3">
-                  <Label htmlFor="registration_fee" className="text-sm font-medium">Registration Fee ($)</Label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">$</span>
                     <Input
@@ -661,11 +667,14 @@ export default function NewProgram() {
                       type="number"
                       step="0.01"
                       min="0"
-                      placeholder="50.00"
+                      placeholder={isSeminarView ? "150.00" : "50.00"}
                       className="h-11 pl-8"
                       tabIndex={12}
                     />
                   </div>
+                  {isSeminarView && (
+                    <p className="text-xs text-muted-foreground">Default price per registration — can be overridden per series</p>
+                  )}
                 </div>
               </div>
             </div>
