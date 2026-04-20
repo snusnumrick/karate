@@ -408,10 +408,23 @@ export const breadcrumbPatterns = {
     { label: "New Class", current: true },
   ],
 
+  adminSeminarNew: () => [
+    { label: "Admin Dashboard", href: "/admin" },
+    { label: "Seminars", href: "/admin/classes?engagement=seminar" },
+    { label: "New Seminar", current: true },
+  ],
+
   adminClassEdit: (className: string) => [
     { label: "Admin Dashboard", href: "/admin" },
     { label: "Classes", href: "/admin/classes" },
     { label: `Edit ${className}`, current: true },
+  ],
+
+  adminSeminarSessions: (seminarName: string, seminarId: string) => [
+    { label: "Admin Dashboard", href: "/admin" },
+    { label: "Seminars", href: "/admin/classes?engagement=seminar" },
+    { label: seminarName, href: `/admin/classes/${seminarId}/edit` },
+    { label: "Sessions", current: true },
   ],
 
   adminDiscountCodeNew: () => [

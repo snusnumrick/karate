@@ -169,18 +169,23 @@ export default function ClassSessions() {
     return sessionDate < today;
   });
 
+  const isSeminarView = classData.program.engagement_type === 'seminar';
+
   return (
     <div className="container mx-auto py-6">
-      <AppBreadcrumb 
-        items={breadcrumbPatterns.adminClassSessions(classData.name, classData.id)} 
+      <AppBreadcrumb
+        items={isSeminarView
+          ? breadcrumbPatterns.adminSeminarSessions(classData.name, classData.id)
+          : breadcrumbPatterns.adminClassSessions(classData.name, classData.id)
+        }
         className="mb-6"
       />
 
       <div className="flex items-center gap-4 mb-6">
         <div className="flex-1">
-          <h1 className="text-3xl font-bold tracking-tight">Class Sessions</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{isSeminarView ? "Seminar Sessions" : "Class Sessions"}</h1>
           <p className="text-muted-foreground">
-            {classData.name} • Manage individual class sessions
+            {classData.name} • {isSeminarView ? "Manage individual seminar sessions" : "Manage individual class sessions"}
           </p>
         </div>
         <Button variant="outline" size="sm" asChild>

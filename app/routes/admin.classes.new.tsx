@@ -256,8 +256,8 @@ export default function NewClass() {
 
   return (
     <div className="container mx-auto py-6">
-      <AppBreadcrumb 
-        items={breadcrumbPatterns.adminClassNew()} 
+      <AppBreadcrumb
+        items={isSeminarView ? breadcrumbPatterns.adminSeminarNew() : breadcrumbPatterns.adminClassNew()}
         className="mb-6"
       />
 
