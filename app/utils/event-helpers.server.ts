@@ -1,5 +1,6 @@
 import { EventTypeService } from "~/services/event-type.server";
 import { getSupabaseAdminClient } from "~/utils/supabase.server";
+import { isNetworkFetchError } from "~/utils/network-errors.server";
 
 type EventTypeConfig = Record<string, { label: string; color: string }>;
 
@@ -123,7 +124,11 @@ export async function getEventTypeConfigWithDarkMode(request: Request) {
 
       return config;
     } catch (error) {
-      console.warn('Failed to fetch event types via admin client; falling back to request-scoped client.', error);
+      if (isNetworkFetchError(error)) {
+        console.warn('Event type fetch via admin client failed due to a temporary network issue; falling back to request-scoped client.');
+      } else {
+        console.warn('Failed to fetch event types via admin client; falling back to request-scoped client.', error);
+      }
 
       try {
         const eventTypeService = new EventTypeService(request);
@@ -135,7 +140,11 @@ export async function getEventTypeConfigWithDarkMode(request: Request) {
         };
         return config;
       } catch (fallbackError) {
-        console.warn('Fallback fetch for event type config failed:', fallbackError);
+        if (isNetworkFetchError(fallbackError)) {
+          console.warn('Fallback fetch for event type config failed due to a temporary network issue.');
+        } else {
+          console.warn('Fallback fetch for event type config failed:', fallbackError);
+        }
         return {};
       }
     } finally {

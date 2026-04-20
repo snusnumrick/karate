@@ -23,6 +23,7 @@ import type {
 } from '~/types/multi-class';
 import { formatLocalDate } from '~/components/calendar/utils';
 import { formatDate, getTodayLocalDateString, getCurrentDateTimeInTimezone } from '~/utils/misc';
+import { isNetworkFetchError } from '~/utils/network-errors.server';
 
 /**
  * Get all instructors (profiles with instructor role)
@@ -1079,7 +1080,11 @@ export async function getMainPageScheduleData(
 
       return summary;
     } catch (error) {
-      console.error('Error fetching main page schedule data via RPC:', error);
+      if (isNetworkFetchError(error)) {
+        console.warn('Unable to fetch main page schedule data due to a temporary network issue.');
+      } else {
+        console.error('Error fetching main page schedule data via RPC:', error);
+      }
       mainPageScheduleCache = {
         data: null,
         expiresAt: Date.now() + MAIN_PAGE_SCHEDULE_CACHE_TTL

@@ -2,6 +2,7 @@ import { getSupabaseAdminClient } from "~/utils/supabase.server";
 import { siteConfig } from "~/config/site";
 import { getScheduleInfo, getAgeRange, getOpeningHoursSpecification } from "~/utils/schedule";
 import { DEFAULT_SCHEDULE, getDefaultAgeRangeLabel } from "~/constants/schedule";
+import { isNetworkFetchError } from "~/utils/network-errors.server";
 import type { Database } from "~/types/database.types";
 
 // Type definitions
@@ -53,37 +54,13 @@ let siteDataCache: SiteData | null = null;
 let cacheExpiry: Date | null = null;
 const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutes
 
-// Debug: Track call frequency to detect loops
-let callCount = 0;
-let lastCallTime = Date.now();
-let callTimestamps: number[] = [];
-
 /**
  * Get comprehensive site data with dynamic schedule information
  * Uses caching to avoid repeated database queries
  */
 export async function getSiteData(forceRefresh = false): Promise<SiteData> {
-  // Debug: Track call frequency
-  const now = Date.now();
-  callCount++;
-  callTimestamps.push(now);
-
-  // Keep only last 10 seconds of timestamps
-  callTimestamps = callTimestamps.filter(t => now - t < 10000);
-
-  // Detect rapid calls (more than 5 calls in 10 seconds)
-  if (callTimestamps.length > 5) {
-    const timeSinceFirst = now - callTimestamps[0];
-    console.warn(`[getSiteData] POTENTIAL LOOP DETECTED: ${callTimestamps.length} calls in ${timeSinceFirst}ms`);
-    console.warn(`[getSiteData] Call stack:`, new Error().stack);
-  }
-
-  const timeSinceLastCall = now - lastCallTime;
-  lastCallTime = now;
-
   // Return cached data if valid and not forcing refresh
   if (!forceRefresh && isCacheValid()) {
-    console.log(`[getSiteData] using cache (call #${callCount}, ${timeSinceLastCall}ms since last call)`);
     return siteDataCache!; // Non-null assertion: isCacheValid() ensures siteDataCache is not null
   }
 
@@ -116,13 +93,16 @@ export async function getSiteData(forceRefresh = false): Promise<SiteData> {
     };
 
     // Update cache
-    console.log(`[getSiteData] updating cache (call #${callCount}, ${timeSinceLastCall}ms since last call)`);
     siteDataCache = siteData;
     cacheExpiry = new Date(Date.now() + CACHE_DURATION_MS);
 
     return siteData;
   } catch (error) {
-    console.error('Error fetching site data:', error);
+    if (isNetworkFetchError(error)) {
+      console.warn('Site data fetch failed due to a temporary network issue; serving fallback data.');
+    } else {
+      console.error('Error fetching site data:', error);
+    }
     
     // Return fallback data based on static config
     return getFallbackSiteData();
@@ -150,7 +130,11 @@ async function fetchDynamicSiteData() {
     .eq('is_active', true);
 
   if (classesError) {
-    console.error('Error fetching classes:', classesError);
+    if (isNetworkFetchError(classesError)) {
+      console.warn('Unable to fetch classes due to a temporary network issue.');
+    } else {
+      console.error('Error fetching classes:', classesError);
+    }
     throw classesError;
   }
   // console.log("[fetchDynamicSiteData] classes",classes);
@@ -161,7 +145,11 @@ async function fetchDynamicSiteData() {
     .eq('is_active', true);
 
   if (programsError) {
-    console.error('Error fetching programs:', programsError);
+    if (isNetworkFetchError(programsError)) {
+      console.warn('Unable to fetch programs due to a temporary network issue.');
+    } else {
+      console.error('Error fetching programs:', programsError);
+    }
     throw programsError;
   }
   // console.log("[fetchDynamicSiteData] programs",programs);

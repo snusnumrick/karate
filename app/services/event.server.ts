@@ -3,6 +3,7 @@ import { getSupabaseAdminClient } from "~/utils/supabase.server";
 import type { Money } from "~/utils/money";
 import { moneyFromRow } from "~/utils/database-money";
 import { getTodayLocalDateString } from "~/utils/misc";
+import { isNetworkFetchError } from "~/utils/network-errors.server";
 
 type EventRow = Database['public']['Tables']['events']['Row'];
 
@@ -138,7 +139,11 @@ export class EventService {
       .limit(6);
 
     if (error) {
-      console.error('Error fetching upcoming events:', error);
+      if (isNetworkFetchError(error)) {
+        console.warn('Unable to fetch upcoming events due to a temporary network issue.');
+      } else {
+        console.error('Error fetching upcoming events:', error);
+      }
       return [];
     }
 
