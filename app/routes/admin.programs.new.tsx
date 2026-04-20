@@ -75,10 +75,12 @@ async function actionImpl({ request }: ActionFunctionArgs) {
   const specialNeedsSupport = formData.get("special_needs_support") === "on";
 
   // Pricing
-  const monthlyFee = formData.get("monthly_fee") ? toMoney(formData.get("monthly_fee")) : undefined;
+  const engagementValueEarly = formData.get("engagement") as string;
+  const isSeminarSubmit = engagementValueEarly === "seminar";
+  const monthlyFee = formData.get("monthly_fee") ? toMoney(formData.get("monthly_fee")) : isSeminarSubmit ? toMoney(0) : undefined;
   const registrationFee = formData.get("registration_fee") ? toMoney(formData.get("registration_fee")) : undefined;
-  const yearlyFee = formData.get("yearly_fee") ? toMoney(formData.get("yearly_fee")) : undefined;
-  const individualSessionFee = formData.get("individual_session_fee") ? toMoney(formData.get("individual_session_fee")) : undefined;
+  const yearlyFee = formData.get("yearly_fee") ? toMoney(formData.get("yearly_fee")) : isSeminarSubmit ? toMoney(0) : undefined;
+  const individualSessionFee = formData.get("individual_session_fee") ? toMoney(formData.get("individual_session_fee")) : isSeminarSubmit ? toMoney(0) : undefined;
 
   const isActive = formData.get("is_active") === "on";
   const engagementValue = formData.get("engagement") as string;
