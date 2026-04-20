@@ -211,7 +211,7 @@ export default function NewClass() {
 
       setValidationResult(result);
     }
-  }, [selectedProgram, maxCapacity, schedules, scheduleTimes, scheduleDays]);
+  }, [selectedProgram, maxCapacity, schedules, scheduleTimes, scheduleDays, isSeminarView]);
 
   const addSchedule = () => {
     const newId = schedules.length;

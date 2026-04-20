@@ -237,7 +237,7 @@ export default function EditClass() {
 
       setValidationResult(result);
     }
-  }, [selectedProgram, maxCapacity, classSchedules]);
+  }, [selectedProgram, maxCapacity, classSchedules, isSeminarView]);
 
   const addSchedule = () => {
     setClassSchedules([...classSchedules, { day: 'monday', time: '09:00' }]);
