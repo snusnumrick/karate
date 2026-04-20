@@ -114,7 +114,13 @@ export default function AdminClassesIndex() {
 
   return (
     <div className="container mx-auto py-6">
-      <AppBreadcrumb items={breadcrumbPatterns.adminClasses()} className="mb-6" />
+      <AppBreadcrumb
+        items={isSeminarView
+          ? [{ label: "Admin Dashboard", href: "/admin" }, { label: "Seminar Series", current: true }]
+          : breadcrumbPatterns.adminClasses()
+        }
+        className="mb-6"
+      />
 
       <div className="flex justify-between items-center mb-6">
         <div>
@@ -129,23 +135,25 @@ export default function AdminClassesIndex() {
         </div>
 
         <div className="flex gap-2">
-          <Select value={selectedEngagement || "all"} onValueChange={handleEngagementFilter}>
-            <SelectTrigger className="w-48 input-custom-styles">
-              <SelectValue placeholder="Filter by type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="program">Program Classes</SelectItem>
-              <SelectItem value="seminar">Seminar Series</SelectItem>
-            </SelectContent>
-          </Select>
+          {!isSeminarView && (
+            <Select value={selectedEngagement || "all"} onValueChange={handleEngagementFilter}>
+              <SelectTrigger className="w-48 input-custom-styles">
+                <SelectValue placeholder="Filter by type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="program">Program Classes</SelectItem>
+                <SelectItem value="seminar">Seminar Series</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
 
           <Select value={selectedProgramId || "all"} onValueChange={handleProgramFilter}>
             <SelectTrigger className="w-48 input-custom-styles">
-              <SelectValue placeholder="Filter by program" />
+              <SelectValue placeholder={isSeminarView ? "Filter by seminar template" : "Filter by program"} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Programs</SelectItem>
+              <SelectItem value="all">{isSeminarView ? "All Seminar Templates" : "All Programs"}</SelectItem>
               {programs.map((program: ProgramType) => (
                 <SelectItem key={program.id} value={program.id}>
                   {program.name}

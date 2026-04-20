@@ -38,7 +38,7 @@ async function loaderImpl({ params }: LoaderFunctionArgs) {
     throw new Response("Class ID is required", { status: 400 });
   }
 
-  const [classData, programs, instructors, schedules] = await Promise.all([
+  const [classData, allPrograms, instructors, schedules] = await Promise.all([
     getClassById(classId),
     getPrograms(),
     getInstructors(),
@@ -49,6 +49,10 @@ async function loaderImpl({ params }: LoaderFunctionArgs) {
     throw new Response("Class not found", { status: 404 });
   }
 
+  const matchingProgram = allPrograms.find(p => p.id === classData.program_id);
+  const isSeminarView = matchingProgram?.engagement_type === 'seminar';
+  const programs = allPrograms.filter(p => p.engagement_type === (isSeminarView ? 'seminar' : 'program'));
+
   // Serialize Money objects in programs
   const serializedPrograms = programs.map(program => ({
     ...program,
@@ -58,7 +62,7 @@ async function loaderImpl({ params }: LoaderFunctionArgs) {
     individual_session_fee: program.individual_session_fee ? serializeMoney(program.individual_session_fee) : undefined,
   }));
 
-  return json({ classData, programs: serializedPrograms, instructors, schedules });
+  return json({ classData, programs: serializedPrograms, instructors, schedules, isSeminarView });
 }
 
 export const loader = withAdminLoader(loaderImpl);
@@ -82,8 +86,9 @@ async function actionImpl({ request, params }: ActionFunctionArgs) {
     const intent = formData.get("intent") as string;
 
     if (intent === "delete") {
+      const isSeminar = formData.get("is_seminar_view") === "true";
       await deleteClass(classId);
-      return redirect("/admin/classes");
+      return redirect(isSeminar ? "/admin/classes?engagement=seminar" : "/admin/classes");
     }
 
     if (intent === "update") {
@@ -150,7 +155,8 @@ async function actionImpl({ request, params }: ActionFunctionArgs) {
         updateClassSchedules(classId, schedules)
       ]);
 
-      return redirect("/admin/classes");
+      const isSeminar = selectedProgram.engagement_type === 'seminar';
+      return redirect(isSeminar ? "/admin/classes?engagement=seminar" : "/admin/classes");
     }
 
     return json({ error: "Invalid intent" }, { status: 400 });
@@ -165,7 +171,7 @@ async function actionImpl({ request, params }: ActionFunctionArgs) {
 export const action = withAdminAction(actionImpl);
 
 export default function EditClass() {
-  const { classData, programs, instructors, schedules } = useLoaderData<typeof loader>();
+  const { classData, programs, instructors, schedules, isSeminarView } = useLoaderData<typeof loader>();
   const submit = useSubmit();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
@@ -229,13 +235,19 @@ export default function EditClass() {
 
   return (
     <div className="container mx-auto py-8 max-w-4xl">
-      <AppBreadcrumb items={breadcrumbPatterns.adminClassEdit(classData.name)} className="mb-6" />
+      <AppBreadcrumb
+        items={isSeminarView
+          ? [{ label: "Admin Dashboard", href: "/admin" }, { label: "Seminar Series", href: "/admin/classes?engagement=seminar" }, { label: classData.name, current: true }]
+          : breadcrumbPatterns.adminClassEdit(classData.name)
+        }
+        className="mb-6"
+      />
 
       <div className="flex items-center gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Edit Class</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{isSeminarView ? "Edit Seminar Series" : "Edit Class"}</h1>
           <p className="text-muted-foreground">
-            Update class details, schedule, and capacity.
+            {isSeminarView ? "Update seminar series details, schedule, and capacity." : "Update class details, schedule, and capacity."}
           </p>
         </div>
       </div>
@@ -249,19 +261,20 @@ export default function EditClass() {
       <div className="space-y-6">
         <Card className="shadow-sm">
           <CardHeader className="pb-4">
-            <CardTitle className="text-xl">Class Details</CardTitle>
+            <CardTitle className="text-xl">{isSeminarView ? "Seminar Series Details" : "Class Details"}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
           <Form method="post" className="space-y-8">
             <AuthenticityTokenInput />
             <input type="hidden" name="intent" value="update" />
+            <input type="hidden" name="is_seminar_view" value={isSeminarView ? "true" : "false"} />
 
             {/* Basic Information Section */}
             <div className="space-y-6">
               <h3 className="text-lg font-medium text-foreground border-b pb-2">Basic Information</h3>
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="program_id" className="text-sm font-medium">Program *</Label>
+                  <Label htmlFor="program_id" className="text-sm font-medium">{isSeminarView ? "Seminar Template *" : "Program *"}</Label>
                   <Select 
                     name="program_id" 
                     value={selectedProgramId}
@@ -288,7 +301,7 @@ export default function EditClass() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="name" className="text-sm font-medium">Class Name</Label>
+                  <Label htmlFor="name" className="text-sm font-medium">{isSeminarView ? "Series Name" : "Class Name"}</Label>
                   <Input
                     id="name"
                     name="name"
@@ -355,8 +368,8 @@ export default function EditClass() {
               <div className="flex items-center space-x-3 p-4 bg-muted/30 rounded-lg">
                 <Checkbox id="is_active" name="is_active" defaultChecked={classData.is_active} className="h-4 w-4" />
                 <div className="space-y-1">
-                  <Label htmlFor="is_active" className="text-sm font-medium cursor-pointer">Active Class</Label>
-                  <p className="text-xs text-muted-foreground">Students can enroll in active classes</p>
+                  <Label htmlFor="is_active" className="text-sm font-medium cursor-pointer">{isSeminarView ? "Active Seminar Series" : "Active Class"}</Label>
+                  <p className="text-xs text-muted-foreground">{isSeminarView ? "Students can enroll in active seminar series" : "Students can enroll in active classes"}</p>
                 </div>
               </div>
             </div>
@@ -495,7 +508,7 @@ export default function EditClass() {
             <div className="flex flex-col sm:flex-row gap-3 pt-6 border-t">
               <div className="flex gap-3">
                 <Button type="button" variant="outline" asChild className="h-10">
-                  <Link to="/admin/classes">Cancel</Link>
+                  <Link to={isSeminarView ? "/admin/classes?engagement=seminar" : "/admin/classes"}>Cancel</Link>
                 </Button>
                 <Button type="button" variant="outline" asChild className="h-10">
                   <Link to={`/admin/classes/${classData.id}/sessions`}>
@@ -509,7 +522,7 @@ export default function EditClass() {
                   disabled={isSubmitting || !validationResult.isValid}
                   className="h-10 px-8"
                 >
-                  {isSubmitting ? "Updating..." : "Update Class"}
+                  {isSubmitting ? "Updating..." : isSeminarView ? "Update Seminar Series" : "Update Class"}
                 </Button>
               </div>
             </div>
@@ -535,7 +548,7 @@ export default function EditClass() {
               tabIndex={0}
             >
               <Trash2 className="h-4 w-4 mr-2" />
-              {isSubmitting ? "Deleting..." : "Delete Class"}
+              {isSubmitting ? "Deleting..." : isSeminarView ? "Delete Seminar Series" : "Delete Class"}
             </Button>
           </CardContent>
         </Card>
@@ -546,7 +559,7 @@ export default function EditClass() {
             <AlertDialogHeader>
               <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
               <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete the class
+                This action cannot be undone. This will permanently delete the {isSeminarView ? "seminar series" : "class"}
                 <span className="font-semibold"> {classData.name}</span> and remove all associated data from our servers.
               </AlertDialogDescription>
             </AlertDialogHeader>
@@ -556,6 +569,7 @@ export default function EditClass() {
                 onClick={() => {
                   const formData = new FormData();
                   formData.append('intent', 'delete');
+                  formData.append('is_seminar_view', isSeminarView ? 'true' : 'false');
                   submit(formData, { method: 'post', replace: true });
                   setIsDeleteDialogOpen(false);
                 }}
