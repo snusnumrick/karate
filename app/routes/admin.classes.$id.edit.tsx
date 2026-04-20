@@ -130,7 +130,8 @@ async function actionImpl({ request, params }: ActionFunctionArgs) {
       const validationResult = validateClassConstraints({
         maxCapacity,
         schedules,
-        program: selectedProgram
+        program: selectedProgram,
+        isSeminar: selectedProgram.engagement_type === 'seminar',
       });
 
       if (!validationResult.isValid) {
@@ -230,7 +231,8 @@ export default function EditClass() {
       const result = validateClassConstraints({
         maxCapacity: maxCapacity ? parseInt(maxCapacity, 10) : undefined,
         schedules: currentSchedules,
-        program: selectedProgram
+        program: selectedProgram,
+        isSeminar: isSeminarView,
       });
 
       setValidationResult(result);

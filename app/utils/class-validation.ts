@@ -16,6 +16,7 @@ export interface ClassValidationData {
   maxCapacity?: number;
   schedules: Array<{ day_of_week: string; start_time: string }>;
   program: ProgramForValidation;
+  isSeminar?: boolean;
 }
 
 /**
@@ -67,8 +68,8 @@ export function validateClassConstraints(data: ClassValidationData): ClassValida
     }
   }
 
-  // Add errors for missing schedules when program has session requirements
-  if (scheduledSessionsPerWeek === 0) {
+  // Add errors for missing schedules when program has session requirements (not applicable for seminars)
+  if (scheduledSessionsPerWeek === 0 && !data.isSeminar) {
     if (data.program.sessions_per_week) {
       errors.push(
         `This class must have exactly ${data.program.sessions_per_week} session${data.program.sessions_per_week > 1 ? 's' : ''} per week. Please add a schedule.`
@@ -78,7 +79,6 @@ export function validateClassConstraints(data: ClassValidationData): ClassValida
         `This class must have at least ${data.program.min_sessions_per_week} session${data.program.min_sessions_per_week > 1 ? 's' : ''} per week. Please add a schedule.`
       );
     } else {
-      // No specific program requirements, but at least one session is required
       errors.push(
         "This class must have at least 1 session per week. Please add a schedule."
       );
