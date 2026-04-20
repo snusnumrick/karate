@@ -152,6 +152,30 @@ export async function loader() {
     individual_session_fee: program.individual_session_fee ? toCents(program.individual_session_fee) : null,
   }));
 
+  // Fetch active seminar runs (classes) to get date ranges
+  const seminarIds = seminars.map(s => s.id);
+  const { data: seminarRunsData } = seminarIds.length > 0
+    ? await supabaseAdmin
+        .from('classes')
+        .select('id, program_id, series_label, series_start_on, series_end_on')
+        .eq('is_active', true)
+        .in('program_id', seminarIds)
+        .not('series_start_on', 'is', null)
+        .order('series_start_on', { ascending: true })
+    : { data: [] };
+
+  const runsByProgramId = (seminarRunsData || []).reduce<Record<string, Array<{
+    id: string;
+    series_label: string | null;
+    series_start_on: string | null;
+    series_end_on: string | null;
+  }>>>((acc, run) => {
+    const key = run.program_id;
+    if (!acc[key]) acc[key] = [];
+    acc[key].push({ id: run.id, series_label: run.series_label, series_start_on: run.series_start_on, series_end_on: run.series_end_on });
+    return acc;
+  }, {});
+
   const seminarsSerialized = seminars.map((seminar) => {
     const {
       monthly_fee,
@@ -173,6 +197,7 @@ export async function loader() {
       single_purchase_price_cents: single_purchase_price ? toCents(single_purchase_price) : null,
       subscription_monthly_price_cents: subscription_monthly_price ? toCents(subscription_monthly_price) : null,
       subscription_yearly_price_cents: subscription_yearly_price ? toCents(subscription_yearly_price) : null,
+      runs: runsByProgramId[seminar.id] || [],
     };
   });
 
@@ -784,11 +809,25 @@ export default function CurriculumIndex() {
                         </span>
                       </div>
                     )}
-                    {seminar.duration_minutes && (
-                      <div className="flex items-center text-gray-700 dark:text-gray-300">
-                        <span className="w-2 h-2 bg-green-500 rounded-full mr-3"></span>
-                        <span className="font-medium">Duration:</span>
-                        <span className="ml-2 text-gray-900 dark:text-white">{seminar.duration_minutes} minutes</span>
+                    {seminar.runs.length > 0 && (
+                      <div className="space-y-1">
+                        {seminar.runs.map((run) => {
+                          const start = run.series_start_on ? new Date(run.series_start_on) : null;
+                          const end = run.series_end_on ? new Date(run.series_end_on) : null;
+                          const fmt = (d: Date) => d.toLocaleDateString('en-CA', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+                          const label = run.series_label || (start && end
+                            ? (start.getUTCFullYear() === end.getUTCFullYear() && start.getUTCMonth() === end.getUTCMonth()
+                                ? `${start.toLocaleDateString('en-CA', { month: 'long', day: 'numeric', timeZone: 'UTC' })} – ${end.getUTCDate()}, ${end.getUTCFullYear()}`
+                                : `${fmt(start)} – ${fmt(end)}`)
+                            : start ? fmt(start) : null);
+                          if (!label) return null;
+                          return (
+                            <div key={run.id} className="flex items-center text-gray-700 dark:text-gray-300">
+                              <span className="w-2 h-2 bg-green-500 rounded-full mr-3 flex-shrink-0"></span>
+                              <span className="text-gray-900 dark:text-white">{label}</span>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                     {(seminar.single_purchase_price_cents != null || seminar.registration_fee_cents != null) && (
