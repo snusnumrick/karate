@@ -1,4 +1,4 @@
-import { json, redirect, type ActionFunctionArgs } from "@remix-run/node";
+import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from "@remix-run/node";
 import { Form, useActionData, useLoaderData, useNavigation, Link } from "@remix-run/react";
 import { withAdminLoader, withAdminAction } from "~/utils/auth.server";
 import { createProgram } from "~/services/program.server";
@@ -31,9 +31,10 @@ type ActionData = {
   };
 };
 
-async function loaderImpl() {
+async function loaderImpl({ request }: LoaderFunctionArgs) {
+  const url = new URL(request.url);
+  const engagement = url.searchParams.get("engagement") === "seminar" ? "seminar" : "program";
 
-  // Get all available waivers
   const supabaseAdmin = getSupabaseAdminClient();
   const { data: allWaivers } = await supabaseAdmin
     .from('waivers')
@@ -42,6 +43,7 @@ async function loaderImpl() {
 
   return json({
     allWaivers: allWaivers ?? [],
+    engagement,
   });
 }
 
@@ -79,6 +81,8 @@ async function actionImpl({ request }: ActionFunctionArgs) {
   const individualSessionFee = formData.get("individual_session_fee") ? toMoney(formData.get("individual_session_fee")) : undefined;
 
   const isActive = formData.get("is_active") === "on";
+  const engagementValue = formData.get("engagement") as string;
+  const engagement = engagementValue === "seminar" ? "seminar" : "program";
 
   // Validation
   const errors: {
@@ -155,6 +159,7 @@ async function actionImpl({ request }: ActionFunctionArgs) {
       registration_fee: registrationFee,
       // System fields
       is_active: isActive,
+      engagement_type: engagement,
     };
 
     const newProgram = await createProgram(programData);
@@ -185,7 +190,7 @@ async function actionImpl({ request }: ActionFunctionArgs) {
       }
     }
 
-    return redirect("/admin/programs");
+    return redirect(engagement === "seminar" ? "/admin/programs?engagement=seminar" : "/admin/programs");
   } catch (error) {
     console.error("Error creating program:", error);
     return json<ActionData>({
@@ -197,23 +202,31 @@ async function actionImpl({ request }: ActionFunctionArgs) {
 export const action = withAdminAction(actionImpl);
 
 export default function NewProgram() {
-  const { allWaivers } = useLoaderData<typeof loader>();
+  const { allWaivers, engagement } = useLoaderData<typeof loader>();
+  const isSeminarView = engagement === "seminar";
   const actionData = useActionData<ActionData>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
 
   return (
     <div className="space-y-6">
-      <AppBreadcrumb 
-        items={breadcrumbPatterns.adminProgramNew()} 
+      <AppBreadcrumb
+        items={isSeminarView
+          ? [{ label: "Admin Dashboard", href: "/admin" }, { label: "Seminar Templates", href: "/admin/programs?engagement=seminar" }, { label: "New Seminar Template", current: true }]
+          : breadcrumbPatterns.adminProgramNew()
+        }
         className="mb-6"
       />
 
       <div className="flex items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Create Program</h1>
+          <h1 className="text-3xl font-bold tracking-tight">
+            {isSeminarView ? "Create Seminar Template" : "Create Program"}
+          </h1>
           <p className="text-muted-foreground">
-            Set up a new martial arts program with pricing and eligibility rules
+            {isSeminarView
+              ? "Define a reusable seminar template with pricing and eligibility rules"
+              : "Set up a new martial arts program with pricing and eligibility rules"}
           </p>
         </div>
       </div>
@@ -225,9 +238,13 @@ export default function NewProgram() {
               <Plus className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <CardTitle className="text-2xl">Create Program</CardTitle>
+              <CardTitle className="text-2xl">
+                {isSeminarView ? "Create Seminar Template" : "Create Program"}
+              </CardTitle>
               <CardDescription className="text-base mt-1">
-                Set up a new martial arts program with pricing and eligibility rules
+                {isSeminarView
+                  ? "Define a reusable seminar template with pricing and eligibility rules"
+                  : "Set up a new martial arts program with pricing and eligibility rules"}
               </CardDescription>
             </div>
           </div>
@@ -235,6 +252,7 @@ export default function NewProgram() {
         <CardContent className="pt-0">
           <Form method="post" className="space-y-8">
             <AuthenticityTokenInput />
+            <input type="hidden" name="engagement" value={engagement} />
             {actionData?.errors?.general && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
                 {actionData.errors.general}
@@ -244,13 +262,13 @@ export default function NewProgram() {
             {/* Basic Information Section */}
             <div className="space-y-6">
               <div className="border-b pb-4">
-                <h3 className="text-lg font-semibold text-foreground">Program Details</h3>
-                <p className="text-sm text-muted-foreground mt-1">Define the program properties and configuration</p>
+                <h3 className="text-lg font-semibold text-foreground">{isSeminarView ? "Seminar Template Details" : "Program Details"}</h3>
+                <p className="text-sm text-muted-foreground mt-1">{isSeminarView ? "Define the seminar template properties and configuration" : "Define the program properties and configuration"}</p>
               </div>
 
               <div className="grid gap-6 md:grid-cols-2">
                 <div className="space-y-3">
-                  <Label htmlFor="name" className="text-sm font-medium">Program Name *</Label>
+                  <Label htmlFor="name" className="text-sm font-medium">{isSeminarView ? "Seminar Name *" : "Program Name *"}</Label>
                   <Input
                     id="name"
                     name="name"
@@ -278,10 +296,10 @@ export default function NewProgram() {
                      />
                      <div className="space-y-1">
                        <Label htmlFor="is_active" className="text-sm font-medium cursor-pointer">
-                         Active Program
+                         {isSeminarView ? "Active Seminar Template" : "Active Program"}
                        </Label>
                        <p className="text-sm text-muted-foreground">
-                         Check to make this program available for enrollment
+                         {isSeminarView ? "Check to make this template available for scheduling" : "Check to make this program available for enrollment"}
                        </p>
                      </div>
                    </div>
@@ -702,7 +720,7 @@ export default function NewProgram() {
                 tabIndex={13}
               >
                 <Plus className="h-4 w-4 mr-2" />
-                {isSubmitting ? "Creating..." : "Create Program"}
+                {isSubmitting ? "Creating..." : isSeminarView ? "Create Seminar Template" : "Create Program"}
               </Button>
               <Button
                 type="button"
@@ -711,7 +729,7 @@ export default function NewProgram() {
                 asChild
                 tabIndex={14}
               >
-                <Link to="/admin/programs">Cancel</Link>
+                <Link to={isSeminarView ? "/admin/programs?engagement=seminar" : "/admin/programs"}>Cancel</Link>
               </Button>
             </div>
           </Form>
