@@ -23,6 +23,9 @@ type RegistrationType = 'self' | 'student';
 type SeminarAudienceScope = 'youth' | 'adults' | 'mixed' | null | undefined;
 type RegistrationWaiverSummary = { id: string; title: string };
 
+const SEMINAR_PAYMENT_MARKER = 'seminar_registration';
+const SEMINAR_PENDING_PAYMENT_MARKER = 'seminar_pending_payment';
+
 export function seminarSupportsAdultRegistration(audienceScope: SeminarAudienceScope) {
   return audienceScope === 'adults' || audienceScope === 'mixed';
 }
@@ -87,6 +90,197 @@ export function buildSeminarWaiverSignHref({
   returnTo: string;
 }) {
   return `/family/waivers/${waiverId}/sign?redirectTo=${encodeURIComponent(returnTo)}`;
+}
+
+export function buildSeminarPaymentMarker({
+  seriesId,
+  studentId,
+}: {
+  seriesId: string;
+  studentId: string;
+}) {
+  return `[${SEMINAR_PAYMENT_MARKER}:${seriesId}:${studentId}]`;
+}
+
+export function buildSeminarPendingPaymentMarker({
+  paymentId,
+  seriesId,
+  studentId,
+}: {
+  paymentId: string;
+  seriesId: string;
+  studentId: string;
+}) {
+  return `[${SEMINAR_PENDING_PAYMENT_MARKER}:${paymentId}:${seriesId}:${studentId}]`;
+}
+
+export function buildSeminarPaymentNotes({
+  seriesId,
+  studentId,
+}: {
+  seriesId: string;
+  studentId: string;
+}) {
+  return `Seminar registration ${buildSeminarPaymentMarker({ seriesId, studentId })}`;
+}
+
+export function buildEnrollmentPendingPaymentNotes({
+  existingNotes,
+  paymentId,
+  seriesId,
+  studentId,
+}: {
+  existingNotes?: string | null;
+  paymentId: string;
+  seriesId: string;
+  studentId: string;
+}) {
+  const marker = buildSeminarPendingPaymentMarker({ paymentId, seriesId, studentId });
+  if (existingNotes?.includes(marker)) {
+    return existingNotes;
+  }
+
+  return existingNotes?.trim()
+    ? `${existingNotes}\n${marker}`
+    : marker;
+}
+
+export function extractSeminarPendingPaymentId({
+  notes,
+  seriesId,
+  studentId,
+}: {
+  notes?: string | null;
+  seriesId: string;
+  studentId: string;
+}) {
+  if (!notes) {
+    return null;
+  }
+
+  const markerPattern = /\[seminar_pending_payment:([^:\]]+):([^:\]]+):([^:\]]+)\]/g;
+
+  for (const match of notes.matchAll(markerPattern)) {
+    const [, paymentId, noteSeriesId, noteStudentId] = match;
+    if (noteSeriesId === seriesId && noteStudentId === studentId) {
+      return paymentId;
+    }
+  }
+
+  return null;
+}
+
+function paymentMatchesSeminarContext({
+  notes,
+  seriesId,
+  studentId,
+}: {
+  notes?: string | null;
+  seriesId: string;
+  studentId: string;
+}) {
+  if (!notes) {
+    return false;
+  }
+
+  return notes.includes(buildSeminarPaymentMarker({ seriesId, studentId }));
+}
+
+async function findPendingPaymentById({
+  paymentId,
+  familyId,
+  supabase,
+}: {
+  paymentId: string;
+  familyId: string;
+  supabase: Pick<ReturnType<typeof getSupabaseAdminClient>, 'from'>;
+}) {
+  const { data: payment } = await supabase
+    .from('payments')
+    .select('id')
+    .eq('id', paymentId)
+    .eq('family_id', familyId)
+    .eq('type', 'individual_session')
+    .eq('status', 'pending')
+    .maybeSingle();
+
+  return payment?.id ?? null;
+}
+
+async function findExistingPendingSeminarPayment({
+  familyId,
+  studentId,
+  seriesId,
+  enrollmentCreatedAt,
+  expectedTotalCents,
+  supabase,
+}: {
+  familyId: string;
+  studentId: string;
+  seriesId: string;
+  enrollmentCreatedAt: string;
+  expectedTotalCents: number;
+  supabase: Pick<ReturnType<typeof getSupabaseAdminClient>, 'from'>;
+}) {
+  const { data: pendingPayments } = await supabase
+    .from('payments')
+    .select('id, created_at, notes, total_amount, payment_students(student_id)')
+    .eq('family_id', familyId)
+    .eq('type', 'individual_session')
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false });
+
+  if (!pendingPayments || pendingPayments.length === 0) {
+    return null;
+  }
+
+  const exactNoteMatch = pendingPayments.find((payment) =>
+    paymentMatchesSeminarContext({
+      notes: payment.notes,
+      seriesId,
+      studentId,
+    }),
+  );
+
+  if (exactNoteMatch) {
+    return exactNoteMatch.id;
+  }
+
+  const matchingTotalPayments = pendingPayments.filter((payment) => payment.total_amount === expectedTotalCents);
+  const studentLinkedPayments = matchingTotalPayments.filter((payment) =>
+    payment.payment_students?.some((paymentStudent) => paymentStudent.student_id === studentId),
+  );
+
+  if (studentLinkedPayments.length === 1) {
+    return studentLinkedPayments[0].id;
+  }
+
+  const enrollmentCreatedAtTime = new Date(enrollmentCreatedAt).getTime();
+  const legacyCandidates = matchingTotalPayments.filter((payment) => {
+    if (!payment.created_at) {
+      return false;
+    }
+
+    if (payment.payment_students && payment.payment_students.length > 0) {
+      return false;
+    }
+
+    return new Date(payment.created_at).getTime() >= enrollmentCreatedAtTime;
+  });
+
+  if (legacyCandidates.length === 1) {
+    return legacyCandidates[0].id;
+  }
+
+  if (matchingTotalPayments.length === 1) {
+    return matchingTotalPayments[0].id;
+  }
+
+  if (pendingPayments.length === 1) {
+    return pendingPayments[0].id;
+  }
+
+  return null;
 }
 
 async function getSeminarRegistrationWaiverState({
@@ -407,25 +601,92 @@ async function handleSeminarRegistration(formData: FormData, request: Request) {
 
     const paymentRequired = isPositive(seminarFee);
 
-    const enrollment = await enrollStudent(
-      {
-        student_id: studentId,
-        class_id: seriesId,
-        program_id: series.program_id,
-        status: paymentRequired ? 'waitlist' : 'active', // Waitlist until payment
-      },
-      supabaseAdmin
-    );
+    const taxCalculation = paymentRequired
+      ? await calculateTaxesForPayment({
+          subtotalAmount: seminarFee,
+          paymentType: 'individual_session',
+          studentIds: [studentId],
+        })
+      : null;
+    const paymentTotal = paymentRequired && taxCalculation
+      ? addMoney(seminarFee, taxCalculation.totalTaxAmount)
+      : ZERO_MONEY;
+    const paymentTotalCents = paymentRequired ? toCents(paymentTotal) : 0;
+
+    const { data: existingEnrollment } = await supabaseAdmin
+      .from('enrollments')
+      .select('id, status, notes, created_at')
+      .eq('class_id', seriesId)
+      .eq('student_id', studentId)
+      .maybeSingle();
+
+    if (existingEnrollment?.status === 'active') {
+      return json({ error: 'Student is already enrolled in this class' }, { status: 400 });
+    }
+
+    if (existingEnrollment?.status === 'trial') {
+      return json({ error: 'Student is already enrolled in this class as a trial' }, { status: 400 });
+    }
+
+    if (existingEnrollment?.status === 'waitlist' && paymentRequired) {
+      const enrollmentPaymentId = extractSeminarPendingPaymentId({
+        notes: existingEnrollment.notes,
+        seriesId,
+        studentId,
+      });
+      const verifiedPendingPaymentId = enrollmentPaymentId
+        ? await findPendingPaymentById({
+            paymentId: enrollmentPaymentId,
+            familyId,
+            supabase: supabaseAdmin,
+          })
+        : null;
+
+      const existingPendingPaymentId = verifiedPendingPaymentId
+        ?? await findExistingPendingSeminarPayment({
+          familyId,
+          studentId,
+          seriesId,
+          enrollmentCreatedAt: existingEnrollment.created_at,
+          expectedTotalCents: paymentTotalCents,
+          supabase: supabaseAdmin,
+        });
+
+      if (existingPendingPaymentId) {
+        const updatedEnrollmentNotes = buildEnrollmentPendingPaymentNotes({
+          existingNotes: existingEnrollment.notes,
+          paymentId: existingPendingPaymentId,
+          seriesId,
+          studentId,
+        });
+
+        if (updatedEnrollmentNotes !== existingEnrollment.notes) {
+          await supabaseAdmin
+            .from('enrollments')
+            .update({ notes: updatedEnrollmentNotes })
+            .eq('id', existingEnrollment.id);
+        }
+
+        return redirect(`/pay/${existingPendingPaymentId}`, { headers });
+      }
+    }
+
+    const enrollment = existingEnrollment?.status === 'waitlist'
+      ? existingEnrollment
+      : await enrollStudent(
+          {
+            student_id: studentId,
+            class_id: seriesId,
+            program_id: series.program_id,
+            status: paymentRequired ? 'waitlist' : 'active', // Waitlist until payment
+          },
+          supabaseAdmin
+        );
 
     if (paymentRequired) {
-      // Calculate taxes
-      const taxCalculation = await calculateTaxesForPayment({
-        subtotalAmount: seminarFee,
-        paymentType: 'individual_session',
-        studentIds: [studentId],
-      });
-
-      const total = addMoney(seminarFee, taxCalculation.totalTaxAmount);
+      if (!taxCalculation) {
+        return json({ error: 'Failed to calculate seminar taxes' }, { status: 500 });
+      }
 
       // Create payment record
       const { data: payment, error: paymentError } = await supabaseAdmin
@@ -433,9 +694,13 @@ async function handleSeminarRegistration(formData: FormData, request: Request) {
         .insert({
           family_id: familyId,
           subtotal_amount: toCents(seminarFee),
-          total_amount: toCents(total),
+          total_amount: paymentTotalCents,
           type: 'individual_session',
           status: 'pending',
+          notes: buildSeminarPaymentNotes({
+            seriesId,
+            studentId,
+          }),
         })
         .select('id')
         .single();
@@ -458,8 +723,30 @@ async function handleSeminarRegistration(formData: FormData, request: Request) {
         await supabaseAdmin.from('payment_taxes').insert(paymentTaxes);
       }
 
-      // Link payment to student (payment is already linked via payment_students table)
-      // No need to update enrollment - payment linkage is through payment_students
+      const { error: paymentStudentError } = await supabaseAdmin
+        .from('payment_students')
+        .insert({
+          payment_id: payment.id,
+          student_id: studentId,
+        });
+
+      if (paymentStudentError) {
+        console.error('Error linking seminar payment to student:', paymentStudentError);
+        await supabaseAdmin.from('payments').delete().eq('id', payment.id);
+        return json({ error: 'Failed to link payment to the student' }, { status: 500 });
+      }
+
+      const enrollmentNotes = buildEnrollmentPendingPaymentNotes({
+        existingNotes: existingEnrollment?.notes ?? null,
+        paymentId: payment.id,
+        seriesId,
+        studentId,
+      });
+
+      await supabaseAdmin
+        .from('enrollments')
+        .update({ notes: enrollmentNotes })
+        .eq('id', enrollment.id);
 
       return redirect(`/pay/${payment.id}`, { headers });
     } else {

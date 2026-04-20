@@ -45,7 +45,10 @@ vi.mock('~/services/waiver.server', () => ({
 import {
   action,
   buildSeminarWaiverSignHref,
+  buildEnrollmentPendingPaymentNotes,
+  buildSeminarPaymentNotes,
   getDefaultSeminarRegistrationType,
+  extractSeminarPendingPaymentId,
   shouldRequireStudentProfileForSeminar,
   shouldShowAddStudentCtaForSeminar,
   shouldShowSeminarRegistrationTypeSelector,
@@ -62,6 +65,7 @@ function makeQuery(config: {
   query.in = vi.fn(() => query);
   query.insert = vi.fn(() => query);
   query.update = vi.fn(() => query);
+  query.delete = vi.fn(() => query);
   query.order = vi.fn(() => query);
   query.limit = vi.fn(() => query);
   query.single = vi.fn().mockResolvedValue(config.singleResult ?? config.result ?? { data: null, error: null });
@@ -138,6 +142,18 @@ describe('seminar registration action', () => {
         error: null,
       },
     });
+    const enrollmentUpdateQuery = makeQuery({
+      result: { data: null, error: null },
+    });
+    const paymentStudentInsertQuery = makeQuery({
+      result: { data: null, error: null },
+    });
+    const existingEnrollmentQuery = makeQuery({
+      maybeSingleResult: {
+        data: null,
+        error: null,
+      },
+    });
 
     const supabaseServer = {
       from: vi.fn((table: string) => {
@@ -153,6 +169,15 @@ describe('seminar registration action', () => {
       from: vi.fn((table: string) => {
         if (table === 'payments') {
           return paymentInsertQuery;
+        }
+        if (table === 'payment_students') {
+          return paymentStudentInsertQuery;
+        }
+        if (table === 'enrollments') {
+          if (!(existingEnrollmentQuery.maybeSingle as ReturnType<typeof vi.fn>).mock.calls.length) {
+            return existingEnrollmentQuery;
+          }
+          return enrollmentUpdateQuery;
         }
         throw new Error(`No admin query configured for ${table}`);
       }),
@@ -194,11 +219,153 @@ describe('seminar registration action', () => {
     expect(paymentInsertQuery.insert).toHaveBeenCalledWith(
       expect.objectContaining({
         family_id: 'family-1',
+        notes: buildSeminarPaymentNotes({
+          seriesId: 'series-1',
+          studentId: 'student-1',
+        }),
         type: 'individual_session',
         status: 'pending',
       }),
     );
+    expect(paymentStudentInsertQuery.insert).toHaveBeenCalledWith({
+      payment_id: 'payment-1',
+      student_id: 'student-1',
+    });
+    expect(enrollmentUpdateQuery.update).toHaveBeenCalledWith({
+      notes: buildEnrollmentPendingPaymentNotes({
+        existingNotes: null,
+        paymentId: 'payment-1',
+        seriesId: 'series-1',
+        studentId: 'student-1',
+      }),
+    });
     expect(mockGetFamilyRegistrationWaiverStatus).toHaveBeenCalledWith('family-1', supabaseServer);
+  });
+
+  it('redirects back to an existing pending payment when the student is already waitlisted for the seminar', async () => {
+    const serverTableQueries: Record<string, Array<Record<string, unknown>>> = {
+      classes: [
+        makeQuery({
+          singleResult: {
+            data: {
+              id: 'series-1',
+              program_id: 'program-1',
+              allow_self_enrollment: true,
+              price_override_cents: 15000,
+              programs: {
+                audience_scope: 'youth',
+                single_purchase_price_cents: null,
+                registration_fee_cents: null,
+              },
+            },
+            error: null,
+          },
+        }),
+      ],
+      profiles: [
+        makeQuery({
+          singleResult: {
+            data: { family_id: 'family-1' },
+            error: null,
+          },
+        }),
+      ],
+      students: [
+        makeQuery({
+          maybeSingleResult: {
+            data: { id: 'student-1' },
+            error: null,
+          },
+        }),
+      ],
+    };
+
+    const existingEnrollmentQuery = makeQuery({
+      maybeSingleResult: {
+        data: {
+          id: 'enrollment-1',
+          status: 'waitlist',
+          notes: null,
+          created_at: '2026-04-20T10:00:00.000Z',
+        },
+        error: null,
+      },
+    });
+    const pendingPaymentsQuery = makeQuery({
+      result: {
+        data: [
+          {
+            id: 'payment-existing',
+            created_at: '2026-04-20T10:05:00.000Z',
+            notes: null,
+            total_amount: 15000,
+            payment_students: [],
+          },
+        ],
+        error: null,
+      },
+    });
+    const enrollmentUpdateQuery = makeQuery({
+      result: { data: null, error: null },
+    });
+
+    const supabaseServer = {
+      from: vi.fn((table: string) => {
+        const queue = serverTableQueries[table];
+        if (!queue || queue.length === 0) {
+          throw new Error(`No server query configured for ${table}`);
+        }
+        return queue.shift();
+      }),
+    };
+
+    const supabaseAdmin = {
+      from: vi.fn((table: string) => {
+        if (table === 'enrollments') {
+          if (!(existingEnrollmentQuery.maybeSingle as ReturnType<typeof vi.fn>).mock.calls.length) {
+            return existingEnrollmentQuery;
+          }
+          return enrollmentUpdateQuery;
+        }
+        if (table === 'payments') {
+          return pendingPaymentsQuery;
+        }
+        throw new Error(`No admin query configured for ${table}`);
+      }),
+    };
+
+    mockGetOptionalUser.mockResolvedValue({
+      supabaseServer,
+      user: { id: 'user-1' },
+      response: { headers: new Headers() },
+    });
+    mockGetSupabaseAdminClient.mockReturnValue(supabaseAdmin);
+
+    const formData = new FormData();
+    formData.set('intent', 'register');
+    formData.set('seriesId', 'series-1');
+    formData.set('registrationType', 'student');
+    formData.set('studentId', 'student-1');
+
+    const response = await action({
+      request: new Request('http://localhost/curriculum/seminars/summer-camp/register?seriesId=series-1', {
+        method: 'POST',
+        body: formData,
+      }),
+      params: { slug: 'summer-camp' },
+    } as unknown as ActionFunctionArgs);
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('Location')).toBe('/pay/payment-existing');
+    expect(mockEnrollStudent).not.toHaveBeenCalled();
+    expect(enrollmentUpdateQuery.update).toHaveBeenCalledWith({
+      notes: buildEnrollmentPendingPaymentNotes({
+        existingNotes: null,
+        paymentId: 'payment-existing',
+        seriesId: 'series-1',
+        studentId: 'student-1',
+      }),
+    });
   });
 
   it('redirects household users into the waiver signing flow when family waivers are missing', async () => {
@@ -347,6 +514,21 @@ describe('seminar registration helpers', () => {
     ).toBe(
       '/family/waivers/waiver-1/sign?redirectTo=%2Fcurriculum%2Fseminars%2Fsummer-camp%2Fregister%3FseriesId%3Dseries-1',
     );
+  });
+
+  it('extracts the stored pending payment marker for the same seminar/student pair', () => {
+    expect(
+      extractSeminarPendingPaymentId({
+        notes: buildEnrollmentPendingPaymentNotes({
+          existingNotes: 'Needs follow-up',
+          paymentId: 'payment-1',
+          seriesId: 'series-1',
+          studentId: 'student-1',
+        }),
+        seriesId: 'series-1',
+        studentId: 'student-1',
+      }),
+    ).toBe('payment-1');
   });
 
   it('defaults youth seminars without students to student registration so the page can prompt for a child profile', () => {
