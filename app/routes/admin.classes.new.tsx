@@ -274,7 +274,7 @@ export default function NewClass() {
                   onValueChange={setSelectedProgramId}
                 >
                   <SelectTrigger className="input-custom-styles">
-                    <SelectValue placeholder="Select program" />
+                    <SelectValue placeholder={isSeminarView ? "Select seminar template" : "Select program"} />
                   </SelectTrigger>
                   <SelectContent>
                     {programs.filter((p: ProgramType) => p.is_active).map((program: ProgramType) => (
