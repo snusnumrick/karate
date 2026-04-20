@@ -3,7 +3,7 @@ import type { Session } from '@supabase/auth-helpers-remix';
 import { getSupabaseServerClient, getUserRole } from "~/utils/supabase.server";
 import type { UserRole } from '~/types/auth';
 import { USER_ROLE_VALUES } from '~/types/auth';
-import { clearSupabaseAuthCookies, isRefreshTokenNotFoundError } from "~/utils/auth-cookies.server";
+import { clearSupabaseAuthCookies, isRefreshTokenNotFoundError, isAuthSessionMissingError } from "~/utils/auth-cookies.server";
 
 type SupabaseServerClientBundle = ReturnType<typeof getSupabaseServerClient>;
 
@@ -34,7 +34,7 @@ export async function getOptionalUser(request: Request): Promise<OptionalUserRes
       clearedInvalidSession: false,
     };
   } catch (error) {
-    if (isRefreshTokenNotFoundError(error)) {
+    if (isRefreshTokenNotFoundError(error) || isAuthSessionMissingError(error)) {
       clearSupabaseAuthCookies(request, headers);
       return {
         ...clientBundle,
@@ -63,7 +63,7 @@ export async function getOptionalSession(request: Request): Promise<OptionalSess
       clearedInvalidSession: false,
     };
   } catch (error) {
-    if (isRefreshTokenNotFoundError(error)) {
+    if (isRefreshTokenNotFoundError(error) || isAuthSessionMissingError(error)) {
       clearSupabaseAuthCookies(request, headers);
       return {
         ...clientBundle,

@@ -43,3 +43,12 @@ export function isRefreshTokenNotFoundError(error: unknown): boolean {
     || (typeof message === "string" && message.includes("Invalid Refresh Token"));
 }
 
+export function isAuthSessionMissingError(error: unknown): boolean {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const { message } = error as AuthErrorLike;
+  return typeof message === "string" && message.includes("Auth session missing");
+}
+
