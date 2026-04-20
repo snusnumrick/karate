@@ -3,14 +3,15 @@ import type { LoaderFunctionArgs } from '@remix-run/node';
 
 const mockGetProgramBySlug = vi.fn();
 const mockGetSeminarWithSeries = vi.fn();
-const mockGetUser = vi.fn();
 
-vi.mock('~/utils/supabase.server', () => ({
-  getSupabaseServerClient: vi.fn(() => ({
-    supabaseServer: {
-      auth: { getUser: () => mockGetUser() },
-    },
-  })),
+vi.mock('~/utils/auth.server', () => ({
+  getOptionalUser: vi.fn().mockResolvedValue({
+    supabaseServer: {},
+    user: null,
+    response: { headers: new Headers() },
+  }),
+  withAdminLoader: (h: unknown) => h,
+  withAdminAction: (h: unknown) => h,
 }));
 
 vi.mock('~/services/program.server', () => ({
@@ -50,7 +51,6 @@ function makeLoaderArgs(slug: string) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockGetUser.mockResolvedValue({ data: { user: null } });
   mockGetProgramBySlug.mockResolvedValue(null);
 });
 

@@ -6,7 +6,6 @@ import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
 import { Checkbox } from "~/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Plus, Edit, Calendar, Archive, Users } from "lucide-react";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { serializeMoney, fromCents, formatMoney, isPositive } from "~/utils/money";
@@ -69,20 +68,16 @@ export default function ProgramsIndex() {
     setSearchParams(nextSearchParams);
   };
 
-  const handleEngagementFilter = (engagement: "all" | "program" | "seminar") => {
-    const nextSearchParams = new URLSearchParams(searchParams);
-    nextSearchParams.delete('filter');
-    if (engagement === "all") {
-      nextSearchParams.delete('engagement');
-    } else {
-      nextSearchParams.set('engagement', engagement);
-    }
-    setSearchParams(nextSearchParams);
-  };
 
   return (
     <div className="space-y-6">
-      <AppBreadcrumb items={breadcrumbPatterns.adminPrograms()} className="mb-6" />
+      <AppBreadcrumb
+        items={isSeminarView
+          ? [{ label: "Admin Dashboard", href: "/admin" }, { label: "Seminar Templates", current: true }]
+          : breadcrumbPatterns.adminPrograms()
+        }
+        className="mb-6"
+      />
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{isSeminarView ? "Seminar Templates" : "Programs"}</h1>
@@ -93,16 +88,6 @@ export default function ProgramsIndex() {
           </p>
         </div>
         <div className="flex items-center gap-4">
-          <Select value={selectedEngagement || "all"} onValueChange={handleEngagementFilter}>
-            <SelectTrigger className="w-48 input-custom-styles">
-              <SelectValue placeholder="Filter by type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="program">Programs</SelectItem>
-              <SelectItem value="seminar">Seminar Templates</SelectItem>
-            </SelectContent>
-          </Select>
           <div className="flex items-center space-x-2">
             <Checkbox
               id="show-inactive"
@@ -117,9 +102,9 @@ export default function ProgramsIndex() {
             </label>
           </div>
           <Button asChild>
-            <Link to="/admin/programs/new">
+            <Link to={isSeminarView ? "/admin/programs/new?engagement=seminar" : "/admin/programs/new"}>
               <Plus className="h-4 w-4 mr-2" />
-              New Program
+              {isSeminarView ? "New Seminar Template" : "New Program"}
             </Link>
           </Button>
         </div>
@@ -156,9 +141,9 @@ export default function ProgramsIndex() {
                 </Button>
               )}
               <Button asChild>
-                <Link to="/admin/programs/new">
+                <Link to={isSeminarView ? "/admin/programs/new?engagement=seminar" : "/admin/programs/new"}>
                   <Plus className="h-4 w-4 mr-2" />
-                  Create Program
+                  {isSeminarView ? "Create Seminar Template" : "Create Program"}
                 </Link>
               </Button>
             </div>
