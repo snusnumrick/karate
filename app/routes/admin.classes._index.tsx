@@ -257,11 +257,11 @@ export default function AdminClassesIndex() {
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Calendar className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No classes found</h3>
+            <h3 className="text-lg font-semibold mb-2">{isSeminarView ? "No seminars found" : "No classes found"}</h3>
             <p className="text-muted-foreground text-center mb-4">
               {selectedProgramId
-                ? "No classes found for the selected program."
-                : selectedEngagement === "seminar"
+                ? isSeminarView ? "No seminars found for the selected seminar template." : "No classes found for the selected program."
+                : isSeminarView
                   ? "No seminars found for the selected filters."
                   : "Get started by creating your first class."}
             </p>
