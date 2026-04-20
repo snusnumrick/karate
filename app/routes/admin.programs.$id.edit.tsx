@@ -122,10 +122,11 @@ async function actionImpl({ request, params }: ActionFunctionArgs) {
   const specialNeedsSupport = formData.get("special_needs_support") === "on";
   
   // Pricing
-  const monthlyFee = formData.get("monthly_fee") ? toMoney(formData.get("monthly_fee")) : undefined;
+  const isSeminarSubmit = formData.get("engagement_type") === "seminar";
+  const monthlyFee = formData.get("monthly_fee") ? toMoney(formData.get("monthly_fee")) : isSeminarSubmit ? toMoney(0) : undefined;
   const registrationFee = formData.get("registration_fee") ? toMoney(formData.get("registration_fee")) : undefined;
-  const yearlyFee = formData.get("yearly_fee") ? toMoney(formData.get("yearly_fee")) : undefined;
-  const individualSessionFee = formData.get("individual_session_fee") ? toMoney(formData.get("individual_session_fee")) : undefined;
+  const yearlyFee = formData.get("yearly_fee") ? toMoney(formData.get("yearly_fee")) : isSeminarSubmit ? toMoney(0) : undefined;
+  const individualSessionFee = formData.get("individual_session_fee") ? toMoney(formData.get("individual_session_fee")) : isSeminarSubmit ? toMoney(0) : undefined;
 
   const isActive = formData.get("is_active") === "on";
 
@@ -255,7 +256,7 @@ async function actionImpl({ request, params }: ActionFunctionArgs) {
       }
     }
 
-    return redirect("/admin/programs");
+    return redirect(isSeminarSubmit ? "/admin/programs?engagement=seminar" : "/admin/programs");
   } catch (error) {
     console.error("Error updating program:", error);
     return json<ActionData>({
@@ -272,6 +273,8 @@ export default function EditProgram() {
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
 
+  const isSeminarView = program.engagement_type === 'seminar';
+
   // Create a map of waiver_id -> program waiver settings for quick lookup
   const programWaiverMap = new Map(
     programWaivers.map(pw => [pw.waiver_id, pw])
@@ -285,14 +288,21 @@ export default function EditProgram() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <AppBreadcrumb items={breadcrumbPatterns.adminProgramEdit(program.name)} className="mb-6" />
-      
+      <AppBreadcrumb
+        items={isSeminarView
+          ? [{ label: "Admin Dashboard", href: "/admin" }, { label: "Seminar Templates", href: "/admin/programs?engagement=seminar" }, { label: program.name, current: true }]
+          : breadcrumbPatterns.adminProgramEdit(program.name)
+        }
+        className="mb-6"
+      />
+
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Edit Program: {program.name}</h1>
+        <h1 className="text-3xl font-bold">{isSeminarView ? `Edit Seminar Template: ${program.name}` : `Edit Program: ${program.name}`}</h1>
       </div>
 
       <Form method="post" className="space-y-6">
         <AuthenticityTokenInput />
+        <input type="hidden" name="engagement_type" value={program.engagement_type} />
         {actionData?.errors?.general && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
             {actionData.errors.general}
@@ -595,27 +605,29 @@ export default function EditProgram() {
           </AdminCardHeader>
           <AdminCardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div>
-              <Label htmlFor="monthly_fee">Monthly Fee ($)</Label>
-              <Input
-                id="monthly_fee"
-                name="monthly_fee"
-                type="number"
-                min="0"
-                step="0.01"
-                defaultValue={moneyToString(program.monthly_fee)}
-                placeholder="e.g., 120.00"
-                className={`input-custom-styles ${actionData?.errors?.monthly_fee ? "border-red-500" : ""}`}
-                tabIndex={16}
-              />
-              {actionData?.errors?.monthly_fee && (
-                <p className="text-sm text-red-500">{actionData.errors.monthly_fee}</p>
-              )}
-              <p className="text-xs text-gray-500 mt-1">Regular monthly fee</p>
-            </div>
+            {!isSeminarView && (
+              <div>
+                <Label htmlFor="monthly_fee">Monthly Fee ($)</Label>
+                <Input
+                  id="monthly_fee"
+                  name="monthly_fee"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  defaultValue={moneyToString(program.monthly_fee)}
+                  placeholder="e.g., 120.00"
+                  className={`input-custom-styles ${actionData?.errors?.monthly_fee ? "border-red-500" : ""}`}
+                  tabIndex={16}
+                />
+                {actionData?.errors?.monthly_fee && (
+                  <p className="text-sm text-red-500">{actionData.errors.monthly_fee}</p>
+                )}
+                <p className="text-xs text-gray-500 mt-1">Regular monthly fee</p>
+              </div>
+            )}
 
             <div>
-              <Label htmlFor="registration_fee">Registration Fee ($)</Label>
+              <Label htmlFor="registration_fee">{isSeminarView ? "Single Purchase Price ($)" : "Registration Fee ($)"}</Label>
               <Input
                 id="registration_fee"
                 name="registration_fee"
@@ -623,50 +635,56 @@ export default function EditProgram() {
                 min="0"
                 step="0.01"
                 defaultValue={moneyToString(program.registration_fee)}
-                placeholder="e.g., 50.00"
+                placeholder={isSeminarView ? "e.g., 150.00" : "e.g., 50.00"}
                 className="input-custom-styles"
                 tabIndex={17}
               />
-              <p className="text-xs text-gray-500 mt-1">One-time registration fee</p>
+              <p className="text-xs text-gray-500 mt-1">
+                {isSeminarView ? "Default price per registration — can be overridden per series" : "One-time registration fee"}
+              </p>
             </div>
 
-            <div>
-              <Label htmlFor="yearly_fee">Yearly Fee ($)</Label>
-              <Input
-                id="yearly_fee"
-                name="yearly_fee"
-                type="number"
-                min="0"
-                step="0.01"
-                defaultValue={moneyToString(program.yearly_fee)}
-                placeholder="e.g., 1200.00"
-                className={`input-custom-styles ${actionData?.errors?.yearly_fee ? "border-red-500" : ""}`}
-                tabIndex={18}
-              />
-              {actionData?.errors?.yearly_fee && (
-                <p className="text-sm text-red-500">{actionData.errors.yearly_fee}</p>
-              )}
-              <p className="text-xs text-gray-500 mt-1">Annual payment option</p>
-            </div>
+            {!isSeminarView && (
+              <div>
+                <Label htmlFor="yearly_fee">Yearly Fee ($)</Label>
+                <Input
+                  id="yearly_fee"
+                  name="yearly_fee"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  defaultValue={moneyToString(program.yearly_fee)}
+                  placeholder="e.g., 1200.00"
+                  className={`input-custom-styles ${actionData?.errors?.yearly_fee ? "border-red-500" : ""}`}
+                  tabIndex={18}
+                />
+                {actionData?.errors?.yearly_fee && (
+                  <p className="text-sm text-red-500">{actionData.errors.yearly_fee}</p>
+                )}
+                <p className="text-xs text-gray-500 mt-1">Annual payment option</p>
+              </div>
+            )}
 
-            <div>
-              <Label htmlFor="individual_session_fee">Individual Session Fee ($)</Label>
-              <Input
-                id="individual_session_fee"
-                name="individual_session_fee"
-                type="number"
-                min="0"
-                step="0.01"
-                defaultValue={moneyToString(program.individual_session_fee)}
-                placeholder="e.g., 35.00"
-                className={`input-custom-styles ${actionData?.errors?.individual_session_fee ? "border-red-500" : ""}`}
-                tabIndex={19}
-              />
-              {actionData?.errors?.individual_session_fee && (
-                <p className="text-sm text-red-500">{actionData.errors.individual_session_fee}</p>
-              )}
-              <p className="text-xs text-gray-500 mt-1">Drop-in session rate</p>
-            </div>
+            {!isSeminarView && (
+              <div>
+                <Label htmlFor="individual_session_fee">Individual Session Fee ($)</Label>
+                <Input
+                  id="individual_session_fee"
+                  name="individual_session_fee"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  defaultValue={moneyToString(program.individual_session_fee)}
+                  placeholder="e.g., 35.00"
+                  className={`input-custom-styles ${actionData?.errors?.individual_session_fee ? "border-red-500" : ""}`}
+                  tabIndex={19}
+                />
+                {actionData?.errors?.individual_session_fee && (
+                  <p className="text-sm text-red-500">{actionData.errors.individual_session_fee}</p>
+                )}
+                <p className="text-xs text-gray-500 mt-1">Drop-in session rate</p>
+              </div>
+            )}
           </div>
           </AdminCardContent>
         </AdminCard>
@@ -711,31 +729,33 @@ export default function EditProgram() {
                           </div>
                         </div>
 
-                        {/* Nested checkboxes for enrollment type */}
-                        <div className="ml-8 pl-4 border-l-2 space-y-2">
-                          <div className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`waiver_trial_${waiver.id}`}
-                              name={`waiver_trial_${waiver.id}`}
-                              defaultChecked={programWaiver?.required_for_trial ?? false}
-                              className="h-4 w-4"
-                            />
-                            <Label htmlFor={`waiver_trial_${waiver.id}`} className="text-xs cursor-pointer">
-                              Required for trial enrollment
-                            </Label>
+                        {/* Nested checkboxes for enrollment type (programs only) */}
+                        {!isSeminarView && (
+                          <div className="ml-8 pl-4 border-l-2 space-y-2">
+                            <div className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`waiver_trial_${waiver.id}`}
+                                name={`waiver_trial_${waiver.id}`}
+                                defaultChecked={programWaiver?.required_for_trial ?? false}
+                                className="h-4 w-4"
+                              />
+                              <Label htmlFor={`waiver_trial_${waiver.id}`} className="text-xs cursor-pointer">
+                                Required for trial enrollment
+                              </Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`waiver_full_${waiver.id}`}
+                                name={`waiver_full_${waiver.id}`}
+                                defaultChecked={programWaiver?.required_for_full_enrollment ?? true}
+                                className="h-4 w-4"
+                              />
+                              <Label htmlFor={`waiver_full_${waiver.id}`} className="text-xs cursor-pointer">
+                                Required for full enrollment
+                              </Label>
+                            </div>
                           </div>
-                          <div className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`waiver_full_${waiver.id}`}
-                              name={`waiver_full_${waiver.id}`}
-                              defaultChecked={programWaiver?.required_for_full_enrollment ?? true}
-                              className="h-4 w-4"
-                            />
-                            <Label htmlFor={`waiver_full_${waiver.id}`} className="text-xs cursor-pointer">
-                              Required for full enrollment
-                            </Label>
-                          </div>
-                        </div>
+                        )}
                       </div>
                     );
                   })}
@@ -755,7 +775,7 @@ export default function EditProgram() {
               asChild
               tabIndex={21}
             >
-              <Link to="/admin/programs">Cancel</Link>
+              <Link to={isSeminarView ? "/admin/programs?engagement=seminar" : "/admin/programs"}>Cancel</Link>
             </Button>
             <Button
               type="submit"
@@ -764,7 +784,7 @@ export default function EditProgram() {
               tabIndex={20}
             >
               <Save className="h-4 w-4" />
-              {isSubmitting ? "Updating..." : "Update Program"}
+              {isSubmitting ? "Updating..." : isSeminarView ? "Update Seminar Template" : "Update Program"}
             </Button>
             </div>
           </AdminCardContent>
