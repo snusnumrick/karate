@@ -1,9 +1,9 @@
 # Summer Camp Setup & Registration Guide
 
-Summer camps are modelled as **Seminar Series** in the system. A seminar has two layers:
+Summer camps are modelled as **Seminars** in the system. A seminar has two layers:
 
 - **Seminar Template** — defines the camp's name, audience, pricing, duration, and age range. Think of it as the "product" definition. Reusable across years.
-- **Seminar Series** — a specific run of that camp with concrete dates, sessions, capacity, and registration status. Think of it as the "scheduled instance".
+- **Seminars** — a specific run of that camp with concrete dates, sessions, capacity, and registration status. Think of it as the "scheduled instance".
 
 ---
 
@@ -23,10 +23,10 @@ Summer camps are modelled as **Seminar Series** in the system. A seminar has two
    - **Active Seminar Template** — leave checked
 4. Click **Create Seminar Template**. This template can be reused for future camp years.
 
-### Step 2 — Create a Seminar Series (the actual camp dates)
+### Step 2 — Create a Seminar (the actual camp dates)
 
-1. Go to **Admin → Curriculum → Seminar Series**
-2. Click **Create Seminar Series**
+1. Go to **Admin → Curriculum → Seminars**
+2. Click **Create Seminar**
 3. Select the **Seminar Template** created in Step 1 from the dropdown
 4. Fill in:
    - **Series Label** — e.g. "Week 1: July 7–11"
@@ -38,7 +38,7 @@ Summer camps are modelled as **Seminar Series** in the system. A seminar has two
    - **Series Status** — start with `Tentative`, change to `Confirmed` once dates are locked
    - **Registration Status** — set to `Open` to allow sign-ups
    - **Allow Self-Enrollment** — enable so families can register themselves online
-5. Click **Create Seminar Series**
+5. Click **Create Seminar**
 
 ### Step 3 — Add Sessions (optional but recommended)
 
@@ -56,7 +56,7 @@ After creating the series, click **Sessions** on the series card to generate or 
 For families without online access, or to manually place a child:
 
 1. Go to **Admin → Enrollments → New Enrollment**
-2. Select the student, then select the seminar series
+2. Select the student, then select the seminar
 3. Set status to `Active`
 4. Handle payment separately via **Admin → Billing → Invoices**
 
@@ -115,7 +115,7 @@ If online registration is not available (the page shows "Contact us to register"
 | Concept | What it means |
 |---|---|
 | **Seminar Template** | The camp "product" — reusable definition shared across all runs |
-| **Seminar Series** | A specific camp run with actual dates and capacity |
+| **Seminars** | A specific camp run with actual dates and capacity |
 | **Series Status: Confirmed** | Dates are locked and the camp is running |
 | **Registration Status: Open** | Families can sign up online |
 | **Allow Self-Enrollment** | Families can register without contacting admin |
@@ -125,7 +125,7 @@ If online registration is not available (the page shows "Contact us to register"
 ## Checklist Before Opening Registration
 
 - [ ] Seminar template created with correct age range, duration, and default price
-- [ ] Seminar series created and linked to the template
+- [ ] Seminar created and linked to the template
 - [ ] Series has start date, end date, and session count set
 - [ ] Min and max capacity configured
 - [ ] Series Status = `Confirmed`
