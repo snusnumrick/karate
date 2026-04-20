@@ -119,6 +119,8 @@ async function actionImpl({ request, params }: ActionFunctionArgs) {
   const minAge = formData.get("min_age") ? parseInt(formData.get("min_age") as string) : undefined;
   const maxAge = formData.get("max_age") ? parseInt(formData.get("max_age") as string) : undefined;
   const genderRestriction = formData.get("gender_restriction") as string || "none";
+  const audienceScopeValue = formData.get("audience_scope") as string;
+  const audienceScope = (["youth", "adults", "mixed"].includes(audienceScopeValue) ? audienceScopeValue : undefined) as 'youth' | 'adults' | 'mixed' | undefined;
   const specialNeedsSupport = formData.get("special_needs_support") === "on";
   
   // Pricing
@@ -199,6 +201,7 @@ async function actionImpl({ request, params }: ActionFunctionArgs) {
       min_age: minAge,
       max_age: maxAge,
       gender_restriction: genderRestriction as 'male' | 'female' | 'none',
+      audience_scope: audienceScope,
       special_needs_support: specialNeedsSupport,
       // Pricing structure
       monthly_fee: monthlyFee,
@@ -575,6 +578,21 @@ export default function EditProgram() {
                 </SelectContent>
               </Select>
               <p className="text-xs text-gray-500 mt-1">Limit enrollment by gender</p>
+            </div>
+
+            <div>
+              <Label htmlFor="audience_scope">Audience Scope <span className="text-red-500">*</span></Label>
+              <Select name="audience_scope" defaultValue={program.audience_scope || (isSeminarView ? "mixed" : "youth")}>
+                <SelectTrigger className="input-custom-styles" tabIndex={15}>
+                  <SelectValue placeholder="Select audience" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="youth">Youth</SelectItem>
+                  <SelectItem value="adults">Adults</SelectItem>
+                  <SelectItem value="mixed">Mixed (All Ages)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-500 mt-1">Who this {isSeminarView ? "seminar" : "program"} is open to</p>
             </div>
 
             <div className="md:col-span-2 lg:col-span-2">
