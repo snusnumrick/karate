@@ -326,16 +326,18 @@ export default function EditClass() {
                   )}
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="name" className="text-sm font-medium">{isSeminarView ? "Series Name" : "Class Name"}</Label>
-                  <Input
-                    id="name"
-                    name="name"
-                    defaultValue={classData.name}
-                    placeholder={isSeminarView ? "Leave empty to use seminar template name" : "Leave empty to use program name"}
-                    className="h-10 input-custom-styles"
-                  />
-                </div>
+                {!isSeminarView && (
+                  <div className="space-y-2">
+                    <Label htmlFor="name" className="text-sm font-medium">Class Name</Label>
+                    <Input
+                      id="name"
+                      name="name"
+                      defaultValue={classData.name}
+                      placeholder="Leave empty to use program name"
+                      className="h-10 input-custom-styles"
+                    />
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <Label htmlFor="max_capacity" className="text-sm font-medium">Max Capacity *</Label>

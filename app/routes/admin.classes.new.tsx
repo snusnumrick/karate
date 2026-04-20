@@ -317,14 +317,16 @@ export default function NewClass() {
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="name">{isSeminarView ? "Seminar Name (Optional)" : "Class Name (Optional)"}</Label>
-                <Input
-                  id="name"
-                  name="name"
-                  placeholder={isSeminarView ? "Leave empty to use seminar template name" : "Leave empty to use program name"}
-                />
-              </div>
+              {!isSeminarView && (
+                <div className="space-y-2">
+                  <Label htmlFor="name">Class Name (Optional)</Label>
+                  <Input
+                    id="name"
+                    name="name"
+                    placeholder="Leave empty to use program name"
+                  />
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="instructor_id">Instructor</Label>
