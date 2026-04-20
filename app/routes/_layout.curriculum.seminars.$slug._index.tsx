@@ -107,7 +107,7 @@ export default function SeminarDetail() {
               <div className="flex items-center gap-3">
                 <Clock className="h-8 w-8 text-primary" />
                 <div>
-                  <p className="text-sm text-muted-foreground">Duration</p>
+                  <p className="text-sm text-muted-foreground">Session Duration</p>
                   <p className="text-xl font-semibold">{seminar.duration_minutes} min</p>
                 </div>
               </div>
