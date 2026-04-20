@@ -41,10 +41,11 @@ type LoaderData = {
 export async function loader({ request }: LoaderFunctionArgs) {
     const { getEventTypeConfigWithDarkMode } = await import("~/utils/event-helpers.server");
     const { getMainPageScheduleData } = await import("~/services/class.server");
-    const { getSupabaseServerClient } = await import("~/utils/supabase.server");
+    const { getOptionalUser } = await import("~/utils/auth.server");
 
     const timings: Record<string, number> = {};
     const overallStart = performance.now();
+    let authHeaders = new Headers();
 
     async function time<T>(label: string, task: () => Promise<T>): Promise<T> {
         const start = performance.now();
@@ -54,10 +55,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
     }
 
     try {
-        const supabaseInitStart = performance.now();
-        const { supabaseServer } = getSupabaseServerClient(request);
-        timings.supabaseInit = performance.now() - supabaseInitStart;
-
         const cookies = parse(request.headers.get('cookie') ?? '');
         const cookieKeys = Object.keys(cookies);
         const hasSessionCookie = cookieKeys.some((key) =>
@@ -70,17 +67,23 @@ export async function loader({ request }: LoaderFunctionArgs) {
         const shouldFetchAuth = hasSessionCookie || hasAuthHeader;
 
         const authPromise = shouldFetchAuth
-            ? time('auth', () => supabaseServer.auth.getUser())
-            : Promise.resolve<{ data: { user: null } }>({ data: { user: null } });
+            ? time('auth', async () => {
+                const supabaseInitStart = performance.now();
+                const { user, response: { headers } } = await getOptionalUser(request);
+                timings.supabaseInit = performance.now() - supabaseInitStart;
+                authHeaders = headers;
+                return user;
+            })
+            : Promise.resolve(null);
 
         const upcomingEventsPromise = time('events', async () => {
-            const { data: { user } } = await authPromise;
+            const user = await authPromise;
             return user ? EventService.getEventsForLoggedInUsers() : EventService.getUpcomingEvents();
         });
         const schedulePromise = time('schedule', () => getMainPageScheduleData());
         const eventTypePromise = time('eventTypes', () => getEventTypeConfigWithDarkMode(request));
 
-        const [{ data: { user } }, upcomingEvents, scheduleData, eventTypeConfig] = await Promise.all([
+        const [user, upcomingEvents, scheduleData, eventTypeConfig] = await Promise.all([
             authPromise,
             upcomingEventsPromise,
             schedulePromise,
@@ -108,6 +111,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
             .map(([key, value]) => `${key};dur=${value.toFixed(2)}`)
             .join(', ');
 
+        const headers = new Headers(authHeaders);
+        headers.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
+        if (serverTimingHeader) {
+            headers.set('Server-Timing', serverTimingHeader);
+        }
+
         console.log('[homepage.metrics]', {
             isLoggedIn: Boolean(user),
             timings
@@ -119,16 +128,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
                 eventTypeConfig,
                 scheduleData
             },
-            {
-                headers: {
-                    // Cache for 5 minutes (300 seconds) to match server-side cache duration
-                    // public: can be cached by browsers and CDNs
-                    // max-age: cache duration in seconds
-                    // stale-while-revalidate: serve stale content while fetching fresh data
-                    'Cache-Control': 'public, max-age=300, stale-while-revalidate=600',
-                    ...(serverTimingHeader ? { 'Server-Timing': serverTimingHeader } : {})
-                }
-            }
+            { headers }
         );
     } catch (error) {
         timings.error = performance.now() - overallStart;
@@ -139,19 +139,19 @@ export async function loader({ request }: LoaderFunctionArgs) {
             .map(([key, value]) => `${key};dur=${value.toFixed(2)}`)
             .join(', ');
 
+        const headers = new Headers(authHeaders);
+        headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+        if (serverTimingHeader) {
+            headers.set('Server-Timing', serverTimingHeader);
+        }
+
         return json(
             { 
                 upcomingEvents: [], 
                 eventTypeConfig,
                 scheduleData: null
             },
-            {
-                headers: {
-                    // Don't cache error responses
-                    'Cache-Control': 'no-cache, no-store, must-revalidate',
-                    ...(serverTimingHeader ? { 'Server-Timing': serverTimingHeader } : {})
-                }
-            }
+            { headers }
         );
     }
 }

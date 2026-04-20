@@ -7,14 +7,24 @@ import {Label} from "~/components/ui/label";
 import {Checkbox} from "~/components/ui/checkbox";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import {getSupabaseServerClient} from "~/utils/supabase.server";
+import { clearSupabaseAuthCookies } from "~/utils/auth-cookies.server";
+import {
+    clearLoginRateLimitCookie,
+    DEFAULT_RETRY_AFTER_SECONDS,
+    formatRetryDelay,
+    getLoginRateLimitState,
+    setLoginRateLimitCookie,
+} from "~/utils/login-rate-limit.server";
 import { csrf } from "~/utils/csrf.server";
 import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 import type {ResendActionData} from "~/routes/api.resend-confirmation"; // Import the type
 import { safeRedirect } from "~/utils/redirect";
+import { useEffect, useState } from "react";
 
 interface ActionResponse {
     error?: string;
     email?: string;
+    retryAfterSeconds?: number;
 }
 
 export async function action({request}: ActionFunctionArgs)
@@ -30,6 +40,7 @@ export async function action({request}: ActionFunctionArgs)
     const password = formData.get("password") as string;
     const {supabaseServer, response} = getSupabaseServerClient(request);
     const headers = response.headers;
+    const rateLimitState = getLoginRateLimitState(request);
 
     console.log(`[Login Action] Triggered at ${new Date().toISOString()} for email: ${email || 'N/A'}`); // Add logging here
 
@@ -37,6 +48,17 @@ export async function action({request}: ActionFunctionArgs)
         console.log("[Login Action] Failed: Missing email or password."); // Add logging
         return json({error: "Email and password are required.", email: email}, {status: 400, headers});
     }
+
+    if (rateLimitState.isLimited) {
+        return json({
+            error: `Too many login attempts. Please wait ${formatRetryDelay(rateLimitState.retryAfterSeconds)} before trying again.`,
+            email,
+            retryAfterSeconds: rateLimitState.retryAfterSeconds,
+        }, { status: 429, headers });
+    }
+
+    // If the browser is carrying stale Supabase auth cookies, clear them before issuing a fresh sign-in.
+    clearSupabaseAuthCookies(request, headers);
 
     console.log("[Login Action] Attempting supabaseServer.auth.signInWithPassword..."); // Add logging
     const {data: authData, error: authError} = await supabaseServer.auth.signInWithPassword({
@@ -50,9 +72,11 @@ export async function action({request}: ActionFunctionArgs)
 
         // Check for Rate Limit Error (HTTP 429)
         if (authError instanceof AuthApiError && authError.status === 429) {
+            setLoginRateLimitCookie(headers, DEFAULT_RETRY_AFTER_SECONDS);
              return json({
-                error: "Too many login attempts. Please wait a few minutes and try again.",
-                email: email
+                error: `Too many login attempts. Supabase is temporarily rate limiting sign-ins from this connection. Please wait ${formatRetryDelay(DEFAULT_RETRY_AFTER_SECONDS)} and try once.`,
+                email,
+                retryAfterSeconds: DEFAULT_RETRY_AFTER_SECONDS,
             }, { status: 429, headers });
         }
 
@@ -99,6 +123,8 @@ export async function action({request}: ActionFunctionArgs)
     const defaultRedirect = profile?.role === 'admin' ? '/admin' : (profile?.role === 'instructor' ? '/instructor' : '/family');
     const redirectToParam = formData.get('redirectTo');
     const redirectTo = safeRedirect(redirectToParam, defaultRedirect);
+
+    clearLoginRateLimitCookie(headers);
 
     return redirect(redirectTo, {headers});
 }
@@ -176,6 +202,23 @@ export default function LoginPage() {
     const successMessage = searchParams.get('message');
     const redirectTo = searchParams.get('redirectTo') || undefined;
     const { heading, linkPrefix, linkLabel, linkHref, linkSuffix, extraMessage } = resolveLoginCopy(redirectTo);
+    const [retryAfterSeconds, setRetryAfterSeconds] = useState(actionData?.retryAfterSeconds ?? 0);
+
+    useEffect(() => {
+        setRetryAfterSeconds(actionData?.retryAfterSeconds ?? 0);
+    }, [actionData?.retryAfterSeconds]);
+
+    useEffect(() => {
+        if (retryAfterSeconds <= 0) {
+            return;
+        }
+
+        const timer = window.setInterval(() => {
+            setRetryAfterSeconds((current) => Math.max(0, current - 1));
+        }, 1000);
+
+        return () => window.clearInterval(timer);
+    }, [retryAfterSeconds]);
 
     // Define a type for the resend action data if needed, or use inline type
     // type ResendActionData = { success?: boolean; error?: string };
@@ -319,14 +362,18 @@ export default function LoginPage() {
                                     </div>
                                 </div>
 
-                                <Button
+                                    <Button
                                     type="submit"
                                     data-testid="login-submit-button"
                                     className="w-full bg-green-600 hover:bg-green-700 text-white dark:bg-green-700 dark:hover:bg-green-800 disabled:opacity-50"
-                                    disabled={isSubmitting} // Disable button when submitting
+                                    disabled={isSubmitting || retryAfterSeconds > 0} // Disable button when submitting
                                     tabIndex={4}
                                 >
-                                    {isSubmitting ? 'Signing in...' : 'Sign in'}
+                                    {isSubmitting
+                                        ? 'Signing in...'
+                                        : retryAfterSeconds > 0
+                                            ? `Try again in ${retryAfterSeconds}s`
+                                            : 'Sign in'}
                                 </Button>
                             </div>
                         </form>

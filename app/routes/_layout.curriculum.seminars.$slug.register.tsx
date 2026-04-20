@@ -1,6 +1,7 @@
 import { json, redirect, type LoaderFunctionArgs, type ActionFunctionArgs } from '@remix-run/node';
 import { useLoaderData, useActionData, Form, useNavigation } from '@remix-run/react';
-import { getSupabaseServerClient, getSupabaseAdminClient } from '~/utils/supabase.server';
+import { getOptionalUser } from '~/utils/auth.server';
+import { getSupabaseAdminClient } from '~/utils/supabase.server';
 import { getProgramBySlug, getSeminarWithSeries } from '~/services/program.server';
 import { createSelfRegistrant, getSelfRegistrantByProfileId } from '~/services/self-registration.server';
 import { EnrollmentValidationError, enrollStudent } from '~/services/enrollment.server';
@@ -31,8 +32,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     throw new Response("Series ID required", { status: 400 });
   }
 
-  const { supabaseServer } = getSupabaseServerClient(request);
-  const { data: { user } } = await supabaseServer.auth.getUser();
+  const { supabaseServer, user, response: { headers } } = await getOptionalUser(request);
 
   // Get seminar details
   const program = await getProgramBySlug(slug, supabaseServer);
@@ -67,7 +67,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   if (!user) {
     const currentUrl = new URL(request.url);
     const redirectTo = `${currentUrl.pathname}${currentUrl.search}`;
-    return redirect(`/login?redirectTo=${encodeURIComponent(redirectTo)}`);
+    return redirect(`/login?redirectTo=${encodeURIComponent(redirectTo)}`, { headers });
   }
 
   // Get user profile and family info
@@ -120,7 +120,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     students,
     requiredWaivers: requiredWaivers || [],
     signedWaiverIds,
-  });
+  }, { headers });
 }
 
 export async function action({ request, params }: ActionFunctionArgs) {
@@ -140,12 +140,13 @@ export async function action({ request, params }: ActionFunctionArgs) {
 }
 
 async function handleSeminarRegistration(formData: FormData, request: Request) {
-  const { supabaseServer } = getSupabaseServerClient(request);
-  const { data: { user } } = await supabaseServer.auth.getUser();
+  const { supabaseServer, user, response: { headers } } = await getOptionalUser(request);
   const supabaseAdmin = getSupabaseAdminClient();
 
   if (!user) {
-    return redirect('/login');
+    const currentUrl = new URL(request.url);
+    const redirectTo = `${currentUrl.pathname}${currentUrl.search}`;
+    return redirect(`/login?redirectTo=${encodeURIComponent(redirectTo)}`, { headers });
   }
 
   try {

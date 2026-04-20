@@ -7,13 +7,13 @@ import PublicNavbar from "~/components/PublicNavbar";
 import FamilyNavbar from "~/components/FamilyNavbar";
 import AdminNavbar from "~/components/AdminNavbar";
 import Footer from "~/components/Footer";
-import { getSupabaseServerClient, getUserRole } from "~/utils/supabase.server";
+import { getUserRole } from "~/utils/supabase.server";
 import { getSiteData } from "~/utils/site-data.server";
 import { setSiteData } from "~/utils/site-data.client";
 import type { Database } from "~/types/database.types";
 import InstructorNavbar from "~/components/InstructorNavbar";
 import { isAdminRole, isInstructorRole, type UserRole } from '~/types/auth';
-import { clearSupabaseAuthCookies, isRefreshTokenNotFoundError } from "~/utils/auth-cookies.server";
+import { getOptionalSession } from "~/utils/auth.server";
 
 
 // Debug: Track loader calls to detect loops
@@ -48,18 +48,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
         console.log(`[_layout loader] First call for ${requestId}`);
     }
 
-    const { supabaseServer, response: { headers }, ENV } = getSupabaseServerClient(request);
-    let session = null;
-    try {
-        const { data, error } = await supabaseServer.auth.getSession();
-        if (error) throw error;
-        session = data.session;
-    } catch (error) {
-        // Invalid refresh token — clear stale auth cookies and treat as no session.
-        if (isRefreshTokenNotFoundError(error)) {
-            clearSupabaseAuthCookies(request, headers);
-        }
-    }
+    const { session, response: { headers }, ENV } = await getOptionalSession(request);
     let userRole: UserRole | null = null;
     if (session?.user) {
         userRole = await getUserRole(session.user.id);

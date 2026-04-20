@@ -1,5 +1,7 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest';
 import {
+  getOptionalSession,
+  getOptionalUser,
   withAdminLoader,
   withFamilyLoader,
   withInstructorLoader,
@@ -7,6 +9,7 @@ import {
 } from '../auth.server';
 
 const mockGetUser = vi.fn();
+const mockGetSession = vi.fn();
 const mockGetUserRole = vi.fn();
 
 vi.mock('~/utils/supabase.server', () => ({
@@ -14,6 +17,7 @@ vi.mock('~/utils/supabase.server', () => ({
     supabaseServer: {
       auth: {
         getUser: () => mockGetUser(),
+        getSession: () => mockGetSession(),
       },
     },
     response: new Response(),
@@ -35,6 +39,45 @@ function mockSignedInUser(userId = 'user-1') {
 describe('auth wrapper contracts', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetSession.mockResolvedValue({ data: { session: null }, error: null });
+  });
+
+  it('getOptionalUser clears stale auth cookies when refresh token lookup fails', async () => {
+    mockGetUser.mockRejectedValue({
+      code: 'refresh_token_not_found',
+      message: 'Invalid Refresh Token: Refresh Token Not Found',
+    });
+
+    const request = new Request('https://example.test/', {
+      headers: {
+        cookie: 'sb-example-auth-token=stale-token',
+      },
+    });
+
+    const result = await getOptionalUser(request);
+
+    expect(result.user).toBeNull();
+    expect(result.clearedInvalidSession).toBe(true);
+    expect(result.response.headers.get('Set-Cookie')).toContain('sb-example-auth-token=');
+  });
+
+  it('getOptionalSession clears stale auth cookies when refresh token lookup fails', async () => {
+    mockGetSession.mockRejectedValue({
+      code: 'refresh_token_not_found',
+      message: 'Invalid Refresh Token: Refresh Token Not Found',
+    });
+
+    const request = new Request('https://example.test/', {
+      headers: {
+        cookie: 'sb-example-auth-token=stale-token',
+      },
+    });
+
+    const result = await getOptionalSession(request);
+
+    expect(result.session).toBeNull();
+    expect(result.clearedInvalidSession).toBe(true);
+    expect(result.response.headers.get('Set-Cookie')).toContain('sb-example-auth-token=');
   });
 
   it('withAdminLoader redirects unauthenticated users to login with redirectTo', async () => {

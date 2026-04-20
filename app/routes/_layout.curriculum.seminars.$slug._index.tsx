@@ -1,6 +1,6 @@
 import { json, type LoaderFunctionArgs, type SerializeFrom } from "@remix-run/node";
 import { useLoaderData, Link } from "@remix-run/react";
-import { getSupabaseServerClient } from "~/utils/supabase.server";
+import { getOptionalUser } from "~/utils/auth.server";
 import { getProgramBySlug, getSeminarWithSeries } from "~/services/program.server";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
@@ -15,8 +15,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     throw new Response("Not Found", { status: 404 });
   }
 
-  const { supabaseServer } = getSupabaseServerClient(request);
-  const { data: { user } } = await supabaseServer.auth.getUser();
+  const { supabaseServer, user, response: { headers } } = await getOptionalUser(request);
 
   // Try to get program by slug first
   const program = await getProgramBySlug(slug, supabaseServer);
@@ -40,7 +39,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     ? serializeSeminarForClient(seminarData)
     : null;
 
-  return json({ seminar, user });
+  return json({ seminar, user }, { headers });
 }
 
 export default function SeminarDetail() {

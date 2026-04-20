@@ -5,32 +5,91 @@ import type { UserRole } from '~/types/auth';
 import { USER_ROLE_VALUES } from '~/types/auth';
 import { clearSupabaseAuthCookies, isRefreshTokenNotFoundError } from "~/utils/auth-cookies.server";
 
-export async function isLoggedIn(request: Request): Promise<boolean> {
-  const { supabaseServer } = getSupabaseServerClient(request);
+type SupabaseServerClientBundle = ReturnType<typeof getSupabaseServerClient>;
+
+type OptionalUserResult = SupabaseServerClientBundle & {
+  user: Session['user'] | null;
+  authError: unknown | null;
+  clearedInvalidSession: boolean;
+};
+
+type OptionalSessionResult = SupabaseServerClientBundle & {
+  session: Session | null;
+  authError: unknown | null;
+  clearedInvalidSession: boolean;
+};
+
+export async function getOptionalUser(request: Request): Promise<OptionalUserResult> {
+  const clientBundle = getSupabaseServerClient(request);
+  const { supabaseServer, response: { headers } } = clientBundle;
+
   try {
-    const { data: { user }, error } = await supabaseServer.auth.getUser();
-    return !(error || !user);
+    const { data, error } = await supabaseServer.auth.getUser();
+    if (error) throw error;
+
+    return {
+      ...clientBundle,
+      user: data.user,
+      authError: null,
+      clearedInvalidSession: false,
+    };
+  } catch (error) {
+    if (isRefreshTokenNotFoundError(error)) {
+      clearSupabaseAuthCookies(request, headers);
+      return {
+        ...clientBundle,
+        user: null,
+        authError: error,
+        clearedInvalidSession: true,
+      };
+    }
+
+    throw error;
+  }
+}
+
+export async function getOptionalSession(request: Request): Promise<OptionalSessionResult> {
+  const clientBundle = getSupabaseServerClient(request);
+  const { supabaseServer, response: { headers } } = clientBundle;
+
+  try {
+    const { data, error } = await supabaseServer.auth.getSession();
+    if (error) throw error;
+
+    return {
+      ...clientBundle,
+      session: data.session,
+      authError: null,
+      clearedInvalidSession: false,
+    };
+  } catch (error) {
+    if (isRefreshTokenNotFoundError(error)) {
+      clearSupabaseAuthCookies(request, headers);
+      return {
+        ...clientBundle,
+        session: null,
+        authError: error,
+        clearedInvalidSession: true,
+      };
+    }
+
+    throw error;
+  }
+}
+
+export async function isLoggedIn(request: Request): Promise<boolean> {
+  try {
+    const { user } = await getOptionalUser(request);
+    return Boolean(user);
   } catch {
     return false;
   }
 }
 
 export async function requireUserId(request: Request): Promise<string> {
-  const { supabaseServer, response: { headers } } = getSupabaseServerClient(request);
+  const { user, response: { headers } } = await getOptionalUser(request);
   const url = new URL(request.url);
   const redirectTo = `${url.pathname}${url.search}`;
-
-  let user = null;
-  try {
-    const { data, error } = await supabaseServer.auth.getUser();
-    if (error) throw error;
-    user = data.user;
-  } catch (error) {
-    if (isRefreshTokenNotFoundError(error)) {
-      clearSupabaseAuthCookies(request, headers);
-    }
-    throw redirect(`/login?redirectTo=${encodeURIComponent(redirectTo)}`, { headers });
-  }
 
   if (!user) {
     clearSupabaseAuthCookies(request, headers);
@@ -46,21 +105,9 @@ type RequireRoleResult = {
 };
 
 export async function requireRole(request: Request, allowedRoles: readonly UserRole[]): Promise<RequireRoleResult> {
-  const { supabaseServer, response: { headers } } = getSupabaseServerClient(request);
+  const { user, response: { headers } } = await getOptionalUser(request);
   const url = new URL(request.url);
   const redirectTo = `${url.pathname}${url.search}`;
-
-  let user = null;
-  try {
-    const { data, error } = await supabaseServer.auth.getUser();
-    if (error) throw error;
-    user = data.user;
-  } catch (error) {
-    if (isRefreshTokenNotFoundError(error)) {
-      clearSupabaseAuthCookies(request, headers);
-    }
-    throw redirect(`/login?redirectTo=${encodeURIComponent(redirectTo)}`, { headers });
-  }
 
   if (!user) {
     clearSupabaseAuthCookies(request, headers);
