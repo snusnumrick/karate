@@ -8,6 +8,7 @@ const mockCreateSelfRegistrant = vi.fn();
 const mockGetSelfRegistrantByProfileId = vi.fn();
 const mockEnrollStudent = vi.fn();
 const mockCalculateTaxesForPayment = vi.fn();
+const mockGetFamilyRegistrationWaiverStatus = vi.fn();
 
 vi.mock('~/utils/auth.server', () => ({
   getOptionalUser: (...args: unknown[]) => mockGetOptionalUser(...args),
@@ -37,9 +38,16 @@ vi.mock('~/utils/service-errors.server', () => ({
   isServiceError: () => false,
 }));
 
+vi.mock('~/services/waiver.server', () => ({
+  getFamilyRegistrationWaiverStatus: (...args: unknown[]) => mockGetFamilyRegistrationWaiverStatus(...args),
+}));
+
 import {
   action,
+  buildSeminarWaiverSignHref,
   getDefaultSeminarRegistrationType,
+  shouldRequireStudentProfileForSeminar,
+  shouldShowAddStudentCtaForSeminar,
   shouldShowSeminarRegistrationTypeSelector,
 } from '../_layout.curriculum.seminars.$slug.register';
 
@@ -79,15 +87,15 @@ describe('seminar registration action', () => {
       paymentTaxes: [],
       totalTaxAmount: ZERO_MONEY,
     });
+    mockGetFamilyRegistrationWaiverStatus.mockResolvedValue({
+      is_complete: true,
+      missing_waivers: [],
+      signed_waivers: [],
+    });
   });
 
   it('allows youth seminar student registration and redirects to payment', async () => {
     const serverTableQueries: Record<string, Array<Record<string, unknown>>> = {
-      waivers: [
-        makeQuery({
-          result: { data: [], error: null },
-        }),
-      ],
       classes: [
         makeQuery({
           singleResult: {
@@ -164,7 +172,7 @@ describe('seminar registration action', () => {
     formData.set('studentId', 'student-1');
 
     const response = await action({
-      request: new Request('http://localhost/curriculum/seminars/summer-camp/register', {
+      request: new Request('http://localhost/curriculum/seminars/summer-camp/register?seriesId=series-1', {
         method: 'POST',
         body: formData,
       }),
@@ -190,10 +198,78 @@ describe('seminar registration action', () => {
         status: 'pending',
       }),
     );
+    expect(mockGetFamilyRegistrationWaiverStatus).toHaveBeenCalledWith('family-1', supabaseServer);
+  });
+
+  it('redirects household users into the waiver signing flow when family waivers are missing', async () => {
+    mockGetFamilyRegistrationWaiverStatus.mockResolvedValue({
+      is_complete: false,
+      missing_waivers: [{ id: 'waiver-1', title: 'Liability Release' }],
+      signed_waivers: [],
+    });
+
+    const serverTableQueries: Record<string, Array<Record<string, unknown>>> = {
+      profiles: [
+        makeQuery({
+          singleResult: {
+            data: { family_id: 'family-1' },
+            error: null,
+          },
+        }),
+      ],
+    };
+
+    const supabaseServer = {
+      from: vi.fn((table: string) => {
+        const queue = serverTableQueries[table];
+        if (!queue || queue.length === 0) {
+          throw new Error(`No server query configured for ${table}`);
+        }
+        return queue.shift();
+      }),
+    };
+
+    mockGetOptionalUser.mockResolvedValue({
+      supabaseServer,
+      user: { id: 'user-1' },
+      response: { headers: new Headers() },
+    });
+    mockGetSupabaseAdminClient.mockReturnValue({});
+
+    const formData = new FormData();
+    formData.set('intent', 'register');
+    formData.set('seriesId', 'series-1');
+    formData.set('registrationType', 'student');
+    formData.set('studentId', 'student-1');
+
+    const response = await action({
+      request: new Request('http://localhost/curriculum/seminars/summer-camp/register?seriesId=series-1', {
+        method: 'POST',
+        body: formData,
+      }),
+      params: { slug: 'summer-camp' },
+    } as unknown as ActionFunctionArgs);
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('Location')).toBe(
+      buildSeminarWaiverSignHref({
+        waiverId: 'waiver-1',
+        returnTo: '/curriculum/seminars/summer-camp/register?seriesId=series-1',
+      }),
+    );
+    expect(mockEnrollStudent).not.toHaveBeenCalled();
   });
 
   it('rejects adult self registration for youth seminars before creating a self registrant', async () => {
     const serverTableQueries: Record<string, Array<Record<string, unknown>>> = {
+      profiles: [
+        makeQuery({
+          singleResult: {
+            data: { family_id: null },
+            error: null,
+          },
+        }),
+      ],
       waivers: [
         makeQuery({
           result: { data: [], error: null },
@@ -262,6 +338,27 @@ describe('seminar registration action', () => {
 });
 
 describe('seminar registration helpers', () => {
+  it('builds waiver signing links that return to the seminar page', () => {
+    expect(
+      buildSeminarWaiverSignHref({
+        waiverId: 'waiver-1',
+        returnTo: '/curriculum/seminars/summer-camp/register?seriesId=series-1',
+      }),
+    ).toBe(
+      '/family/waivers/waiver-1/sign?redirectTo=%2Fcurriculum%2Fseminars%2Fsummer-camp%2Fregister%3FseriesId%3Dseries-1',
+    );
+  });
+
+  it('defaults youth seminars without students to student registration so the page can prompt for a child profile', () => {
+    expect(
+      getDefaultSeminarRegistrationType({
+        audienceScope: 'youth',
+        hasSelfRegistrant: false,
+        hasStudents: false,
+      }),
+    ).toBe('student');
+  });
+
   it('defaults youth seminars to student registration when household students exist', () => {
     expect(
       getDefaultSeminarRegistrationType({
@@ -284,6 +381,48 @@ describe('seminar registration helpers', () => {
       shouldShowSeminarRegistrationTypeSelector({
         audienceScope: 'youth',
         hasStudents: true,
+      }),
+    ).toBe(false);
+  });
+
+  it('requires a student profile for youth seminars without children on file', () => {
+    expect(
+      shouldRequireStudentProfileForSeminar({
+        audienceScope: 'youth',
+        hasStudents: false,
+      }),
+    ).toBe(true);
+
+    expect(
+      shouldRequireStudentProfileForSeminar({
+        audienceScope: 'mixed',
+        hasStudents: false,
+      }),
+    ).toBe(false);
+  });
+
+  it('shows the add-student call to action only when a family profile can add children to a non-adult seminar', () => {
+    expect(
+      shouldShowAddStudentCtaForSeminar({
+        audienceScope: 'mixed',
+        hasStudents: false,
+        hasFamilyProfile: true,
+      }),
+    ).toBe(true);
+
+    expect(
+      shouldShowAddStudentCtaForSeminar({
+        audienceScope: 'adults',
+        hasStudents: false,
+        hasFamilyProfile: true,
+      }),
+    ).toBe(false);
+
+    expect(
+      shouldShowAddStudentCtaForSeminar({
+        audienceScope: 'youth',
+        hasStudents: true,
+        hasFamilyProfile: true,
       }),
     ).toBe(false);
   });

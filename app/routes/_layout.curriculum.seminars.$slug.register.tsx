@@ -1,25 +1,27 @@
 import { json, redirect, type LoaderFunctionArgs, type ActionFunctionArgs } from '@remix-run/node';
-import { useLoaderData, useActionData, Form, useNavigation } from '@remix-run/react';
+import { useLoaderData, useActionData, Form, Link, useNavigation } from '@remix-run/react';
 import { getOptionalUser } from '~/utils/auth.server';
 import { getSupabaseAdminClient } from '~/utils/supabase.server';
 import { getProgramBySlug, getSeminarWithSeries } from '~/services/program.server';
 import { createSelfRegistrant, getSelfRegistrantByProfileId } from '~/services/self-registration.server';
 import { EnrollmentValidationError, enrollStudent } from '~/services/enrollment.server';
 import { isServiceError } from '~/utils/service-errors.server';
+import { getFamilyRegistrationWaiverStatus } from '~/services/waiver.server';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '~/components/ui/card';
 import { Button } from '~/components/ui/button';
 import { Input } from '~/components/ui/input';
 import { Label } from '~/components/ui/label';
-import { Alert, AlertDescription } from '~/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '~/components/ui/alert';
 import { RadioGroup, RadioGroupItem } from '~/components/ui/radio-group';
 import { Separator } from '~/components/ui/separator';
-import { AlertCircle, Calendar, Clock, Users, CheckCircle } from 'lucide-react';
+import { AlertCircle, Calendar, Clock, Users, CheckCircle, UserPlus } from 'lucide-react';
 import { calculateTaxesForPayment } from '~/services/tax-rates.server';
 import { addMoney, isPositive, toCents, ZERO_MONEY, fromCents } from '~/utils/money';
 import { useState } from 'react';
 
 type RegistrationType = 'self' | 'student';
 type SeminarAudienceScope = 'youth' | 'adults' | 'mixed' | null | undefined;
+type RegistrationWaiverSummary = { id: string; title: string };
 
 export function seminarSupportsAdultRegistration(audienceScope: SeminarAudienceScope) {
   return audienceScope === 'adults' || audienceScope === 'mixed';
@@ -35,7 +37,7 @@ export function getDefaultSeminarRegistrationType({
   hasStudents: boolean;
 }): RegistrationType {
   if (!seminarSupportsAdultRegistration(audienceScope)) {
-    return hasStudents ? 'student' : 'self';
+    return 'student';
   }
 
   if (hasSelfRegistrant) {
@@ -53,6 +55,93 @@ export function shouldShowSeminarRegistrationTypeSelector({
   hasStudents: boolean;
 }) {
   return hasStudents && seminarSupportsAdultRegistration(audienceScope);
+}
+
+export function shouldRequireStudentProfileForSeminar({
+  audienceScope,
+  hasStudents,
+}: {
+  audienceScope: SeminarAudienceScope;
+  hasStudents: boolean;
+}) {
+  return !hasStudents && !seminarSupportsAdultRegistration(audienceScope);
+}
+
+export function shouldShowAddStudentCtaForSeminar({
+  audienceScope,
+  hasStudents,
+  hasFamilyProfile,
+}: {
+  audienceScope: SeminarAudienceScope;
+  hasStudents: boolean;
+  hasFamilyProfile: boolean;
+}) {
+  return hasFamilyProfile && !hasStudents && audienceScope !== 'adults';
+}
+
+export function buildSeminarWaiverSignHref({
+  waiverId,
+  returnTo,
+}: {
+  waiverId: string;
+  returnTo: string;
+}) {
+  return `/family/waivers/${waiverId}/sign?redirectTo=${encodeURIComponent(returnTo)}`;
+}
+
+async function getSeminarRegistrationWaiverState({
+  userId,
+  familyId,
+  supabase,
+}: {
+  userId: string;
+  familyId?: string | null;
+  supabase: Pick<ReturnType<typeof getSupabaseAdminClient>, 'from'>;
+}) {
+  if (familyId) {
+    const waiverStatus = await getFamilyRegistrationWaiverStatus(familyId, supabase as never);
+    const signedWaiverIds = waiverStatus.signed_waivers.map((waiver) => waiver.id);
+    const requiredWaivers = [...waiverStatus.signed_waivers, ...waiverStatus.missing_waivers]
+      .map((waiver) => ({ id: waiver.id, title: waiver.title }))
+      .sort((left, right) => left.title.localeCompare(right.title));
+
+    return {
+      requiredWaivers,
+      signedWaiverIds,
+      missingWaivers: waiverStatus.missing_waivers.map((waiver) => ({
+        id: waiver.id,
+        title: waiver.title,
+      })),
+    };
+  }
+
+  const { data: requiredWaivers } = await supabase
+    .from('waivers')
+    .select('id, title')
+    .eq('required_for_registration', true)
+    .eq('is_active', true)
+    .order('title');
+
+  const requiredWaiverIds = (requiredWaivers || []).map((waiver) => waiver.id);
+  let signedWaiverIds: string[] = [];
+
+  if (requiredWaiverIds.length > 0) {
+    const { data: signatures } = await supabase
+      .from('waiver_signatures')
+      .select('waiver_id')
+      .eq('user_id', userId)
+      .in('waiver_id', requiredWaiverIds);
+
+    signedWaiverIds = signatures?.map((signature) => signature.waiver_id) || [];
+  }
+
+  const missingWaivers = (requiredWaivers || []).filter((waiver) => !signedWaiverIds.includes(waiver.id));
+
+  return {
+    requiredWaivers: requiredWaivers || [],
+    signedWaiverIds,
+    missingWaivers,
+  };
 }
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
@@ -128,25 +217,24 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     students = familyStudents || [];
   }
 
-  // Get required waivers
-  const { data: requiredWaivers } = await supabaseServer
-    .from('waivers')
-    .select('id, title')
-    .eq('required_for_registration', true)
-    .eq('is_active', true)
-    .order('title');
-
-  const requiredWaiverIds = (requiredWaivers || []).map((waiver) => waiver.id);
-  let signedWaiverIds: string[] = [];
-  if (requiredWaiverIds.length > 0) {
-    const { data: signatures } = await supabaseServer
-      .from('waiver_signatures')
-      .select('waiver_id')
-      .eq('user_id', user.id)
-      .in('waiver_id', requiredWaiverIds);
-
-    signedWaiverIds = signatures?.map((signature) => signature.waiver_id) || [];
-  }
+  const currentUrl = `${url.pathname}${url.search}`;
+  const waiverState = await getSeminarRegistrationWaiverState({
+    userId: user.id,
+    familyId: profile?.family_id,
+    supabase: supabaseServer,
+  });
+  const waiverSignLinks = profile?.family_id
+    ? waiverState.missingWaivers.map((waiver) => ({
+        ...waiver,
+        href: buildSeminarWaiverSignHref({
+          waiverId: waiver.id,
+          returnTo: currentUrl,
+        }),
+      }))
+    : [];
+  const addStudentUrl = profile?.family_id
+    ? `/family/add-student?returnTo=${encodeURIComponent(currentUrl)}`
+    : null;
 
   return json({
     seminar,
@@ -155,8 +243,12 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     profile,
     selfRegistrant,
     students,
-    requiredWaivers: requiredWaivers || [],
-    signedWaiverIds,
+    requiredWaivers: waiverState.requiredWaivers,
+    signedWaiverIds: waiverState.signedWaiverIds,
+    missingWaivers: waiverState.missingWaivers,
+    waiverSignLinks,
+    canSignRequiredWaivers: Boolean(profile?.family_id),
+    addStudentUrl,
   }, { headers });
 }
 
@@ -189,30 +281,36 @@ async function handleSeminarRegistration(formData: FormData, request: Request) {
   try {
     const seriesId = formData.get('seriesId') as string;
     const registrationType = formData.get('registrationType') as RegistrationType;
-    const { data: requiredWaivers } = await supabaseServer
-      .from('waivers')
-      .select('id, title')
-      .eq('required_for_registration', true)
-      .eq('is_active', true);
+    const { data: profile } = await supabaseServer
+      .from('profiles')
+      .select('family_id')
+      .eq('id', user.id)
+      .single();
+    const currentUrl = new URL(request.url);
+    const returnTo = `${currentUrl.pathname}${currentUrl.search}`;
+    const waiverState = await getSeminarRegistrationWaiverState({
+      userId: user.id,
+      familyId: profile?.family_id,
+      supabase: supabaseServer,
+    });
 
-    if (requiredWaivers && requiredWaivers.length > 0) {
-      const waiverIds = requiredWaivers.map((waiver) => waiver.id);
-      const { data: signatures } = await supabaseServer
-        .from('waiver_signatures')
-        .select('waiver_id')
-        .eq('user_id', user.id)
-        .in('waiver_id', waiverIds);
-
-      const signedWaiverIds = new Set((signatures || []).map((signature) => signature.waiver_id));
-      const missingWaivers = requiredWaivers.filter((waiver) => !signedWaiverIds.has(waiver.id));
-      if (missingWaivers.length > 0) {
-        return json(
-          {
-            error: `Please sign required waivers before registering: ${missingWaivers.map((waiver) => waiver.title).join(', ')}`,
-          },
-          { status: 400 }
+    if (waiverState.missingWaivers.length > 0) {
+      if (profile?.family_id) {
+        return redirect(
+          buildSeminarWaiverSignHref({
+            waiverId: waiverState.missingWaivers[0].id,
+            returnTo,
+          }),
+          { headers }
         );
       }
+
+      return json(
+        {
+          error: `Please sign required waivers before registering: ${waiverState.missingWaivers.map((waiver) => waiver.title).join(', ')}`,
+        },
+        { status: 400 }
+      );
     }
 
     let studentId: string;
@@ -278,12 +376,6 @@ async function handleSeminarRegistration(formData: FormData, request: Request) {
       }
 
       // Get family ID from profile
-      const { data: profile } = await supabaseServer
-        .from('profiles')
-        .select('family_id')
-        .eq('id', user.id)
-        .single();
-
       if (!profile?.family_id) {
         return json({ error: 'Family profile is incomplete' }, { status: 400 });
       }
@@ -398,7 +490,16 @@ async function handleSeminarRegistration(formData: FormData, request: Request) {
 }
 
 export default function SeminarRegister() {
-  const { seminar, series, selfRegistrant, students, requiredWaivers, signedWaiverIds } = useLoaderData<typeof loader>();
+  const {
+    seminar,
+    series,
+    selfRegistrant,
+    students,
+    missingWaivers,
+    waiverSignLinks,
+    canSignRequiredWaivers,
+    addStudentUrl,
+  } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === 'submitting';
@@ -415,10 +516,16 @@ export default function SeminarRegister() {
     })
   );
   const [selectedStudentId, setSelectedStudentId] = useState('');
-  const missingWaivers = requiredWaivers.filter(
-    (waiver: { id: string }) => !signedWaiverIds.includes(waiver.id)
-  );
   const hasAllRequiredWaivers = missingWaivers.length === 0;
+  const requiresStudentProfile = shouldRequireStudentProfileForSeminar({
+    audienceScope: seminar?.audience_scope,
+    hasStudents: students.length > 0,
+  });
+  const showAddStudentCta = shouldShowAddStudentCtaForSeminar({
+    audienceScope: seminar?.audience_scope,
+    hasStudents: students.length > 0,
+    hasFamilyProfile: Boolean(addStudentUrl),
+  });
 
   const seminarFee = series?.price_override_cents
     ? fromCents(series.price_override_cents)
@@ -473,6 +580,29 @@ export default function SeminarRegister() {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              {showAddStudentCta && addStudentUrl && (
+                <Alert className="mb-6">
+                  <AlertTitle className="text-lg font-semibold">
+                    {requiresStudentProfile ? 'Add a student before registering' : 'Need to register a child?'}
+                  </AlertTitle>
+                  <AlertDescription className="mt-2 space-y-4 text-sm text-muted-foreground">
+                    <p>
+                      {requiresStudentProfile
+                        ? 'This seminar requires a student profile. Add a student now and we’ll bring you right back to complete registration.'
+                        : 'You can register yourself for this seminar, or add a student now if you need to register a child.'}
+                    </p>
+                    <div>
+                      <Button asChild variant="secondary">
+                        <Link to={addStudentUrl}>
+                          <UserPlus className="h-4 w-4 mr-2" />
+                          Add a student
+                        </Link>
+                      </Button>
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              )}
+
               <Form method="post">
                 <input type="hidden" name="intent" value="register" />
                 <input type="hidden" name="seriesId" value={series.id} />
@@ -567,12 +697,35 @@ export default function SeminarRegister() {
                     </Alert>
                   ) : (
                     <Alert variant="destructive">
-                      <AlertDescription>
-                        Please sign the required waivers before registering: {missingWaivers.map((waiver: { title: string }) => waiver.title).join(', ')}.
-                        {' '}
-                        <a className="underline" href="/family/waivers">
-                          Review waivers
-                        </a>
+                      <AlertDescription className="space-y-3">
+                        <p>
+                          Please sign the required waivers before registering: {missingWaivers.map((waiver: RegistrationWaiverSummary) => waiver.title).join(', ')}.
+                        </p>
+                        {waiverSignLinks.length > 0 ? (
+                          <>
+                            <div className="flex flex-wrap gap-3">
+                              {waiverSignLinks.map((waiver) => (
+                                <Link key={waiver.id} className="underline font-medium" to={waiver.href}>
+                                  Sign {waiver.title}
+                                </Link>
+                              ))}
+                              <Link className="underline" to="/family/waivers">
+                                Review all waivers
+                              </Link>
+                            </div>
+                            <p className="text-sm">
+                              After signing, you&apos;ll return here to finish registration.
+                            </p>
+                          </>
+                        ) : canSignRequiredWaivers ? (
+                          <Link className="underline font-medium" to="/family/waivers">
+                            Review waivers
+                          </Link>
+                        ) : (
+                          <p className="text-sm">
+                            Required waivers must be signed from an existing family profile before registration can continue.
+                          </p>
+                        )}
                       </AlertDescription>
                     </Alert>
                   )}
@@ -587,13 +740,22 @@ export default function SeminarRegister() {
                 )}
 
                 {/* Submit Button */}
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={isSubmitting || !hasAllRequiredWaivers}
-                >
-                  {isSubmitting ? 'Processing...' : isPositive(seminarFee) ? 'Continue to Payment' : 'Complete Registration'}
-                </Button>
+                {requiresStudentProfile && addStudentUrl ? (
+                  <Button asChild className="w-full">
+                    <Link to={addStudentUrl}>
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Add a Student to Continue
+                    </Link>
+                  </Button>
+                ) : (
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={isSubmitting || !hasAllRequiredWaivers}
+                  >
+                    {isSubmitting ? 'Processing...' : isPositive(seminarFee) ? 'Continue to Payment' : 'Complete Registration'}
+                  </Button>
+                )}
               </Form>
             </CardContent>
           </Card>

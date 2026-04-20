@@ -38,15 +38,19 @@ export async function getFamilyRegistrationWaiverStatus(
   familyId: string,
   supabase = getSupabaseAdminClient()
 ): Promise<FamilyWaiverStatus> {
-  // Get the primary user ID for this family
-  const { data: profile } = await supabase
+  // Consider signatures from any profile attached to the family. One guardian
+  // signing a family registration waiver should satisfy the family requirement.
+  const { data: profiles, error: profilesError } = await supabase
     .from('profiles')
     .select('id')
     .eq('family_id', familyId)
-    .limit(1)
-    .single();
+    .limit(25);
 
-  if (!profile) {
+  if (profilesError) {
+    throw new Error(`Failed to fetch family profiles: ${profilesError.message}`);
+  }
+
+  if (!profiles || profiles.length === 0) {
     return {
       is_complete: false,
       completed_at: null,
@@ -65,11 +69,12 @@ export async function getFamilyRegistrationWaiverStatus(
     throw new Error(`Failed to fetch registration waivers: ${waiversError?.message}`);
   }
 
-  // Get which waivers this user has signed
+  // Get which waivers any family profile has signed
+  const profileIds = profiles.map((profile) => profile.id);
   const { data: signatures } = await supabase
     .from('waiver_signatures')
     .select('waiver_id, signed_at')
-    .eq('user_id', profile.id);
+    .in('user_id', profileIds);
 
   const signedWaiverIds = new Set(signatures?.map(s => s.waiver_id) || []);
 
