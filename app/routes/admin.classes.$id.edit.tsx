@@ -237,7 +237,7 @@ export default function EditClass() {
     <div className="container mx-auto py-8 max-w-4xl">
       <AppBreadcrumb
         items={isSeminarView
-          ? [{ label: "Admin Dashboard", href: "/admin" }, { label: "Seminar Series", href: "/admin/classes?engagement=seminar" }, { label: classData.name, current: true }]
+          ? [{ label: "Admin Dashboard", href: "/admin" }, { label: "Seminars", href: "/admin/classes?engagement=seminar" }, { label: classData.name, current: true }]
           : breadcrumbPatterns.adminClassEdit(classData.name)
         }
         className="mb-6"
@@ -245,9 +245,9 @@ export default function EditClass() {
 
       <div className="flex items-center gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">{isSeminarView ? "Edit Seminar Series" : "Edit Class"}</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{isSeminarView ? "Edit Seminars" : "Edit Class"}</h1>
           <p className="text-muted-foreground">
-            {isSeminarView ? "Update seminar series details, schedule, and capacity." : "Update class details, schedule, and capacity."}
+            {isSeminarView ? "Update seminar details, schedule, and capacity." : "Update class details, schedule, and capacity."}
           </p>
         </div>
       </div>
@@ -261,7 +261,7 @@ export default function EditClass() {
       <div className="space-y-6">
         <Card className="shadow-sm">
           <CardHeader className="pb-4">
-            <CardTitle className="text-xl">{isSeminarView ? "Seminar Series Details" : "Class Details"}</CardTitle>
+            <CardTitle className="text-xl">{isSeminarView ? "Seminars Details" : "Class Details"}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
           <Form method="post" className="space-y-8">
@@ -368,8 +368,8 @@ export default function EditClass() {
               <div className="flex items-center space-x-3 p-4 bg-muted/30 rounded-lg">
                 <Checkbox id="is_active" name="is_active" defaultChecked={classData.is_active} className="h-4 w-4" />
                 <div className="space-y-1">
-                  <Label htmlFor="is_active" className="text-sm font-medium cursor-pointer">{isSeminarView ? "Active Seminar Series" : "Active Class"}</Label>
-                  <p className="text-xs text-muted-foreground">{isSeminarView ? "Students can enroll in active seminar series" : "Students can enroll in active classes"}</p>
+                  <Label htmlFor="is_active" className="text-sm font-medium cursor-pointer">{isSeminarView ? "Active Seminars" : "Active Class"}</Label>
+                  <p className="text-xs text-muted-foreground">{isSeminarView ? "Students can enroll in active seminar" : "Students can enroll in active classes"}</p>
                 </div>
               </div>
             </div>
@@ -522,7 +522,7 @@ export default function EditClass() {
                   disabled={isSubmitting || !validationResult.isValid}
                   className="h-10 px-8"
                 >
-                  {isSubmitting ? "Updating..." : isSeminarView ? "Update Seminar Series" : "Update Class"}
+                  {isSubmitting ? "Updating..." : isSeminarView ? "Update Seminars" : "Update Class"}
                 </Button>
               </div>
             </div>
@@ -548,7 +548,7 @@ export default function EditClass() {
               tabIndex={0}
             >
               <Trash2 className="h-4 w-4 mr-2" />
-              {isSubmitting ? "Deleting..." : isSeminarView ? "Delete Seminar Series" : "Delete Class"}
+              {isSubmitting ? "Deleting..." : isSeminarView ? "Delete Seminars" : "Delete Class"}
             </Button>
           </CardContent>
         </Card>
@@ -559,7 +559,7 @@ export default function EditClass() {
             <AlertDialogHeader>
               <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
               <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete the {isSeminarView ? "seminar series" : "class"}
+                This action cannot be undone. This will permanently delete the {isSeminarView ? "seminar" : "class"}
                 <span className="font-semibold"> {classData.name}</span> and remove all associated data from our servers.
               </AlertDialogDescription>
             </AlertDialogHeader>

@@ -116,7 +116,7 @@ export default function AdminClassesIndex() {
     <div className="container mx-auto py-6">
       <AppBreadcrumb
         items={isSeminarView
-          ? [{ label: "Admin Dashboard", href: "/admin" }, { label: "Seminar Series", current: true }]
+          ? [{ label: "Admin Dashboard", href: "/admin" }, { label: "Seminars", current: true }]
           : breadcrumbPatterns.adminClasses()
         }
         className="mb-6"
@@ -125,11 +125,11 @@ export default function AdminClassesIndex() {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">
-            {isSeminarView ? "Seminar Series" : "Classes"}
+            {isSeminarView ? "Seminars" : "Classes"}
           </h1>
           <p className="text-muted-foreground">
             {isSeminarView
-              ? "Manage seminar series schedules, capacity, and enrollment."
+              ? "Manage seminars schedules, capacity, and enrollment."
               : "Manage class schedules, capacity, and enrollment."}
           </p>
         </div>
@@ -143,7 +143,7 @@ export default function AdminClassesIndex() {
               <SelectContent>
                 <SelectItem value="all">All Types</SelectItem>
                 <SelectItem value="program">Program Classes</SelectItem>
-                <SelectItem value="seminar">Seminar Series</SelectItem>
+                <SelectItem value="seminar">Seminars</SelectItem>
               </SelectContent>
             </Select>
           )}
@@ -165,7 +165,7 @@ export default function AdminClassesIndex() {
           <Button asChild>
             <Link to={isSeminarView ? "/admin/classes/new?engagement=seminar" : "/admin/classes/new"}>
               <Plus className="h-4 w-4 mr-2" />
-              {isSeminarView ? "Create Seminar Series" : "Create Class"}
+              {isSeminarView ? "Create Seminars" : "Create Class"}
             </Link>
           </Button>
         </div>
@@ -262,13 +262,13 @@ export default function AdminClassesIndex() {
               {selectedProgramId
                 ? "No classes found for the selected program."
                 : selectedEngagement === "seminar"
-                  ? "No seminar series found for the selected filters."
+                  ? "No seminars found for the selected filters."
                   : "Get started by creating your first class."}
             </p>
             <Button asChild>
               <Link to={isSeminarView ? "/admin/classes/new?engagement=seminar" : "/admin/classes/new"}>
                 <Plus className="h-4 w-4 mr-2" />
-                {isSeminarView ? "Create Seminar Series" : "Create Class"}
+                {isSeminarView ? "Create Seminars" : "Create Class"}
               </Link>
             </Button>
           </CardContent>

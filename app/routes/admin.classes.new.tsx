@@ -239,11 +239,11 @@ export default function NewClass() {
       <div className="flex items-center gap-4 mb-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">
-            {isSeminarView ? "Create Seminar Series" : "Create New Class"}
+            {isSeminarView ? "Create Seminars" : "Create New Class"}
           </h1>
           <p className="text-muted-foreground">
             {isSeminarView
-              ? "Set up a new seminar series with sessions, capacity, and pricing."
+              ? "Set up a new seminar with sessions, capacity, and pricing."
               : "Set up a new class with schedule and capacity limits."}
           </p>
         </div>
@@ -257,7 +257,7 @@ export default function NewClass() {
 
       <Card>
         <CardHeader>
-          <CardTitle>{isSeminarView ? "Seminar Series Details" : "Class Details"}</CardTitle>
+          <CardTitle>{isSeminarView ? "Seminars Details" : "Class Details"}</CardTitle>
         </CardHeader>
         <CardContent>
           <Form method="post" className="space-y-4">
@@ -481,7 +481,7 @@ export default function NewClass() {
                   type="submit"
                   disabled={isSubmitting || !validationResult.isValid}
                 >
-                  {isSubmitting ? "Creating..." : isSeminarView ? "Create Seminar Series" : "Create Class"}
+                  {isSubmitting ? "Creating..." : isSeminarView ? "Create Seminars" : "Create Class"}
                 </Button>
               </div>
             </div>

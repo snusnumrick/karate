@@ -126,7 +126,7 @@ export default function ProgramsIndex() {
             <p className="text-muted-foreground text-center mb-4">
               {showInactive
                 ? isSeminarView
-                  ? "Create your first seminar template to start managing seminar series."
+                  ? "Create your first seminar template to start managing seminars."
                   : "Create your first program to start managing classes and enrollments"
                 : isSeminarView
                   ? "All seminar templates are currently inactive, or create your first seminar template to get started."
