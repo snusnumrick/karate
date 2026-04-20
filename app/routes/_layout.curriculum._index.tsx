@@ -791,12 +791,12 @@ export default function CurriculumIndex() {
                         <span className="ml-2 text-gray-900 dark:text-white">{seminar.duration_minutes} minutes</span>
                       </div>
                     )}
-                    {seminar.single_purchase_price_cents != null && (
+                    {(seminar.single_purchase_price_cents != null || seminar.registration_fee_cents != null) && (
                       <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
                         <div className="flex justify-between items-center">
                           <span className="text-gray-700 dark:text-gray-300 font-medium">Price:</span>
                           <span className="text-green-600 dark:text-green-400 font-bold text-lg">
-                            {formatCents(seminar.single_purchase_price_cents)}
+                            {formatCents((seminar.single_purchase_price_cents ?? seminar.registration_fee_cents)!)}
                           </span>
                         </div>
                       </div>
