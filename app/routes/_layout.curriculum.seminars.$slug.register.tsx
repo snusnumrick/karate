@@ -258,10 +258,14 @@ async function handleSeminarRegistration(formData: FormData, request: Request) {
       return json({ error: 'This seminar series does not allow self-registration.' }, { status: 400 });
     }
 
-    // Calculate pricing
-    const seminarFee = series.programs?.single_purchase_price_cents
-      ? fromCents(series.programs.single_purchase_price_cents)
-      : ZERO_MONEY;
+    // Calculate pricing: run override → template single_purchase_price → template registration_fee
+    const seminarFee = series.price_override_cents
+      ? fromCents(series.price_override_cents)
+      : series.programs?.single_purchase_price_cents
+        ? fromCents(series.programs.single_purchase_price_cents)
+        : series.programs?.registration_fee_cents
+          ? fromCents(series.programs.registration_fee_cents)
+          : ZERO_MONEY;
 
     const paymentRequired = isPositive(seminarFee);
 
@@ -375,9 +379,13 @@ export default function SeminarRegister() {
   );
   const hasAllRequiredWaivers = missingWaivers.length === 0;
 
-  const seminarFee = seminar?.single_purchase_price_cents
-    ? fromCents(seminar.single_purchase_price_cents)
-    : ZERO_MONEY;
+  const seminarFee = series?.price_override_cents
+    ? fromCents(series.price_override_cents)
+    : seminar?.single_purchase_price_cents
+      ? fromCents(seminar.single_purchase_price_cents)
+      : seminar?.registration_fee_cents
+        ? fromCents(seminar.registration_fee_cents)
+        : ZERO_MONEY;
 
   const showSuccess = actionData && 'success' in actionData && actionData.success && 'paymentRequired' in actionData && !actionData.paymentRequired;
 

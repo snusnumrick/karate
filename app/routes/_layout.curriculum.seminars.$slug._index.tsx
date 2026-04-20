@@ -53,7 +53,7 @@ export default function SeminarDetail() {
   const formatCurrency = (value?: number | null) =>
     value != null ? formatMoney(fromCents(value), { showCurrency: true }) : null;
 
-  const defaultSeminarPrice = formatCurrency(seminar.single_purchase_price_cents);
+  const defaultSeminarPrice = formatCurrency(seminar.single_purchase_price_cents ?? seminar.registration_fee_cents);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -181,17 +181,17 @@ export default function SeminarDetail() {
                 </CardHeader>
                 <CardContent>
                   {/* Series Pricing */}
-                  {(series.price_override_cents != null || seminar.single_purchase_price_cents != null) && (
+                  {(series.price_override_cents != null || seminar.single_purchase_price_cents != null || seminar.registration_fee_cents != null) && (
                     <div className="mb-4 p-3 bg-primary/5 rounded-lg">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium">Price:</span>
                         <span className="text-lg font-semibold">
-                          {formatCurrency(series.price_override_cents ?? seminar.single_purchase_price_cents)}
+                          {formatCurrency(series.price_override_cents ?? seminar.single_purchase_price_cents ?? seminar.registration_fee_cents)}
                         </span>
                       </div>
-                      {series.price_override_cents != null && series.price_override_cents !== seminar.single_purchase_price_cents && (
+                      {series.price_override_cents != null && (
                         <p className="text-xs text-muted-foreground mt-1">
-                          Series-specific pricing (default: {formatCurrency(seminar.single_purchase_price_cents)})
+                          Series-specific pricing (default: {formatCurrency(seminar.single_purchase_price_cents ?? seminar.registration_fee_cents)})
                         </p>
                       )}
                     </div>
