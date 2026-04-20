@@ -1,11 +1,11 @@
 import { json, type LoaderFunctionArgs, type SerializeFrom } from "@remix-run/node";
 import { useLoaderData, Link } from "@remix-run/react";
+import type { ReactNode } from "react";
 import { getOptionalUser } from "~/utils/auth.server";
 import { getProgramBySlug, getSeminarWithSeries } from "~/services/program.server";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
-import { Calendar, Clock, Users } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, Users } from "lucide-react";
 import { formatMoney, fromCents, toCents } from "~/utils/money";
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
@@ -47,128 +47,187 @@ export default function SeminarDetail() {
   const seminar = seminarJson ? deserializeSeminarForClient(seminarJson) : null;
 
   if (!seminar) {
-    return <div>Seminar not found</div>;
-  }
-
-  const formatCurrency = (value?: number | null) =>
-    value != null ? formatMoney(fromCents(value), { showCurrency: true }) : null;
-
-  const defaultSeminarPrice = formatCurrency(seminar.single_purchase_price_cents ?? seminar.registration_fee_cents);
-
-  return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Back link */}
-      <Link
-        to="/curriculum"
-        className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-6"
-      >
-        ← Back to Curriculum
-      </Link>
-
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <h1 className="text-4xl font-bold mb-2">{seminar.name}</h1>
-            <div className="flex gap-2 flex-wrap">
-              {seminar.ability_category && (
-                <Badge variant="outline" className="text-sm">
-                  {seminar.ability_category}
-                </Badge>
-              )}
-              {seminar.seminar_type && (
-                <Badge variant="secondary" className="text-sm">
-                  {seminar.seminar_type.charAt(0).toUpperCase() + seminar.seminar_type.slice(1)}
-                </Badge>
-              )}
-              {seminar.audience_scope && (
-                <Badge className="text-sm">
-                  {seminar.audience_scope}
-                </Badge>
-              )}
-              {seminar.min_capacity != null && (
-                <Badge variant="outline" className="text-sm">
-                  Min {seminar.min_capacity} participants
-                </Badge>
-              )}
+    return (
+      <div className="min-h-screen page-background-styles py-12 text-foreground">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="page-card-styles text-center">
+            <h1 className="page-header-styles mb-4">Seminar not found</h1>
+            <p className="page-subheader-styles">
+              This seminar may have moved or is no longer available.
+            </p>
+            <div className="mt-8">
+              <Button asChild>
+                <Link to="/curriculum">Back to Curriculum</Link>
+              </Button>
             </div>
           </div>
         </div>
-        {seminar.description && (
-          <p className="text-lg text-muted-foreground">{seminar.description}</p>
-        )}
       </div>
+    );
+  }
 
-      {/* Seminar Details */}
-      <div className="grid gap-6 md:grid-cols-3 mb-8">
-        {seminar.duration_minutes && (
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <Clock className="h-8 w-8 text-primary" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Session Duration</p>
-                  <p className="text-xl font-semibold">{seminar.duration_minutes} min</p>
+  const formatCurrency = (value?: number | null) =>
+    value != null ? formatMoney(fromCents(value), { showCurrency: true, trimTrailingZeros: true }) : null;
+
+  const defaultSeminarPrice = formatCurrency(seminar.single_purchase_price_cents ?? seminar.registration_fee_cents);
+  const activeSeriesCount = seminar.classes?.filter((series) => series.is_active).length ?? 0;
+  const firstUpcomingSeries = seminar.classes?.find((series) => series.series_start_on && series.series_end_on);
+
+  return (
+    <div className="min-h-screen page-background-styles py-12 text-foreground">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <Link
+          to="/curriculum"
+          className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-300 dark:hover:text-white mb-6"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Curriculum
+        </Link>
+
+        <section className="page-card-styles mb-8">
+          <div className="grid gap-8 lg:grid-cols-[1.45fr,0.95fr] lg:items-start">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-green-600 dark:text-green-400">
+                Seminar Pathway
+              </p>
+              <h1 className="page-header-styles mt-3 mb-4">{seminar.name}</h1>
+              <p className="text-lg leading-relaxed text-gray-600 dark:text-gray-300">
+                {seminar.description || "Explore the next seminar series, review the schedule, and choose the run that fits your family best."}
+              </p>
+
+              <div className="flex flex-wrap gap-3 mt-6">
+                {seminar.ability_category && (
+                  <Badge variant="outline" className="text-sm border-green-200 bg-green-50 text-green-700 dark:border-green-500/40 dark:bg-green-500/10 dark:text-green-300">
+                    {toTitleCase(seminar.ability_category)}
+                  </Badge>
+                )}
+                {seminar.seminar_type && (
+                  <Badge variant="secondary" className="text-sm">
+                    {toTitleCase(seminar.seminar_type)}
+                  </Badge>
+                )}
+                {seminar.audience_scope && (
+                  <Badge className="text-sm bg-gray-900 text-white hover:bg-gray-900 dark:bg-white dark:text-gray-900">
+                    {formatAudienceScope(seminar.audience_scope)}
+                  </Badge>
+                )}
+                {seminar.min_capacity != null && (
+                  <Badge variant="outline" className="text-sm">
+                    Minimum {seminar.min_capacity} participants
+                  </Badge>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-green-200/70 bg-gradient-to-br from-green-50 to-amber-50 p-6 shadow-sm dark:border-green-500/20 dark:from-green-950/30 dark:to-gray-900">
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-green-700 dark:text-green-300">
+                At a Glance
+              </p>
+              <p className="mt-4 text-3xl font-bold text-gray-900 dark:text-white">
+                {defaultSeminarPrice || "Contact us"}
+              </p>
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                Default seminar rate
+              </p>
+
+              <dl className="mt-6 space-y-4 text-sm">
+                <div className="flex items-start justify-between gap-4 border-t border-green-200/80 pt-4 dark:border-green-500/20">
+                  <dt className="text-gray-600 dark:text-gray-400">Available runs</dt>
+                  <dd className="font-semibold text-gray-900 dark:text-white">{activeSeriesCount}</dd>
+                </div>
+                {firstUpcomingSeries?.series_start_on && firstUpcomingSeries?.series_end_on && (
+                  <div className="flex items-start justify-between gap-4 border-t border-green-200/80 pt-4 dark:border-green-500/20">
+                    <dt className="text-gray-600 dark:text-gray-400">Next window</dt>
+                    <dd className="text-right font-semibold text-gray-900 dark:text-white">
+                      {formatDateRange(firstUpcomingSeries.series_start_on, firstUpcomingSeries.series_end_on)}
+                    </dd>
+                  </div>
+                )}
+                <div className="flex items-start justify-between gap-4 border-t border-green-200/80 pt-4 dark:border-green-500/20">
+                  <dt className="text-gray-600 dark:text-gray-400">Registration</dt>
+                  <dd className="text-right font-semibold text-gray-900 dark:text-white">
+                    {seminar.classes?.some((series) => series.allow_self_enrollment && series.is_active)
+                      ? 'Online sign-up available'
+                      : 'Contact us to register'}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3 mt-8">
+            {seminar.duration_minutes && (
+              <div className="rounded-2xl border border-gray-200 bg-gray-50/80 p-5 dark:border-gray-700 dark:bg-gray-800/70">
+                <div className="flex items-center gap-3">
+                  <Clock className="h-8 w-8 text-green-600 dark:text-green-400" />
+                  <div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Session duration</p>
+                    <p className="text-xl font-semibold text-gray-900 dark:text-white">{seminar.duration_minutes} min</p>
+                  </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        )}
+            )}
 
-        {seminar.min_age !== undefined && seminar.max_age !== undefined && (
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <Users className="h-8 w-8 text-primary" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Age Range</p>
-                  <p className="text-xl font-semibold">{seminar.min_age}-{seminar.max_age} years</p>
+            {seminar.min_age !== undefined && seminar.max_age !== undefined && (
+              <div className="rounded-2xl border border-gray-200 bg-gray-50/80 p-5 dark:border-gray-700 dark:bg-gray-800/70">
+                <div className="flex items-center gap-3">
+                  <Users className="h-8 w-8 text-green-600 dark:text-green-400" />
+                  <div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Age range</p>
+                    <p className="text-xl font-semibold text-gray-900 dark:text-white">{seminar.min_age}-{seminar.max_age} years</p>
+                  </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        )}
+            )}
 
-        {defaultSeminarPrice && (
-          <Card>
-            <CardContent className="pt-6">
+            <div className="rounded-2xl border border-gray-200 bg-gray-50/80 p-5 dark:border-gray-700 dark:bg-gray-800/70">
               <div className="flex items-center gap-3">
-                <div className="h-8 w-8 text-primary flex items-center justify-center text-2xl">$</div>
+                <Calendar className="h-8 w-8 text-green-600 dark:text-green-400" />
                 <div>
-                  <p className="text-sm text-muted-foreground">Default Price</p>
-                  <p className="text-xl font-semibold">{defaultSeminarPrice}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Series cadence</p>
+                  <p className="text-xl font-semibold text-gray-900 dark:text-white">
+                    {seminar.classes && seminar.classes.length > 0 ? `${seminar.classes.length} scheduled run${seminar.classes.length === 1 ? '' : 's'}` : 'Check back soon'}
+                  </p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+            </div>
+          </div>
+        </section>
 
-      {/* Series */}
-      {seminar.classes && seminar.classes.length > 0 && (
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold mb-4">Available Series</h2>
-          <div className="grid gap-4">
-            {seminar.classes.map((series) => (
-              <Card key={series.id} className="hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div>
+        {seminar.classes && seminar.classes.length > 0 ? (
+          <section>
+            <div className="text-center mb-12">
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
+                Available Series
+              </h2>
+              <p className="text-lg text-gray-600 dark:text-gray-400 mx-auto">
+                Choose the seminar run that matches your timing, schedule, and registration needs.
+              </p>
+            </div>
+
+            <div className="grid gap-6">
+              {seminar.classes.map((series) => (
+                <div key={series.id} className="page-card-styles">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="max-w-3xl">
                       {series.topic && (
-                        <p className="text-sm text-muted-foreground mb-1">Topic</p>
+                        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-green-600 dark:text-green-400 mb-2">
+                          Topic
+                        </p>
                       )}
-                      <CardTitle>
+                      <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
                         {series.topic || series.series_label || series.name || 'Seminar Series'}
-                      </CardTitle>
+                      </h3>
                       {series.series_label && series.topic && (
-                        <p className="text-sm text-muted-foreground mt-1">{series.series_label}</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">{series.series_label}</p>
                       )}
                       {series.description && (
-                        <CardDescription className="mt-2">
+                        <p className="text-base leading-relaxed text-gray-600 dark:text-gray-300 mt-4">
                           {series.description}
-                        </CardDescription>
+                        </p>
                       )}
                     </div>
+
                     <div className="flex flex-wrap gap-2">
                       <Badge variant={getSeriesStatusVariant(series)}>
                         {formatSeriesStatus(series.series_status)}
@@ -178,109 +237,91 @@ export default function SeminarDetail() {
                       </Badge>
                     </div>
                   </div>
-                </CardHeader>
-                <CardContent>
-                  {/* Series Pricing */}
+
                   {(series.price_override_cents != null || seminar.single_purchase_price_cents != null || seminar.registration_fee_cents != null) && (
-                    <div className="mb-4 p-3 bg-primary/5 rounded-lg">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Price:</span>
-                        <span className="text-lg font-semibold">
+                    <div className="mt-6 rounded-2xl border border-gray-200 bg-gray-50/90 p-4 dark:border-gray-700 dark:bg-gray-800/70">
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Series price</span>
+                        <span className="text-2xl font-bold text-green-700 dark:text-green-300">
                           {formatCurrency(series.price_override_cents ?? seminar.single_purchase_price_cents ?? seminar.registration_fee_cents)}
                         </span>
                       </div>
-                      {series.price_override_cents != null && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Series-specific pricing (default: {formatCurrency(seminar.single_purchase_price_cents ?? seminar.registration_fee_cents)})
+                      {series.price_override_cents != null && defaultSeminarPrice && (
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                          Customized for this run. Default rate: {defaultSeminarPrice}.
                         </p>
                       )}
                     </div>
                   )}
 
-                  <div className="grid md:grid-cols-2 gap-4 mb-4">
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 mt-6">
                     {series.series_start_on && series.series_end_on && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span>
-                          {new Date(series.series_start_on).toLocaleDateString()} -{' '}
-                          {new Date(series.series_end_on).toLocaleDateString()}
-                        </span>
-                      </div>
+                      <SeriesMeta label="Dates" icon={<Calendar className="h-4 w-4 text-green-600 dark:text-green-400" />}>
+                        {formatDateRange(series.series_start_on, series.series_end_on)}
+                      </SeriesMeta>
                     )}
                     {series.series_session_quota && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                        <span>{series.series_session_quota} sessions</span>
-                      </div>
+                      <SeriesMeta label="Sessions" icon={<Users className="h-4 w-4 text-green-600 dark:text-green-400" />}>
+                        {series.series_session_quota} sessions
+                      </SeriesMeta>
                     )}
-                    {series.min_capacity != null && series.max_capacity != null && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                        <span>
-                          Capacity: {series.min_capacity}-{series.max_capacity} participants
-                        </span>
-                      </div>
+                    {(series.min_capacity != null || series.max_capacity != null) && (
+                      <SeriesMeta label="Capacity" icon={<Users className="h-4 w-4 text-green-600 dark:text-green-400" />}>
+                        {formatCapacity(series.min_capacity, series.max_capacity)}
+                      </SeriesMeta>
                     )}
-                    {series.min_capacity != null && series.max_capacity == null && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                        <span>Minimum {series.min_capacity} participants</span>
-                      </div>
-                    )}
-                    {series.session_duration_minutes && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                        <span>{series.session_duration_minutes} minute sessions</span>
-                      </div>
-                    )}
-                    {series.sessions_per_week_override && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                        <span>{series.sessions_per_week_override} sessions per week</span>
-                      </div>
-                    )}
-                    {series.allow_self_enrollment && (
-                      <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-300">
-                        <Users className="h-4 w-4" />
-                        <span>Self-registration enabled</span>
-                      </div>
-                    )}
-                    {series.on_demand && (
-                      <div className="flex items-center gap-2 text-sm text-blue-600 dark:text-blue-300">
-                        <Clock className="h-4 w-4" />
-                        <span>On-demand access available</span>
-                      </div>
+                    {(series.session_duration_minutes || series.sessions_per_week_override) && (
+                      <SeriesMeta label="Format" icon={<Clock className="h-4 w-4 text-green-600 dark:text-green-400" />}>
+                        {[
+                          series.session_duration_minutes ? `${series.session_duration_minutes} min sessions` : null,
+                          series.sessions_per_week_override ? `${series.sessions_per_week_override}x weekly` : null,
+                        ].filter(Boolean).join(' · ')}
+                      </SeriesMeta>
                     )}
                   </div>
 
-                  {/* Sessions */}
                   {series.class_sessions && series.class_sessions.length > 0 && (
-                    <div className="mb-4">
-                      <h4 className="text-sm font-semibold mb-2">Sessions Schedule:</h4>
-                      <div className="space-y-1 max-h-48 overflow-y-auto">
-                        {series.class_sessions.slice(0, 10).map((session, idx: number) => (
-                          <div key={session.id} className="text-sm flex items-center gap-2 text-muted-foreground">
-                            <span className="font-medium w-6">{(session.sequence_number ?? idx + 1)}.</span>
-                            <Calendar className="h-3 w-3" />
-                            <span>{new Date(session.session_date).toLocaleDateString()}</span>
-                            <Clock className="h-3 w-3 ml-2" />
-                            <span>
-                              {session.start_time} - {session.end_time}
-                            </span>
+                    <div className="mt-8">
+                      <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400 mb-3">
+                        Session Schedule
+                      </h4>
+                      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                        {series.class_sessions.slice(0, 6).map((session, idx: number) => (
+                          <div key={session.id} className="rounded-xl border border-gray-200 bg-gray-50/80 p-4 dark:border-gray-700 dark:bg-gray-800/70">
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                                Session {session.sequence_number ?? idx + 1}
+                              </span>
+                              <span className="text-xs uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                                {formatSeriesStatus(session.status)}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-700 dark:text-gray-300 mt-2">
+                              {formatSingleDate(session.session_date)}
+                            </p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                              {formatTimeRange(session.start_time, session.end_time)}
+                            </p>
                           </div>
                         ))}
-                        {series.class_sessions.length > 10 && (
-                          <p className="text-sm text-muted-foreground italic">
-                            ...and {series.class_sessions.length - 10} more sessions
-                          </p>
-                        )}
                       </div>
+                      {series.class_sessions.length > 6 && (
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-4">
+                          Plus {series.class_sessions.length - 6} more scheduled sessions.
+                        </p>
+                      )}
                     </div>
                   )}
 
-                  {series.is_active && series.allow_self_enrollment && (
-                    <div className="flex gap-2">
-                      {user ? (
+                  <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                      {series.allow_self_enrollment && series.is_active
+                        ? 'Self-registration is available for this series.'
+                        : 'Contact us if you’d like help registering for this series.'}
+                    </div>
+
+                    {series.is_active && series.allow_self_enrollment ? (
+                      user ? (
                         <Button asChild>
                           <Link to={`/curriculum/seminars/${seminar.slug || seminar.id}/register?seriesId=${series.id}`}>
                             Register Now
@@ -292,32 +333,46 @@ export default function SeminarDetail() {
                             Sign In to Register
                           </Link>
                         </Button>
-                      )}
-                    </div>
-                  )}
-                  {(!series.allow_self_enrollment || !series.is_active) && (
-                    <div className="bg-muted p-3 rounded-md text-sm">
-                      <p className="text-muted-foreground">
-                        Contact us to register for this seminar series
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {(!seminar.classes || seminar.classes.length === 0) && (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground">
-              No series scheduled at this time. Check back later for upcoming sessions.
+                      )
+                    ) : (
+                      <div className="rounded-full border border-gray-200 px-4 py-2 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                        Registration unavailable online
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : (
+          <div className="page-card-styles text-center">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">No series scheduled yet</h2>
+            <p className="text-lg text-gray-600 dark:text-gray-400">
+              Check back later for upcoming seminar dates and registration windows.
             </p>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SeriesMeta({
+  label,
+  icon,
+  children,
+}: {
+  label: string;
+  icon: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <div className="rounded-xl border border-gray-200 bg-gray-50/80 p-4 dark:border-gray-700 dark:bg-gray-800/70">
+      <div className="flex items-center gap-2 text-sm font-medium text-gray-500 dark:text-gray-400">
+        {icon}
+        {label}
+      </div>
+      <p className="mt-2 text-sm font-semibold text-gray-900 dark:text-white">{children}</p>
     </div>
   );
 }
@@ -410,4 +465,63 @@ function getRegistrationStatusVariant(series: SerializedSeries): 'default' | 'se
   if (status === 'open') return 'default';
   if (status === 'waitlisted') return 'outline';
   return 'secondary';
+}
+
+function toTitleCase(value: string) {
+  return value
+    .split(/[_\s-]+/)
+    .filter(Boolean)
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(' ');
+}
+
+function formatAudienceScope(scope: string) {
+  if (scope === 'youth') return 'Youth';
+  if (scope === 'adults') return 'Adults';
+  if (scope === 'mixed') return 'Mixed Ages';
+  return toTitleCase(scope);
+}
+
+function formatSingleDate(value: string) {
+  return new Date(value).toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+function formatDateRange(start: string, end: string) {
+  return `${formatSingleDate(start)} - ${formatSingleDate(end)}`;
+}
+
+function formatTimeRange(start: string | null, end: string | null) {
+  if (!start || !end) {
+    return 'Time to be announced';
+  }
+
+  const normalize = (value: string) => (value.length === 5 ? `${value}:00` : value);
+
+  return `${new Date(`2000-01-01T${normalize(start)}`).toLocaleTimeString([], {
+    hour: 'numeric',
+    minute: '2-digit',
+  })} - ${new Date(`2000-01-01T${normalize(end)}`).toLocaleTimeString([], {
+    hour: 'numeric',
+    minute: '2-digit',
+  })}`;
+}
+
+function formatCapacity(minCapacity?: number | null, maxCapacity?: number | null) {
+  if (minCapacity != null && maxCapacity != null) {
+    return `${minCapacity}-${maxCapacity} participants`;
+  }
+
+  if (minCapacity != null) {
+    return `Minimum ${minCapacity} participants`;
+  }
+
+  if (maxCapacity != null) {
+    return `Up to ${maxCapacity} participants`;
+  }
+
+  return 'Flexible';
 }

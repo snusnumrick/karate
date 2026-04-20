@@ -1,9 +1,10 @@
 import { json, type LoaderFunctionArgs, type ActionFunctionArgs, redirect, TypedResponse } from "@remix-run/node";
 import { Link, useFetcher, useLoaderData, useRouteError } from "@remix-run/react";
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, type ReactNode } from "react";
 import PaymentForm from "~/components/payment/PaymentForm";
 import {getSupabaseServerClient, getSupabaseAdminClient, updatePaymentStatus} from "~/utils/supabase.server";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
+import { Button } from "~/components/ui/button";
 import type {Database} from "~/types/database.types";
 import * as Sentry from "@sentry/remix";
 import {
@@ -21,6 +22,7 @@ import { moneyFromRow } from "~/utils/database-money";
 import { getPaymentProvider } from '~/services/payments/index.server';
 import type { ClientRenderConfig, PaymentProviderId } from '~/services/payments/types.server';
 import { getFamilyPaymentOptions, type EnrollmentPaymentOption } from "~/services/enrollment-payment.server";
+import { ArrowLeft, CreditCard, Receipt, ShieldCheck } from "lucide-react";
 
 // Import types for payment table columns
 type PaymentColumns = Database['public']['Tables']['payments']['Row'];
@@ -582,6 +584,7 @@ export default function PaymentPage() {
             amount,
         }));
     }, [payment?.payment_taxes]);
+    const providerName = formatPaymentProvider(providerConfig.provider);
 
 
     // console.log('PaymentPage, payment: ', payment);
@@ -769,12 +772,20 @@ export default function PaymentPage() {
     if (loaderError) {
         console.error(loaderError);
         return (
-            <div className="max-w-md mx-auto my-12 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg text-center">
-                <Alert variant="destructive">
-                    <AlertTitle>Error Loading Payment</AlertTitle>
-                    <AlertDescription>{loaderError}</AlertDescription>
-                </Alert>
-                <Link to="/" className="mt-4 inline-block text-blue-600 hover:underline">Return Home</Link>
+            <div className="min-h-screen page-background-styles py-12 text-foreground">
+                <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="page-card-styles text-center">
+                        <Alert variant="destructive" className="text-left">
+                            <AlertTitle>Error Loading Payment</AlertTitle>
+                            <AlertDescription>{loaderError}</AlertDescription>
+                        </Alert>
+                        <div className="mt-8">
+                            <Button asChild>
+                                <Link to="/family">Return to Account</Link>
+                            </Button>
+                        </div>
+                    </div>
+                </div>
             </div>
         );
     }
@@ -783,96 +794,285 @@ export default function PaymentPage() {
     if (!payment) {
         console.error("Payment data is unexpectedly missing.");
         return (
-            <div className="max-w-md mx-auto my-12 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg text-center">
-                <Alert variant="destructive">
-                    <AlertTitle>Error</AlertTitle>
-                    <AlertDescription>Payment data is unexpectedly missing.</AlertDescription>
-                </Alert>
-                <Link to="/" className="mt-4 inline-block text-blue-600 hover:underline">Return Home</Link>
+            <div className="min-h-screen page-background-styles py-12 text-foreground">
+                <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="page-card-styles text-center">
+                        <Alert variant="destructive" className="text-left">
+                            <AlertTitle>Error</AlertTitle>
+                            <AlertDescription>Payment data is unexpectedly missing.</AlertDescription>
+                        </Alert>
+                        <div className="mt-8">
+                            <Button asChild>
+                                <Link to="/family">Return to Account</Link>
+                            </Button>
+                        </div>
+                    </div>
+                </div>
             </div>
         );
     }
 
+    const paymentStatusLabel = formatPaymentStatus(payment.status);
+    const isInitializingPayment = paymentIntentFetcher.state === "submitting";
+    const hasDiscount = Boolean(payment.discount_amount && payment.discount_amount > 0);
+    const paymentProductDescription = getPaymentProductDescription(payment.type);
+
 
     return (
-        <div className="max-w-md mx-auto my-12 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 text-center">Complete Your Payment</h1>
+        <div className="min-h-screen page-background-styles py-12 text-foreground">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <Link
+                    to="/family"
+                    className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-300 dark:hover:text-white mb-6"
+                >
+                    <ArrowLeft className="h-4 w-4" />
+                    Back to Account
+                </Link>
 
-            {/* Display message if retrying a failed payment */}
-            {payment?.status === 'failed' && (
-                <Alert variant="warning" className="mb-4"> {/* Use the new warning variant */}
-                    {/* Optional: Add an icon like ExclamationTriangleIcon if desired */}
-                    <AlertTitle>Previous Attempt Failed</AlertTitle>
-                    <AlertDescription>
-                        Your previous attempt to complete this payment failed. Please check your card details and try
-                        again.
-                    </AlertDescription>
-                </Alert>
-            )}
+                <section className="page-card-styles mb-8">
+                    <div className="grid gap-8 lg:grid-cols-[1.35fr,0.95fr] lg:items-start">
+                        <div>
+                            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-green-600 dark:text-green-400">
+                                Secure Checkout
+                            </p>
+                            <h1 className="page-header-styles mt-3 mb-4">Complete Your Payment</h1>
+                            <p className="text-lg leading-relaxed text-gray-600 dark:text-gray-300">
+                                Review the payment summary and finish checkout securely through {providerName}.
+                            </p>
 
-            {/* Display Payment Summary */}
-            <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded text-left">
-                <p className="text-sm text-gray-700 dark:text-gray-300">
-                    <span className="font-semibold">Family:</span> {payment.family?.name ?? 'N/A'}
-                </p>
-                {/* Display Subtotal (already discounted) */}
-                <p className="text-sm text-gray-700 dark:text-gray-300">
-                    <span className="font-semibold">Subtotal:</span> {formatMoney(payment.subtotal_amount)}
-                    {payment.discount_amount && payment.discount_amount > 0 && (
-                        <span className="text-green-600 dark:text-green-400 ml-2">
-                            (discount applied)
-                        </span>
-                    )}
-                </p>
-                {/* Display Grouped Tax Breakdown */}
-                {groupedTaxes.length > 0 && (
-                    groupedTaxes.map((tax, index) => (
-                        <p key={index} className="text-sm text-gray-700 dark:text-gray-300">
-                            <span className="font-semibold">
-                                {tax.description}:
-                            </span> {formatMoney(tax.amount)}
-                        </p>
-                    ))
-                )}
-                <p className="text-lg font-bold text-gray-800 dark:text-gray-100 mt-2 border-t pt-2 dark:border-gray-600">
-                    {/* Display the final total amount */}
-                    <span className="font-semibold">Total Amount:</span> {formatMoney(payment.total_amount)}
-                </p>
-                <p className="text-sm text-gray-700 dark:text-gray-300">
-                    <span
-                        className="font-semibold">Product:</span> {getPaymentProductDescription(payment.type)} {/* Use helper function */}
-                </p>
-            </div>
+                            <div className="grid gap-4 md:grid-cols-3 mt-8">
+                                <div className="rounded-2xl border border-gray-200 bg-gray-50/80 p-5 dark:border-gray-700 dark:bg-gray-800/70">
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">Account</p>
+                                    <p className="mt-2 text-lg font-semibold text-gray-900 dark:text-white">
+                                        {payment.family?.name ?? "N/A"}
+                                    </p>
+                                </div>
+                                <div className="rounded-2xl border border-gray-200 bg-gray-50/80 p-5 dark:border-gray-700 dark:bg-gray-800/70">
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">Product</p>
+                                    <p className="mt-2 text-lg font-semibold text-gray-900 dark:text-white">
+                                        {paymentProductDescription}
+                                    </p>
+                                </div>
+                                <div className="rounded-2xl border border-gray-200 bg-gray-50/80 p-5 dark:border-gray-700 dark:bg-gray-800/70">
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">Status</p>
+                                    <div className="mt-2">
+                                        <span className={getPaymentStatusClasses(payment.status)}>
+                                            {paymentStatusLabel}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-            {/* Display Loading / Error States */}
-            {paymentIntentFetcher.state === 'submitting' &&
-                <p className="text-center text-gray-600 dark:text-gray-400">Initializing payment...</p>}
+                        <div className="rounded-2xl border border-green-200/70 bg-gradient-to-br from-green-50 to-amber-50 p-6 shadow-sm dark:border-green-500/20 dark:from-green-950/30 dark:to-gray-900">
+                            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-green-700 dark:text-green-300">
+                                Amount Due
+                            </p>
+                            <p className="mt-4 text-4xl font-bold text-gray-900 dark:text-white">
+                                {formatMoney(payment.total_amount)}
+                            </p>
+                            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                                Any applicable taxes and discounts are already reflected in this total.
+                            </p>
 
-            {fetcherError && (
-                <Alert variant="destructive" className="mb-4">
-                    <AlertTitle>Initialization Error</AlertTitle>
-                    <AlertDescription>{fetcherError}</AlertDescription>
-                </Alert>
-            )}
+                            <dl className="mt-6 space-y-4 text-sm">
+                                <div className="flex items-center justify-between gap-4 border-t border-green-200/80 pt-4 dark:border-green-500/20">
+                                    <dt className="text-gray-600 dark:text-gray-400">Subtotal</dt>
+                                    <dd className="font-semibold text-gray-900 dark:text-white">
+                                        {formatMoney(payment.subtotal_amount)}
+                                    </dd>
+                                </div>
+                                {groupedTaxes.map((tax) => (
+                                    <div key={tax.description} className="flex items-center justify-between gap-4 border-t border-green-200/80 pt-4 dark:border-green-500/20">
+                                        <dt className="text-gray-600 dark:text-gray-400">{tax.description}</dt>
+                                        <dd className="font-semibold text-gray-900 dark:text-white">
+                                            {formatMoney(tax.amount)}
+                                        </dd>
+                                    </div>
+                                ))}
+                                <div className="flex items-center justify-between gap-4 border-t border-green-200/80 pt-4 dark:border-green-500/20">
+                                    <dt className="text-gray-600 dark:text-gray-400">Total</dt>
+                                    <dd className="text-lg font-bold text-gray-900 dark:text-white">
+                                        {formatMoney(payment.total_amount)}
+                                    </dd>
+                                </div>
+                            </dl>
+                        </div>
+                    </div>
+                </section>
 
-            <PaymentForm
-                payment={payment}
-                providerConfig={providerConfig}
-                clientSecret={clientSecret}
-                providerData={undefined} // No provider-specific data needed in this flow
-                onError={handleError}
-            />
+                <div className="grid gap-8 lg:grid-cols-[1.1fr,0.9fr]">
+                    <div className="page-card-styles">
+                        <div className="flex items-start gap-4 mb-6">
+                            <div className="rounded-2xl bg-green-100 p-3 text-green-700 dark:bg-green-500/10 dark:text-green-300">
+                                <CreditCard className="h-6 w-6" />
+                            </div>
+                            <div>
+                                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Checkout</h2>
+                                <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                                    Your payment details are processed securely by {providerName}.
+                                </p>
+                            </div>
+                        </div>
 
+                        {payment.status === "failed" && (
+                            <Alert variant="warning" className="mb-6">
+                                <AlertTitle>Previous Attempt Failed</AlertTitle>
+                                <AlertDescription>
+                                    Your last payment attempt did not go through. Review your payment details and try again.
+                                </AlertDescription>
+                            </Alert>
+                        )}
 
-            {/* Cancel Link - Use standard <a> tag for full page navigation */}
-            <div className="mt-6 text-center">
-                {/* Point cancel link to the main family index route */}
-                <a href="/family" className="text-sm text-gray-500 dark:text-gray-400 hover:underline">
-                    Cancel and return to Family Portal
-                </a>
+                        {isInitializingPayment && (
+                            <Alert className="mb-6">
+                                <ShieldCheck className="h-4 w-4" />
+                                <AlertTitle>Preparing Secure Checkout</AlertTitle>
+                                <AlertDescription>
+                                    We&apos;re initializing your payment session now.
+                                </AlertDescription>
+                            </Alert>
+                        )}
+
+                        {fetcherError && (
+                            <Alert variant="destructive" className="mb-6">
+                                <AlertTitle>Initialization Error</AlertTitle>
+                                <AlertDescription>{fetcherError}</AlertDescription>
+                            </Alert>
+                        )}
+
+                        <PaymentForm
+                            payment={payment}
+                            providerConfig={providerConfig}
+                            clientSecret={clientSecret}
+                            providerData={undefined}
+                            onError={handleError}
+                        />
+
+                        <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row gap-3">
+                            <Button asChild variant="outline">
+                                <Link to="/family">Cancel and Return to Account</Link>
+                            </Button>
+                        </div>
+                    </div>
+
+                    <div className="space-y-6">
+                        <div className="page-card-styles">
+                            <div className="flex items-start gap-4 mb-6">
+                                <div className="rounded-2xl bg-gray-100 p-3 text-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                                    <Receipt className="h-6 w-6" />
+                                </div>
+                                <div>
+                                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Payment Details</h2>
+                                    <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                                        Review the details associated with this payment session.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <PaymentDetailRow label="Account" value={payment.family?.name ?? "N/A"} />
+                                {payment.family?.email && (
+                                    <PaymentDetailRow label="Email" value={payment.family.email} />
+                                )}
+                                <PaymentDetailRow label="Product" value={paymentProductDescription} />
+                                <PaymentDetailRow label="Provider" value={providerName} />
+                                <PaymentDetailRow
+                                    label="Status"
+                                    value={
+                                        <span className={getPaymentStatusClasses(payment.status)}>
+                                            {paymentStatusLabel}
+                                        </span>
+                                    }
+                                />
+                                <PaymentDetailRow
+                                    label="Subtotal"
+                                    value={formatMoney(payment.subtotal_amount)}
+                                />
+                                {hasDiscount && (
+                                    <PaymentDetailRow
+                                        label="Discount"
+                                        value="Included in subtotal"
+                                    />
+                                )}
+                                {groupedTaxes.map((tax) => (
+                                    <PaymentDetailRow
+                                        key={tax.description}
+                                        label={tax.description}
+                                        value={formatMoney(tax.amount)}
+                                    />
+                                ))}
+                                <PaymentDetailRow
+                                    label="Total"
+                                    value={formatMoney(payment.total_amount)}
+                                    emphasized
+                                />
+                            </div>
+                        </div>
+
+                        <div className="page-card-styles">
+                            <div className="flex items-start gap-4 mb-4">
+                                <div className="rounded-2xl bg-green-100 p-3 text-green-700 dark:bg-green-500/10 dark:text-green-300">
+                                    <ShieldCheck className="h-6 w-6" />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">Secure Checkout</h2>
+                                    <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                                        This payment link stays tied to the same payment record, so you can safely return and complete it later if checkout is interrupted.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     );
+}
+
+function PaymentDetailRow({
+    label,
+    value,
+    emphasized = false,
+}: {
+    label: string;
+    value: ReactNode;
+    emphasized?: boolean;
+}) {
+    return (
+        <div className="rounded-2xl border border-gray-200 bg-gray-50/80 p-4 dark:border-gray-700 dark:bg-gray-800/70">
+            <p className="text-sm text-gray-500 dark:text-gray-400">{label}</p>
+            <div className="mt-2 text-gray-900 dark:text-white">
+                <span className={emphasized ? "text-lg font-bold" : "text-base font-semibold"}>
+                    {value}
+                </span>
+            </div>
+        </div>
+    );
+}
+
+function formatPaymentProvider(provider: PaymentProviderId) {
+    if (provider === "stripe") return "Stripe";
+    if (provider === "square") return "Square";
+    return "our payment provider";
+}
+
+function formatPaymentStatus(status: string | null | undefined) {
+    if (status === "pending") return "Pending";
+    if (status === "processing") return "Processing";
+    if (status === "succeeded") return "Paid";
+    if (status === "failed") return "Failed";
+    return "Pending";
+}
+
+function getPaymentStatusClasses(status: string | null | undefined) {
+    if (status === "succeeded") {
+        return "inline-flex rounded-full bg-green-100 px-3 py-1 text-sm font-semibold text-green-700 dark:bg-green-500/10 dark:text-green-300";
+    }
+    if (status === "failed") {
+        return "inline-flex rounded-full bg-red-100 px-3 py-1 text-sm font-semibold text-red-700 dark:bg-red-500/10 dark:text-red-300";
+    }
+    return "inline-flex rounded-full bg-gray-100 px-3 py-1 text-sm font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-200";
 }
 
 // Optional: Add ErrorBoundary for route-level errors
@@ -904,18 +1104,26 @@ export function ErrorBoundary() {
     }
 
     return (
-        <div className="container mx-auto px-4 py-8 max-w-3xl">
-            <Alert variant="destructive">
-                <AlertTitle>Payment Page Error</AlertTitle>
-                <AlertDescription>
-                    Sorry, something went wrong while loading the payment page. Please try again later or contact
-                    support.
-                    {paymentId !== 'unknown' && (
-                        <span className="block mt-2 text-sm font-mono">Reference ID: {paymentId}</span>
-                    )}
-                </AlertDescription>
-            </Alert>
-            <Link to="/" className="mt-4 inline-block text-blue-600 hover:underline">Return Home</Link>
+        <div className="min-h-screen page-background-styles py-12 text-foreground">
+            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="page-card-styles">
+                    <Alert variant="destructive">
+                        <AlertTitle>Payment Page Error</AlertTitle>
+                        <AlertDescription>
+                            Sorry, something went wrong while loading the payment page. Please try again later or contact
+                            support.
+                            {paymentId !== 'unknown' && (
+                                <span className="block mt-2 text-sm font-mono">Reference ID: {paymentId}</span>
+                            )}
+                        </AlertDescription>
+                    </Alert>
+                    <div className="mt-8">
+                        <Button asChild>
+                            <Link to="/family">Return to Account</Link>
+                        </Button>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }

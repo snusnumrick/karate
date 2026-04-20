@@ -14,10 +14,10 @@ import { Label } from '~/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '~/components/ui/alert';
 import { RadioGroup, RadioGroupItem } from '~/components/ui/radio-group';
 import { Separator } from '~/components/ui/separator';
-import { AlertCircle, Calendar, Clock, Users, CheckCircle, UserPlus } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Calendar, Clock, Users, CheckCircle, UserPlus } from 'lucide-react';
 import { calculateTaxesForPayment } from '~/services/tax-rates.server';
 import { addMoney, isPositive, toCents, ZERO_MONEY, fromCents } from '~/utils/money';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 
 type RegistrationType = 'self' | 'student';
 type SeminarAudienceScope = 'youth' | 'adults' | 'mixed' | null | undefined;
@@ -536,43 +536,104 @@ export default function SeminarRegister() {
         : ZERO_MONEY;
 
   const showSuccess = actionData && 'success' in actionData && actionData.success && 'paymentRequired' in actionData && !actionData.paymentRequired;
+  const seminarDetailHref = seminar ? `/curriculum/seminars/${seminar.slug || seminar.id}` : '/curriculum';
 
   if (showSuccess) {
     return (
-      <div className="container mx-auto px-4 py-8 max-w-2xl">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-              <h2 className="text-2xl font-bold mb-2">Registration Successful!</h2>
-              <p className="text-muted-foreground mb-6">
-                You&apos;ve been successfully registered for {series.series_label || series.name}.
-              </p>
+      <div className="min-h-screen page-background-styles py-12 text-foreground">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="page-card-styles text-center">
+            <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
+            <h2 className="page-header-styles mb-4">Registration Successful</h2>
+            <p className="page-subheader-styles">
+              You&apos;re registered for {series.series_label || series.name}. You can head back to your dashboard whenever you&apos;re ready.
+            </p>
+            <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
               <Button asChild>
-                <a href="/family">Go to Dashboard</a>
+                <Link to="/family">Go to Dashboard</Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link to={seminarDetailHref}>Back to Seminar Details</Link>
               </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     );
   }
 
   if (!seminar) {
-    return <div>Seminar not found</div>;
+    return (
+      <div className="min-h-screen page-background-styles py-12 text-foreground">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="page-card-styles text-center">
+            <h1 className="page-header-styles mb-4">Seminar not found</h1>
+            <p className="page-subheader-styles">
+              We couldn&apos;t load this seminar registration page.
+            </p>
+            <div className="mt-8">
+              <Button asChild>
+                <Link to="/curriculum">Back to Curriculum</Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <h1 className="text-3xl font-bold mb-2">Register for Seminar</h1>
-      <p className="text-muted-foreground mb-6">
-        {seminar.name} - {series.series_label || series.name}
-      </p>
+    <div className="min-h-screen page-background-styles py-12 text-foreground">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <Link
+          to={seminarDetailHref}
+          className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-300 dark:hover:text-white mb-6"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Seminar Details
+        </Link>
 
-      <div className="grid md:grid-cols-3 gap-6">
-        {/* Registration Form */}
-        <div className="md:col-span-2">
-          <Card>
+        <div className="text-center mb-12">
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-green-600 dark:text-green-400">
+            Seminar Registration
+          </p>
+          <h1 className="page-header-styles mt-3">{seminar.name}</h1>
+          <p className="page-subheader-styles">
+            {series.series_label || series.name} • Review your registration path, confirm waivers, and complete sign-up.
+          </p>
+        </div>
+
+        <section className="page-card-styles mb-8">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-2xl border border-gray-200 bg-gray-50/80 p-5 dark:border-gray-700 dark:bg-gray-800/70">
+              <p className="text-sm text-gray-500 dark:text-gray-400">Series</p>
+              <p className="mt-2 text-lg font-semibold text-gray-900 dark:text-white">{series.series_label || series.name}</p>
+            </div>
+            {series.series_start_on && series.series_end_on && (
+              <div className="rounded-2xl border border-gray-200 bg-gray-50/80 p-5 dark:border-gray-700 dark:bg-gray-800/70">
+                <p className="text-sm text-gray-500 dark:text-gray-400">Dates</p>
+                <p className="mt-2 text-lg font-semibold text-gray-900 dark:text-white">
+                  {formatSeminarDateRange(series.series_start_on, series.series_end_on)}
+                </p>
+              </div>
+            )}
+            <div className="rounded-2xl border border-gray-200 bg-gray-50/80 p-5 dark:border-gray-700 dark:bg-gray-800/70">
+              <p className="text-sm text-gray-500 dark:text-gray-400">Fee</p>
+              <p className="mt-2 text-lg font-semibold text-gray-900 dark:text-white">
+                {isPositive(seminarFee) ? seminarFee.toFormat() : 'Free'}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-gray-200 bg-gray-50/80 p-5 dark:border-gray-700 dark:bg-gray-800/70">
+              <p className="text-sm text-gray-500 dark:text-gray-400">Registration</p>
+              <p className="mt-2 text-lg font-semibold text-gray-900 dark:text-white">
+                {series.allow_self_enrollment ? 'Online sign-up open' : 'Contact us to register'}
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <div className="grid gap-8 lg:grid-cols-[1.45fr,0.9fr]">
+          <Card className="form-container-styles border-gray-200/80 backdrop-blur-lg dark:border-gray-600/80">
             <CardHeader>
               <CardTitle>Registration Information</CardTitle>
               <CardDescription>
@@ -611,19 +672,25 @@ export default function SeminarRegister() {
                 {/* Registration Type Selection */}
                 {registrationTypeSelectorVisible && (
                   <div className="mb-6">
-                    <Label className="mb-3 block">Who is registering?</Label>
+                    <Label className="mb-3 block text-sm font-semibold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
+                      Who is registering?
+                    </Label>
                     <RadioGroup value={registrationType} onValueChange={(value) => setRegistrationType(value as RegistrationType)}>
-                      <div className="flex items-center space-x-2 mb-2">
-                        <RadioGroupItem value="student" id="student" />
-                        <Label htmlFor="student" className="font-normal">
-                          Existing family member
-                        </Label>
+                      <div className="rounded-xl border border-gray-200 bg-gray-50/80 p-4 mb-3 dark:border-gray-700 dark:bg-gray-800/70">
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="student" id="student" />
+                          <Label htmlFor="student" className="font-normal text-gray-900 dark:text-white">
+                            Existing family member
+                          </Label>
+                        </div>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="self" id="self" />
-                        <Label htmlFor="self" className="font-normal">
-                          Myself (adult registration)
-                        </Label>
+                      <div className="rounded-xl border border-gray-200 bg-gray-50/80 p-4 dark:border-gray-700 dark:bg-gray-800/70">
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="self" id="self" />
+                          <Label htmlFor="self" className="font-normal text-gray-900 dark:text-white">
+                            Myself (adult registration)
+                          </Label>
+                        </div>
                       </div>
                     </RadioGroup>
                   </div>
@@ -632,13 +699,15 @@ export default function SeminarRegister() {
                 {/* Student Selection */}
                 {registrationType === 'student' && students.length > 0 && (
                   <div className="mb-6">
-                    <Label htmlFor="studentId">Select Student</Label>
+                    <Label htmlFor="studentId" className="text-sm font-semibold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
+                      Select Student
+                    </Label>
                     <select
                       id="studentId"
                       name="studentId"
                       value={selectedStudentId}
                       onChange={(e) => setSelectedStudentId(e.target.value)}
-                      className="w-full mt-1 rounded-md border border-input bg-background px-3 py-2"
+                      className="input-custom-styles w-full mt-2 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                       required
                     >
                       <option value="">Select a student...</option>
@@ -656,31 +725,31 @@ export default function SeminarRegister() {
                   <div className="space-y-4 mb-6">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="firstName">First Name *</Label>
-                        <Input id="firstName" name="firstName" required />
+                        <Label htmlFor="firstName" className="text-sm font-semibold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">First Name *</Label>
+                        <Input id="firstName" name="firstName" required className="input-custom-styles mt-2 rounded-xl border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800" />
                       </div>
                       <div>
-                        <Label htmlFor="lastName">Last Name *</Label>
-                        <Input id="lastName" name="lastName" required />
+                        <Label htmlFor="lastName" className="text-sm font-semibold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">Last Name *</Label>
+                        <Input id="lastName" name="lastName" required className="input-custom-styles mt-2 rounded-xl border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800" />
                       </div>
                     </div>
                     <div>
-                      <Label htmlFor="email">Email *</Label>
-                      <Input id="email" name="email" type="email" required />
+                      <Label htmlFor="email" className="text-sm font-semibold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">Email *</Label>
+                      <Input id="email" name="email" type="email" required className="input-custom-styles mt-2 rounded-xl border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800" />
                     </div>
                     <div>
-                      <Label htmlFor="phone">Phone *</Label>
-                      <Input id="phone" name="phone" type="tel" required />
+                      <Label htmlFor="phone" className="text-sm font-semibold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">Phone *</Label>
+                      <Input id="phone" name="phone" type="tel" required className="input-custom-styles mt-2 rounded-xl border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800" />
                     </div>
                     <div>
-                      <Label htmlFor="emergencyContact">Emergency Contact (Optional)</Label>
-                      <Input id="emergencyContact" name="emergencyContact" />
+                      <Label htmlFor="emergencyContact" className="text-sm font-semibold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">Emergency Contact (Optional)</Label>
+                      <Input id="emergencyContact" name="emergencyContact" className="input-custom-styles mt-2 rounded-xl border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800" />
                     </div>
                   </div>
                 )}
 
                 {selfRegistrant && registrationType === 'self' && (
-                  <Alert className="mb-6">
+                  <Alert className="mb-6 border-green-200 bg-green-50 dark:border-green-500/20 dark:bg-green-500/10">
                     <AlertDescription>
                       Registering as: {selfRegistrant.student.first_name} {selfRegistrant.student.last_name}
                     </AlertDescription>
@@ -759,109 +828,139 @@ export default function SeminarRegister() {
               </Form>
             </CardContent>
           </Card>
-        </div>
 
-        {/* Seminar Summary */}
-        <div>
-          <Card>
-            <CardHeader>
-              <CardTitle>Seminar Summary</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <p className="text-sm text-muted-foreground">Series</p>
-                <p className="font-medium">{series.series_label || series.name}</p>
+          <div className="space-y-6">
+            <div className="page-card-styles lg:sticky lg:top-6">
+              <div className="flex items-center justify-between gap-3 mb-6">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.2em] text-green-600 dark:text-green-400">
+                    Seminar Summary
+                  </p>
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-2">
+                    {series.series_label || series.name}
+                  </h2>
+                </div>
+                <div className="rounded-full bg-green-100 px-3 py-1 text-sm font-semibold text-green-700 dark:bg-green-500/10 dark:text-green-300">
+                  {series.allow_self_enrollment ? 'Open' : 'By request'}
+                </div>
               </div>
-              {series.series_start_on && series.series_end_on && (
-                <div>
-                  <p className="text-sm text-muted-foreground">Duration</p>
-                  <div className="flex items-center gap-1">
-                    <Calendar className="h-4 w-4" />
-                    <p className="text-sm">
-                      {new Date(series.series_start_on).toLocaleDateString()} -{' '}
-                      {new Date(series.series_end_on).toLocaleDateString()}
-                    </p>
-                  </div>
+
+              <div className="space-y-4">
+                <SummaryRow
+                  label="Series"
+                  value={series.series_label || series.name}
+                />
+                {series.series_start_on && series.series_end_on && (
+                  <SummaryRow
+                    label="Duration"
+                    value={formatSeminarDateRange(series.series_start_on, series.series_end_on)}
+                    icon={<Calendar className="h-4 w-4 text-green-600 dark:text-green-400" />}
+                  />
+                )}
+                {series.series_session_quota && (
+                  <SummaryRow
+                    label="Sessions"
+                    value={`${series.series_session_quota} sessions`}
+                    icon={<Clock className="h-4 w-4 text-green-600 dark:text-green-400" />}
+                  />
+                )}
+                {(series.min_capacity != null || series.max_capacity != null) && (
+                  <SummaryRow
+                    label="Capacity"
+                    value={formatSeminarCapacity(series.min_capacity, series.max_capacity)}
+                    icon={<Users className="h-4 w-4 text-green-600 dark:text-green-400" />}
+                  />
+                )}
+                {series.session_duration_minutes && (
+                  <SummaryRow
+                    label="Session Length"
+                    value={`${series.session_duration_minutes} minutes`}
+                    icon={<Clock className="h-4 w-4 text-green-600 dark:text-green-400" />}
+                  />
+                )}
+                {series.sessions_per_week_override && (
+                  <SummaryRow
+                    label="Weekly Cadence"
+                    value={`${series.sessions_per_week_override} sessions per week`}
+                    icon={<Clock className="h-4 w-4 text-green-600 dark:text-green-400" />}
+                  />
+                )}
+                {series.allow_self_enrollment && (
+                  <SummaryRow
+                    label="Registration"
+                    value="Self-registration available"
+                    icon={<Users className="h-4 w-4 text-green-600 dark:text-green-400" />}
+                  />
+                )}
+                {series.on_demand && (
+                  <SummaryRow
+                    label="Format"
+                    value="On-demand access"
+                    icon={<Clock className="h-4 w-4 text-green-600 dark:text-green-400" />}
+                  />
+                )}
+                <Separator />
+                <div className="rounded-2xl border border-gray-200 bg-gray-50/80 p-5 dark:border-gray-700 dark:bg-gray-800/70">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Total Fee</p>
+                  <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
+                    {isPositive(seminarFee) ? seminarFee.toFormat() : 'Free'}
+                  </p>
                 </div>
-              )}
-              {series.series_session_quota && (
-                <div>
-                  <p className="text-sm text-muted-foreground">Sessions</p>
-                  <div className="flex items-center gap-1">
-                    <Clock className="h-4 w-4" />
-                    <p className="text-sm">{series.series_session_quota} sessions</p>
-                  </div>
-                </div>
-              )}
-              {series.min_capacity && series.max_capacity && (
-                <div>
-                  <p className="text-sm text-muted-foreground">Capacity</p>
-                  <div className="flex items-center gap-1">
-                    <Users className="h-4 w-4" />
-                    <p className="text-sm">
-                      {series.min_capacity}-{series.max_capacity} participants
-                    </p>
-                  </div>
-                </div>
-              )}
-              {series.min_capacity && !series.max_capacity && (
-                <div>
-                  <p className="text-sm text-muted-foreground">Capacity</p>
-                  <div className="flex items-center gap-1">
-                    <Users className="h-4 w-4" />
-                    <p className="text-sm">Minimum {series.min_capacity} participants</p>
-                  </div>
-                </div>
-              )}
-              {series.session_duration_minutes && (
-                <div>
-                  <p className="text-sm text-muted-foreground">Session Length</p>
-                  <div className="flex items-center gap-1">
-                    <Clock className="h-4 w-4" />
-                    <p className="text-sm">{series.session_duration_minutes} minutes</p>
-                  </div>
-                </div>
-              )}
-              {series.sessions_per_week_override && (
-                <div>
-                  <p className="text-sm text-muted-foreground">Weekly Cadence</p>
-                  <div className="flex items-center gap-1">
-                    <Clock className="h-4 w-4" />
-                    <p className="text-sm">{series.sessions_per_week_override} sessions per week</p>
-                  </div>
-                </div>
-              )}
-              {series.allow_self_enrollment && (
-                <div>
-                  <p className="text-sm text-muted-foreground">Registration</p>
-                  <div className="flex items-center gap-1 text-green-600 dark:text-green-300">
-                    <Users className="h-4 w-4" />
-                    <p className="text-sm">Self-registration available</p>
-                  </div>
-                </div>
-              )}
-              {series.on_demand && (
-                <div>
-                  <p className="text-sm text-muted-foreground">Format</p>
-                  <div className="flex items-center gap-1 text-blue-600 dark:text-blue-300">
-                    <Clock className="h-4 w-4" />
-                    <p className="text-sm">On-demand access</p>
-                  </div>
-                </div>
-              )}
-              <Separator />
-              <div>
-                <p className="text-sm text-muted-foreground">Total Fee</p>
-                <p className="text-2xl font-bold">
-                  {isPositive(seminarFee) ? seminarFee.toFormat() : 'Free'}
-                </p>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   );
+}
+
+function SummaryRow({
+  label,
+  value,
+  icon,
+}: {
+  label: string;
+  value: string;
+  icon?: ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-gray-50/80 p-4 dark:border-gray-700 dark:bg-gray-800/70">
+      <p className="text-sm text-gray-500 dark:text-gray-400">{label}</p>
+      <div className="mt-2 flex items-start gap-2">
+        {icon}
+        <p className="text-base font-semibold text-gray-900 dark:text-white">{value}</p>
+      </div>
+    </div>
+  );
+}
+
+function formatSeminarDateRange(start: string, end: string) {
+  return `${new Date(start).toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })} - ${new Date(end).toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })}`;
+}
+
+function formatSeminarCapacity(minCapacity?: number | null, maxCapacity?: number | null) {
+  if (minCapacity && maxCapacity) {
+    return `${minCapacity}-${maxCapacity} participants`;
+  }
+
+  if (minCapacity) {
+    return `Minimum ${minCapacity} participants`;
+  }
+
+  if (maxCapacity) {
+    return `Up to ${maxCapacity} participants`;
+  }
+
+  return 'Flexible';
 }
 
 function serializeSeminarForClient(seminar: NonNullable<Awaited<ReturnType<typeof getSeminarWithSeries>>>) {
