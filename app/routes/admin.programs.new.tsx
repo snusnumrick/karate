@@ -711,29 +711,31 @@ export default function NewProgram() {
                       </div>
 
                       {/* Nested checkboxes for enrollment type */}
-                      <div className="ml-8 pl-4 border-l-2 space-y-2">
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`waiver_trial_${waiver.id}`}
-                            name={`waiver_trial_${waiver.id}`}
-                            className="h-4 w-4"
-                          />
-                          <Label htmlFor={`waiver_trial_${waiver.id}`} className="text-xs cursor-pointer">
-                            Required for trial enrollment
-                          </Label>
+                      {!isSeminarView && (
+                        <div className="ml-8 pl-4 border-l-2 space-y-2">
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`waiver_trial_${waiver.id}`}
+                              name={`waiver_trial_${waiver.id}`}
+                              className="h-4 w-4"
+                            />
+                            <Label htmlFor={`waiver_trial_${waiver.id}`} className="text-xs cursor-pointer">
+                              Required for trial enrollment
+                            </Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`waiver_full_${waiver.id}`}
+                              name={`waiver_full_${waiver.id}`}
+                              defaultChecked={true}
+                              className="h-4 w-4"
+                            />
+                            <Label htmlFor={`waiver_full_${waiver.id}`} className="text-xs cursor-pointer">
+                              Required for full enrollment
+                            </Label>
+                          </div>
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`waiver_full_${waiver.id}`}
-                            name={`waiver_full_${waiver.id}`}
-                            defaultChecked={true}
-                            className="h-4 w-4"
-                          />
-                          <Label htmlFor={`waiver_full_${waiver.id}`} className="text-xs cursor-pointer">
-                            Required for full enrollment
-                          </Label>
-                        </div>
-                      </div>
+                      )}
                     </div>
                   ))}
                 </div>
