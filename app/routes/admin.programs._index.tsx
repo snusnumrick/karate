@@ -155,6 +155,8 @@ export default function ProgramsIndex() {
             const monthlyFee = formatProgramFee(program.monthly_fee);
             const yearlyFee = formatProgramFee(program.yearly_fee);
             const sessionFee = formatProgramFee(program.individual_session_fee);
+            const registrationFee = formatProgramFee(program.registration_fee);
+            const isSeminarCard = program.engagement_type === 'seminar';
 
             return (
               <Card key={program.id} className="hover:shadow-md transition-shadow">
@@ -173,14 +175,17 @@ export default function ProgramsIndex() {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between items-center">
                       <span className="text-muted-foreground flex items-center">
-                        {monthlyFee && isPositive(monthlyFee) ? 'Monthly Fee:' :
+                        {isSeminarCard ? 'Registration Fee:' :
+                         monthlyFee && isPositive(monthlyFee) ? 'Monthly Fee:' :
                          yearlyFee && isPositive(yearlyFee) ? 'Yearly Fee:' :
                          sessionFee && isPositive(sessionFee) ? 'Session Fee:' : 'Monthly Fee:'}
                       </span>
                       <span>
-                        {monthlyFee && isPositive(monthlyFee) ? formatMoney(monthlyFee, { showCurrency: true, trimTrailingZeros: true }) :
-                         yearlyFee && isPositive(yearlyFee) ? formatMoney(yearlyFee, { showCurrency: true, trimTrailingZeros: true }) :
-                         sessionFee && isPositive(sessionFee) ? formatMoney(sessionFee, { showCurrency: true, trimTrailingZeros: true }) : 'Not set'}
+                        {isSeminarCard
+                          ? (registrationFee && isPositive(registrationFee) ? formatMoney(registrationFee, { showCurrency: true, trimTrailingZeros: true }) : 'Not set')
+                          : monthlyFee && isPositive(monthlyFee) ? formatMoney(monthlyFee, { showCurrency: true, trimTrailingZeros: true }) :
+                            yearlyFee && isPositive(yearlyFee) ? formatMoney(yearlyFee, { showCurrency: true, trimTrailingZeros: true }) :
+                            sessionFee && isPositive(sessionFee) ? formatMoney(sessionFee, { showCurrency: true, trimTrailingZeros: true }) : 'Not set'}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
