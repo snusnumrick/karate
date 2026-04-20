@@ -140,6 +140,18 @@ async function actionImpl({ request, params }: ActionFunctionArgs) {
         );
       }
 
+      const isSeminarUpdate = selectedProgram.engagement_type === 'seminar';
+      const seriesLabel = formData.get("series_label") as string;
+      const topic = formData.get("topic") as string;
+      const seriesStartOn = formData.get("series_start_on") as string;
+      const seriesEndOn = formData.get("series_end_on") as string;
+      const seriesSessionQuotaStr = formData.get("series_session_quota") as string;
+      const minCapacityStr = formData.get("min_capacity") as string;
+      const priceOverrideStr = formData.get("price_override") as string;
+      const seriesStatus = formData.get("series_status") as string;
+      const registrationStatus = formData.get("registration_status") as string;
+      const allowSelfEnrollment = formData.get("allow_self_enrollment") === "on";
+
       const updateData: Omit<UpdateClassData, 'id'> = {
         program_id: programId,
         name: className || selectedProgram?.name || "Unnamed Class",
@@ -147,6 +159,18 @@ async function actionImpl({ request, params }: ActionFunctionArgs) {
         is_active: formData.get("is_active") === "on",
         max_capacity: maxCapacity,
         instructor_id: instructorId === "none" ? undefined : instructorId || undefined,
+        ...(isSeminarUpdate ? {
+          series_label: seriesLabel || undefined,
+          topic: topic || undefined,
+          series_start_on: seriesStartOn || undefined,
+          series_end_on: seriesEndOn || undefined,
+          series_session_quota: seriesSessionQuotaStr ? parseInt(seriesSessionQuotaStr, 10) : undefined,
+          min_capacity: minCapacityStr ? parseInt(minCapacityStr, 10) : undefined,
+          price_override_cents: priceOverrideStr ? Math.round(parseFloat(priceOverrideStr) * 100) : undefined,
+          series_status: (seriesStatus || undefined) as UpdateClassData['series_status'],
+          registration_status: (registrationStatus || undefined) as UpdateClassData['registration_status'],
+          allow_self_enrollment: allowSelfEnrollment,
+        } : {}),
       };
 
       // Update class and schedules
@@ -261,7 +285,7 @@ export default function EditClass() {
       <div className="space-y-6">
         <Card className="shadow-sm">
           <CardHeader className="pb-4">
-            <CardTitle className="text-xl">{isSeminarView ? "Seminars Details" : "Class Details"}</CardTitle>
+            <CardTitle className="text-xl">{isSeminarView ? "Seminar Details" : "Class Details"}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
           <Form method="post" className="space-y-8">
@@ -306,7 +330,7 @@ export default function EditClass() {
                     id="name"
                     name="name"
                     defaultValue={classData.name}
-                    placeholder="Leave empty to use program name"
+                    placeholder={isSeminarView ? "Leave empty to use seminar template name" : "Leave empty to use program name"}
                     className="h-10 input-custom-styles"
                   />
                 </div>
@@ -330,7 +354,7 @@ export default function EditClass() {
                   />
                   {selectedProgram && (
                     <p className="text-xs text-muted-foreground">
-                      Program maximum: {selectedProgram.max_capacity} students
+                      {isSeminarView ? "Seminar template maximum:" : "Program maximum:"} {selectedProgram.max_capacity} students
                     </p>
                   )}
                 </div>
@@ -359,17 +383,142 @@ export default function EditClass() {
                   id="description"
                   name="description"
                   defaultValue={classData.description || ''}
-                  placeholder="Leave empty to use program description"
+                  placeholder={isSeminarView ? "Leave empty to use seminar template description" : "Leave empty to use program description"}
                   rows={3}
                   className="resize-none input-custom-styles"
                 />
               </div>
 
+              {/* Seminar-specific fields */}
+              {isSeminarView && (
+                <div className="space-y-4 border-t pt-4">
+                  <h3 className="text-base font-medium">Seminar Run Details</h3>
+                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="series_label" className="text-sm font-medium">Series Label</Label>
+                      <Input
+                        id="series_label"
+                        name="series_label"
+                        defaultValue={classData.series_label || ''}
+                        placeholder="e.g. Week 1: July 7–11"
+                        className="h-10 input-custom-styles"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="topic" className="text-sm font-medium">Topic (Optional)</Label>
+                      <Input
+                        id="topic"
+                        name="topic"
+                        defaultValue={classData.topic || ''}
+                        placeholder="e.g. Beginner Fundamentals"
+                        className="h-10 input-custom-styles"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="series_start_on" className="text-sm font-medium">Start Date</Label>
+                      <Input
+                        id="series_start_on"
+                        name="series_start_on"
+                        type="date"
+                        defaultValue={classData.series_start_on || ''}
+                        className="h-10 input-custom-styles"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="series_end_on" className="text-sm font-medium">End Date</Label>
+                      <Input
+                        id="series_end_on"
+                        name="series_end_on"
+                        type="date"
+                        defaultValue={classData.series_end_on || ''}
+                        className="h-10 input-custom-styles"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="series_session_quota" className="text-sm font-medium">Number of Sessions</Label>
+                      <Input
+                        id="series_session_quota"
+                        name="series_session_quota"
+                        type="number"
+                        min="1"
+                        defaultValue={classData.series_session_quota?.toString() || ''}
+                        placeholder="e.g. 5"
+                        className="h-10 input-custom-styles"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="min_capacity" className="text-sm font-medium">Min Capacity</Label>
+                      <Input
+                        id="min_capacity"
+                        name="min_capacity"
+                        type="number"
+                        min="1"
+                        defaultValue={classData.min_capacity?.toString() || ''}
+                        placeholder="e.g. 8"
+                        className="h-10 input-custom-styles"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="price_override" className="text-sm font-medium">Price Override ($)</Label>
+                      <Input
+                        id="price_override"
+                        name="price_override"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        defaultValue={classData.price_override_cents != null ? (classData.price_override_cents / 100).toFixed(2) : ''}
+                        placeholder="Leave blank to use template price"
+                        className="h-10 input-custom-styles"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="series_status" className="text-sm font-medium">Series Status</Label>
+                      <Select name="series_status" defaultValue={classData.series_status || 'tentative'}>
+                        <SelectTrigger className="h-10 input-custom-styles">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="tentative">Tentative</SelectItem>
+                          <SelectItem value="confirmed">Confirmed</SelectItem>
+                          <SelectItem value="in_progress">In Progress</SelectItem>
+                          <SelectItem value="cancelled">Cancelled</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="registration_status" className="text-sm font-medium">Registration Status</Label>
+                      <Select name="registration_status" defaultValue={classData.registration_status || 'closed'}>
+                        <SelectTrigger className="h-10 input-custom-styles">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="open">Open</SelectItem>
+                          <SelectItem value="closed">Closed</SelectItem>
+                          <SelectItem value="waitlisted">Waitlisted</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-3 p-4 bg-muted/30 rounded-lg">
+                    <Checkbox
+                      id="allow_self_enrollment"
+                      name="allow_self_enrollment"
+                      defaultChecked={classData.allow_self_enrollment}
+                      className="h-4 w-4"
+                    />
+                    <div className="space-y-1">
+                      <Label htmlFor="allow_self_enrollment" className="text-sm font-medium cursor-pointer">Allow Self-Enrollment</Label>
+                      <p className="text-xs text-muted-foreground">Families can register online without contacting admin</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center space-x-3 p-4 bg-muted/30 rounded-lg">
                 <Checkbox id="is_active" name="is_active" defaultChecked={classData.is_active} className="h-4 w-4" />
                 <div className="space-y-1">
-                  <Label htmlFor="is_active" className="text-sm font-medium cursor-pointer">{isSeminarView ? "Active Seminars" : "Active Class"}</Label>
-                  <p className="text-xs text-muted-foreground">{isSeminarView ? "Students can enroll in active seminar" : "Students can enroll in active classes"}</p>
+                  <Label htmlFor="is_active" className="text-sm font-medium cursor-pointer">{isSeminarView ? "Active Seminar" : "Active Class"}</Label>
+                  <p className="text-xs text-muted-foreground">{isSeminarView ? "Students can enroll in this active seminar" : "Students can enroll in active classes"}</p>
                 </div>
               </div>
             </div>
@@ -406,8 +555,8 @@ export default function EditClass() {
             <div className="space-y-6">
               <div className="flex items-center justify-between border-b pb-2">
                 <div>
-                  <h3 className="text-lg font-medium text-foreground">Class Schedule</h3>
-                  <p className="text-sm text-muted-foreground mt-1">Set up weekly recurring sessions for this class</p>
+                  <h3 className="text-lg font-medium text-foreground">{isSeminarView ? "Session Schedule" : "Class Schedule"}</h3>
+                  <p className="text-sm text-muted-foreground mt-1">{isSeminarView ? "Set up sessions for this seminar" : "Set up weekly recurring sessions for this class"}</p>
                   {selectedProgram && (
                     <p className="text-xs text-muted-foreground mt-1">
                       {getSessionFrequencyDescription(selectedProgram)}

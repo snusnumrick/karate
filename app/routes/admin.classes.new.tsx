@@ -104,13 +104,36 @@ async function actionImpl({ request }: ActionFunctionArgs) {
       );
     }
 
+    const seriesLabel = formData.get("series_label") as string;
+    const topic = formData.get("topic") as string;
+    const seriesStartOn = formData.get("series_start_on") as string;
+    const seriesEndOn = formData.get("series_end_on") as string;
+    const seriesSessionQuotaStr = formData.get("series_session_quota") as string;
+    const minCapacityStr = formData.get("min_capacity") as string;
+    const priceOverrideStr = formData.get("price_override") as string;
+    const seriesStatus = formData.get("series_status") as string;
+    const registrationStatus = formData.get("registration_status") as string;
+    const allowSelfEnrollment = formData.get("allow_self_enrollment") === "on";
+
     const classData: CreateClassData = {
       program_id: programId,
       name: className || selectedProgram?.name || "Unnamed Class",
       description: classDescription || selectedProgram?.description || "",
       max_capacity: maxCapacity,
       instructor_id: instructorIdValue || undefined,
-      is_active: formData.get("is_active") === "on", // Checkbox sends "on" when checked
+      is_active: formData.get("is_active") === "on",
+      ...(engagement === "seminar" ? {
+        series_label: seriesLabel || undefined,
+        topic: topic || undefined,
+        series_start_on: seriesStartOn || undefined,
+        series_end_on: seriesEndOn || undefined,
+        series_session_quota: seriesSessionQuotaStr ? parseInt(seriesSessionQuotaStr, 10) : undefined,
+        min_capacity: minCapacityStr ? parseInt(minCapacityStr, 10) : undefined,
+        price_override_cents: priceOverrideStr ? Math.round(parseFloat(priceOverrideStr) * 100) : undefined,
+        series_status: (seriesStatus || "tentative") as CreateClassData['series_status'],
+        registration_status: (registrationStatus || "closed") as CreateClassData['registration_status'],
+        allow_self_enrollment: allowSelfEnrollment,
+      } : {}),
     };
 
     const newClass = await createClass(classData);
@@ -257,7 +280,7 @@ export default function NewClass() {
 
       <Card>
         <CardHeader>
-          <CardTitle>{isSeminarView ? "Seminars Details" : "Class Details"}</CardTitle>
+          <CardTitle>{isSeminarView ? "Seminar Details" : "Class Details"}</CardTitle>
         </CardHeader>
         <CardContent>
           <Form method="post" className="space-y-4">
@@ -293,11 +316,11 @@ export default function NewClass() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="name">Class Name (Optional)</Label>
+                <Label htmlFor="name">{isSeminarView ? "Seminar Name (Optional)" : "Class Name (Optional)"}</Label>
                 <Input
                   id="name"
                   name="name"
-                  placeholder="Leave empty to use program name"
+                  placeholder={isSeminarView ? "Leave empty to use seminar template name" : "Leave empty to use program name"}
                 />
               </div>
 
@@ -344,10 +367,113 @@ export default function NewClass() {
               <Textarea
                 id="description"
                 name="description"
-                placeholder="Leave empty to use program description"
+                placeholder={isSeminarView ? "Leave empty to use seminar template description" : "Leave empty to use program description"}
                 rows={2}
               />
             </div>
+
+            {/* Seminar-specific fields */}
+            {isSeminarView && (
+              <div className="space-y-4 border-t pt-4">
+                <h3 className="text-base font-medium">Seminar Run Details</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="series_label">Series Label</Label>
+                    <Input
+                      id="series_label"
+                      name="series_label"
+                      placeholder="e.g. Week 1: July 7–11"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="topic">Topic (Optional)</Label>
+                    <Input
+                      id="topic"
+                      name="topic"
+                      placeholder="e.g. Beginner Fundamentals"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="series_start_on">Start Date</Label>
+                    <Input
+                      id="series_start_on"
+                      name="series_start_on"
+                      type="date"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="series_end_on">End Date</Label>
+                    <Input
+                      id="series_end_on"
+                      name="series_end_on"
+                      type="date"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="series_session_quota">Number of Sessions</Label>
+                    <Input
+                      id="series_session_quota"
+                      name="series_session_quota"
+                      type="number"
+                      min="1"
+                      placeholder="e.g. 5"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="min_capacity">Min Capacity</Label>
+                    <Input
+                      id="min_capacity"
+                      name="min_capacity"
+                      type="number"
+                      min="1"
+                      placeholder="e.g. 8"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="price_override">Price Override ($)</Label>
+                    <Input
+                      id="price_override"
+                      name="price_override"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="Leave blank to use template price"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="series_status">Series Status</Label>
+                    <Select name="series_status" defaultValue="tentative">
+                      <SelectTrigger className="input-custom-styles">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="tentative">Tentative</SelectItem>
+                        <SelectItem value="confirmed">Confirmed</SelectItem>
+                        <SelectItem value="in_progress">In Progress</SelectItem>
+                        <SelectItem value="cancelled">Cancelled</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="registration_status">Registration Status</Label>
+                    <Select name="registration_status" defaultValue="closed">
+                      <SelectTrigger className="input-custom-styles">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="open">Open</SelectItem>
+                        <SelectItem value="closed">Closed</SelectItem>
+                        <SelectItem value="waitlisted">Waitlisted</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox id="allow_self_enrollment" name="allow_self_enrollment" />
+                  <Label htmlFor="allow_self_enrollment">Allow Self-Enrollment (families can register online)</Label>
+                </div>
+              </div>
+            )}
 
             {/* Validation Messages */}
             {(validationResult.errors.length > 0 || validationResult.warnings.length > 0) && (
@@ -370,9 +496,9 @@ export default function NewClass() {
             {/* Class Schedule Section */}
             <div className="space-y-4">
               <div className="border-t pt-4">
-                <h3 className="text-lg font-medium mb-3">Class Schedule</h3>
+                <h3 className="text-lg font-medium mb-3">{isSeminarView ? "Session Schedule" : "Class Schedule"}</h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Add weekly schedule slots for this class. Duration is taken from the program.
+                  {isSeminarView ? "Add weekly schedule slots for this seminar. Duration is taken from the seminar template." : "Add weekly schedule slots for this class. Duration is taken from the program."}
                   {selectedProgram && (
                     <span className="block mt-1 font-medium">
                       {getSessionFrequencyDescription(selectedProgram)}
