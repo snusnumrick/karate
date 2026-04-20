@@ -239,7 +239,7 @@ export default function NewClass() {
       <div className="flex items-center gap-4 mb-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">
-            {isSeminarView ? "Create Seminars" : "Create New Class"}
+            {isSeminarView ? "Create Seminar" : "Create New Class"}
           </h1>
           <p className="text-muted-foreground">
             {isSeminarView
@@ -481,7 +481,7 @@ export default function NewClass() {
                   type="submit"
                   disabled={isSubmitting || !validationResult.isValid}
                 >
-                  {isSubmitting ? "Creating..." : isSeminarView ? "Create Seminars" : "Create Class"}
+                  {isSubmitting ? "Creating..." : isSeminarView ? "Create Seminar" : "Create Class"}
                 </Button>
               </div>
             </div>
