@@ -15,7 +15,7 @@ Summer camps are modelled as **Seminar Series** in the system. A seminar has two
 2. Click **New Seminar Template**
 3. Fill in:
    - **Seminar Name** — e.g. "Summer Camp 2025"
-   - **Audience Scope** — `Youth`, `Adults`, or `Mixed` (summer camps for all ages → `Mixed`)
+   - **Audience Scope** — `Youth`, `Adults`, or `Mixed` (summer camps open to all ages → select `Mixed`)
    - **Age Range** — e.g. min 5, max 17
    - **Session Duration** — length of each session in minutes (e.g. 120)
    - **Single Purchase Price** — the default per-registration fee (e.g. $150.00)

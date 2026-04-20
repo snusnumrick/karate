@@ -83,6 +83,8 @@ async function actionImpl({ request }: ActionFunctionArgs) {
   const isActive = formData.get("is_active") === "on";
   const engagementValue = formData.get("engagement") as string;
   const engagement = engagementValue === "seminar" ? "seminar" : "program";
+  const audienceScopeValue = formData.get("audience_scope") as string;
+  const audienceScope = (["youth", "adults", "mixed"].includes(audienceScopeValue) ? audienceScopeValue : "mixed") as 'youth' | 'adults' | 'mixed';
 
   // Validation
   const errors: {
@@ -160,6 +162,7 @@ async function actionImpl({ request }: ActionFunctionArgs) {
       // System fields
       is_active: isActive,
       engagement_type: engagement,
+      audience_scope: audienceScope,
     };
 
     const newProgram = await createProgram(programData);
@@ -305,6 +308,23 @@ export default function NewProgram() {
                    </div>
                  </div>
               </div>
+            </div>
+
+            <div className="space-y-3">
+              <Label htmlFor="audience_scope" className="text-sm font-medium">Audience Scope *</Label>
+              <Select name="audience_scope" defaultValue={isSeminarView ? "mixed" : "youth"}>
+                <SelectTrigger className="h-11 input-custom-styles">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="youth">Youth (children)</SelectItem>
+                  <SelectItem value="adults">Adults</SelectItem>
+                  <SelectItem value="mixed">Mixed (all ages)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {isSeminarView ? "Who this seminar is open to — use Mixed for summer camps" : "Age group this program is intended for"}
+              </p>
             </div>
 
             <div className="space-y-3">
