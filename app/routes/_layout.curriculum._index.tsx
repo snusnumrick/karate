@@ -809,27 +809,25 @@ export default function CurriculumIndex() {
                         </span>
                       </div>
                     )}
-                    {seminar.runs.length > 0 && (
-                      <div className="space-y-1">
-                        {seminar.runs.map((run) => {
-                          const start = run.series_start_on ? new Date(run.series_start_on) : null;
-                          const end = run.series_end_on ? new Date(run.series_end_on) : null;
-                          const fmt = (d: Date) => d.toLocaleDateString('en-CA', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
-                          const label = run.series_label || (start && end
-                            ? (start.getUTCFullYear() === end.getUTCFullYear() && start.getUTCMonth() === end.getUTCMonth()
-                                ? `${start.toLocaleDateString('en-CA', { month: 'long', day: 'numeric', timeZone: 'UTC' })} – ${end.getUTCDate()}, ${end.getUTCFullYear()}`
-                                : `${fmt(start)} – ${fmt(end)}`)
-                            : start ? fmt(start) : null);
-                          if (!label) return null;
-                          return (
-                            <div key={run.id} className="flex items-center text-gray-700 dark:text-gray-300">
-                              <span className="w-2 h-2 bg-green-500 rounded-full mr-3 flex-shrink-0"></span>
-                              <span className="text-gray-900 dark:text-white">{label}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
+                    {seminar.runs.length > 0 && (() => {
+                      const first = seminar.runs[0];
+                      const start = first.series_start_on ? new Date(first.series_start_on) : null;
+                      const end = first.series_end_on ? new Date(first.series_end_on) : null;
+                      const fmt = (d: Date) => d.toLocaleDateString('en-CA', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+                      const dateRange = start && end
+                        ? (start.getUTCFullYear() === end.getUTCFullYear() && start.getUTCMonth() === end.getUTCMonth()
+                            ? `${start.toLocaleDateString('en-CA', { month: 'long', day: 'numeric', timeZone: 'UTC' })} – ${end.getUTCDate()}, ${end.getUTCFullYear()}`
+                            : `${fmt(start)} – ${fmt(end)}`)
+                        : start ? fmt(start) : null;
+                      const extra = seminar.runs.length > 1 ? ` (+${seminar.runs.length - 1} more)` : '';
+                      if (!dateRange) return null;
+                      return (
+                        <div className="flex items-center text-gray-700 dark:text-gray-300">
+                          <span className="w-2 h-2 bg-green-500 rounded-full mr-3 flex-shrink-0"></span>
+                          <span className="text-gray-900 dark:text-white">{dateRange}{extra}</span>
+                        </div>
+                      );
+                    })()}
                     {(seminar.single_purchase_price_cents != null || seminar.registration_fee_cents != null) && (
                       <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
                         <div className="flex justify-between items-center">
