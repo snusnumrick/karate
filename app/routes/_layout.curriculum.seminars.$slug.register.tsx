@@ -18,6 +18,43 @@ import { calculateTaxesForPayment } from '~/services/tax-rates.server';
 import { addMoney, isPositive, toCents, ZERO_MONEY, fromCents } from '~/utils/money';
 import { useState } from 'react';
 
+type RegistrationType = 'self' | 'student';
+type SeminarAudienceScope = 'youth' | 'adults' | 'mixed' | null | undefined;
+
+export function seminarSupportsAdultRegistration(audienceScope: SeminarAudienceScope) {
+  return audienceScope === 'adults' || audienceScope === 'mixed';
+}
+
+export function getDefaultSeminarRegistrationType({
+  audienceScope,
+  hasSelfRegistrant,
+  hasStudents,
+}: {
+  audienceScope: SeminarAudienceScope;
+  hasSelfRegistrant: boolean;
+  hasStudents: boolean;
+}): RegistrationType {
+  if (!seminarSupportsAdultRegistration(audienceScope)) {
+    return hasStudents ? 'student' : 'self';
+  }
+
+  if (hasSelfRegistrant) {
+    return 'self';
+  }
+
+  return hasStudents ? 'student' : 'self';
+}
+
+export function shouldShowSeminarRegistrationTypeSelector({
+  audienceScope,
+  hasStudents,
+}: {
+  audienceScope: SeminarAudienceScope;
+  hasStudents: boolean;
+}) {
+  return hasStudents && seminarSupportsAdultRegistration(audienceScope);
+}
+
 export async function loader({ request, params }: LoaderFunctionArgs) {
   const { slug } = params;
 
@@ -151,7 +188,7 @@ async function handleSeminarRegistration(formData: FormData, request: Request) {
 
   try {
     const seriesId = formData.get('seriesId') as string;
-    const registrationType = formData.get('registrationType') as string;
+    const registrationType = formData.get('registrationType') as RegistrationType;
     const { data: requiredWaivers } = await supabaseServer
       .from('waivers')
       .select('id, title')
@@ -181,13 +218,34 @@ async function handleSeminarRegistration(formData: FormData, request: Request) {
     let studentId: string;
     let familyId: string;
 
+    // Get series and program details for pricing and audience checks
+    const { data: series } = await supabaseServer
+      .from('classes')
+      .select('*, programs(*)')
+      .eq('id', seriesId)
+      .single();
+
+    if (!series) {
+      return json({ error: 'Series not found' }, { status: 404 });
+    }
+
+    const adultRegistrationAllowed = seminarSupportsAdultRegistration(series.programs?.audience_scope);
+
     if (registrationType === 'self') {
+      if (!adultRegistrationAllowed) {
+        return json({ error: 'This seminar series is not available for adult registration' }, { status: 400 });
+      }
+
+      if (!series.allow_self_enrollment) {
+        return json({ error: 'This seminar series does not allow self-registration.' }, { status: 400 });
+      }
+
       const existingSelfRegistrant = await getSelfRegistrantByProfileId(user.id, supabaseServer);
       if (existingSelfRegistrant) {
         studentId = existingSelfRegistrant.student.id;
         familyId = existingSelfRegistrant.family.id;
       } else {
-      // Self-registration flow
+        // Self-registration flow
         const firstName = formData.get('firstName') as string;
         const lastName = formData.get('lastName') as string;
         const email = formData.get('email') as string;
@@ -230,32 +288,20 @@ async function handleSeminarRegistration(formData: FormData, request: Request) {
         return json({ error: 'Family profile is incomplete' }, { status: 400 });
       }
 
+      const { data: student } = await supabaseServer
+        .from('students')
+        .select('id')
+        .eq('id', studentId)
+        .eq('family_id', profile.family_id)
+        .maybeSingle();
+
+      if (!student) {
+        return json({ error: 'Selected student is not available for this family' }, { status: 400 });
+      }
+
       familyId = profile.family_id;
     } else {
       return json({ error: 'Invalid registration type' }, { status: 400 });
-    }
-
-    // Get series and program details for pricing
-    const { data: series } = await supabaseServer
-      .from('classes')
-      .select('*, programs(*)')
-      .eq('id', seriesId)
-      .single();
-
-    if (!series) {
-      return json({ error: 'Series not found' }, { status: 404 });
-    }
-
-    const isAdultSeminarSeries = Boolean(
-      series.programs?.engagement_type === 'seminar'
-      && ['adults', 'mixed'].includes(series.programs?.audience_scope ?? '')
-    );
-    if (!isAdultSeminarSeries) {
-      return json({ error: 'This seminar series is not available for adult registration' }, { status: 400 });
-    }
-
-    if (registrationType === 'self' && !series.allow_self_enrollment) {
-      return json({ error: 'This seminar series does not allow self-registration.' }, { status: 400 });
     }
 
     // Calculate pricing: run override → template single_purchase_price → template registration_fee
@@ -323,20 +369,7 @@ async function handleSeminarRegistration(formData: FormData, request: Request) {
       // Link payment to student (payment is already linked via payment_students table)
       // No need to update enrollment - payment linkage is through payment_students
 
-      return json({
-        success: true,
-        paymentRequired: true,
-        paymentId: payment.id,
-        enrollmentId: enrollment.id,
-        familyId,
-        studentId,
-        taxes: taxCalculation.paymentTaxes.map(tax => ({
-          taxName: tax.tax_name_snapshot,
-          taxAmount: tax.tax_amount,
-          taxRate: tax.tax_rate_snapshot,
-        })),
-        totalTaxAmount: taxCalculation.totalTaxAmount,
-      });
+      return redirect(`/pay/${payment.id}`, { headers });
     } else {
       // Free seminar - activate enrollment
       await supabaseAdmin
@@ -346,10 +379,10 @@ async function handleSeminarRegistration(formData: FormData, request: Request) {
 
       return json({
         success: true,
-          paymentRequired: false,
-          enrollmentId: enrollment.id,
-          message: 'Registration completed successfully!',
-        });
+        paymentRequired: false,
+        enrollmentId: enrollment.id,
+        message: 'Registration completed successfully!',
+      });
     }
   } catch (error) {
     if (error instanceof EnrollmentValidationError) {
@@ -369,9 +402,17 @@ export default function SeminarRegister() {
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === 'submitting';
+  const registrationTypeSelectorVisible = shouldShowSeminarRegistrationTypeSelector({
+    audienceScope: seminar?.audience_scope,
+    hasStudents: students.length > 0,
+  });
 
-  const [registrationType, setRegistrationType] = useState<'self' | 'student'>(
-    selfRegistrant ? 'self' : students.length > 0 ? 'student' : 'self'
+  const [registrationType, setRegistrationType] = useState<RegistrationType>(() =>
+    getDefaultSeminarRegistrationType({
+      audienceScope: seminar?.audience_scope,
+      hasSelfRegistrant: Boolean(selfRegistrant),
+      hasStudents: students.length > 0,
+    })
   );
   const [selectedStudentId, setSelectedStudentId] = useState('');
   const missingWaivers = requiredWaivers.filter(
@@ -438,10 +479,10 @@ export default function SeminarRegister() {
                 <input type="hidden" name="registrationType" value={registrationType} />
 
                 {/* Registration Type Selection */}
-                {!selfRegistrant && students.length > 0 && 'audience_scope' in series && series.audience_scope !== 'youth' && (
+                {registrationTypeSelectorVisible && (
                   <div className="mb-6">
                     <Label className="mb-3 block">Who is registering?</Label>
-                    <RadioGroup value={registrationType} onValueChange={(value) => setRegistrationType(value as 'self' | 'student')}>
+                    <RadioGroup value={registrationType} onValueChange={(value) => setRegistrationType(value as RegistrationType)}>
                       <div className="flex items-center space-x-2 mb-2">
                         <RadioGroupItem value="student" id="student" />
                         <Label htmlFor="student" className="font-normal">
