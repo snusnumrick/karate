@@ -785,8 +785,8 @@ export default function EditProgram() {
 
         {/* Actions Section */}
         <AdminCard>
-          <AdminCardContent>
-            <div className="flex flex-col sm:flex-row gap-4 justify-end">
+          <AdminCardContent className="pt-6">
+            <div className="flex flex-col sm:flex-row gap-4 justify-end items-center">
             <Button
               type="button"
               variant="outline"
