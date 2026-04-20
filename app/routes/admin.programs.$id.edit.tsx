@@ -343,9 +343,24 @@ export default function EditProgram() {
                 className="checkbox-custom-styles"
               />
               <div className="flex-1">
-                <Label htmlFor="is_active" className="text-sm font-medium">Active Program</Label>
-                <p className="text-xs text-gray-500">Enable this program for enrollment</p>
+                <Label htmlFor="is_active" className="text-sm font-medium">Active {isSeminarView ? "Seminar Template" : "Program"}</Label>
+                <p className="text-xs text-gray-500">Enable this {isSeminarView ? "seminar template" : "program"} for enrollment</p>
               </div>
+            </div>
+
+            <div>
+              <Label htmlFor="audience_scope">Audience Scope <span className="text-red-500">*</span></Label>
+              <Select name="audience_scope" defaultValue={program.audience_scope || (isSeminarView ? "mixed" : "youth")}>
+                <SelectTrigger className="input-custom-styles" tabIndex={3}>
+                  <SelectValue placeholder="Select audience" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="youth">Youth</SelectItem>
+                  <SelectItem value="adults">Adults</SelectItem>
+                  <SelectItem value="mixed">Mixed (All Ages)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-500 mt-1">Who this {isSeminarView ? "seminar" : "program"} is open to</p>
             </div>
           </div>
 
@@ -578,21 +593,6 @@ export default function EditProgram() {
                 </SelectContent>
               </Select>
               <p className="text-xs text-gray-500 mt-1">Limit enrollment by gender</p>
-            </div>
-
-            <div>
-              <Label htmlFor="audience_scope">Audience Scope <span className="text-red-500">*</span></Label>
-              <Select name="audience_scope" defaultValue={program.audience_scope || (isSeminarView ? "mixed" : "youth")}>
-                <SelectTrigger className="input-custom-styles" tabIndex={15}>
-                  <SelectValue placeholder="Select audience" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="youth">Youth</SelectItem>
-                  <SelectItem value="adults">Adults</SelectItem>
-                  <SelectItem value="mixed">Mixed (All Ages)</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-gray-500 mt-1">Who this {isSeminarView ? "seminar" : "program"} is open to</p>
             </div>
 
             <div className="md:col-span-2 lg:col-span-2">
