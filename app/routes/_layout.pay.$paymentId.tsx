@@ -539,6 +539,27 @@ export async function action({ request, params }: ActionFunctionArgs) {
                     }
 
                     console.log(`[Square] Successfully updated payment ${paymentId} with Square ID ${result.id} (rows affected: ${count})`);
+
+                    // Activate seminar enrollment immediately on confirmed payment.
+                    // The webhook handles this too, but it may not fire in local dev
+                    // or may be delayed — this ensures activation is synchronous.
+                    const { data: seminarEnrollments } = await supabaseAdmin
+                        .from('enrollments')
+                        .select('id')
+                        .ilike('notes', `%[seminar_pending_payment:${paymentId}:%`);
+
+                    if (seminarEnrollments && seminarEnrollments.length > 0) {
+                        const { error: enrollError } = await supabaseAdmin
+                            .from('enrollments')
+                            .update({ status: 'active' })
+                            .in('id', seminarEnrollments.map(e => e.id));
+
+                        if (enrollError) {
+                            console.error(`[Payment] Failed to activate seminar enrollment for payment ${paymentId}:`, enrollError.message);
+                        } else {
+                            console.log(`[Payment] Activated ${seminarEnrollments.length} seminar enrollment(s) for payment ${paymentId}`);
+                        }
+                    }
                 } catch (dbError) {
                     console.error('Exception storing Square payment ID:', dbError);
                     return json({
