@@ -3,9 +3,16 @@ import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { Calendar, Clock, BookOpen } from 'lucide-react';
 
+function extractPaymentId(notes?: string | null): string | null {
+  if (!notes) return null;
+  const match = notes.match(/\[seminar_pending_payment:([^:\]]+):/);
+  return match ? match[1] : null;
+}
+
 interface SeminarEnrollment {
   id: string;
   status: string;
+  notes?: string | null;
   class: {
     id: string;
     name: string;
@@ -102,6 +109,17 @@ export function SeminarEnrollmentsCard({ enrollments, isAdult = false }: Seminar
                 </div>
               )}
             </div>
+
+            {enrollment.status === 'pending_payment' && (() => {
+              const paymentId = extractPaymentId(enrollment.notes);
+              return paymentId ? (
+                <div className="mt-3">
+                  <Button asChild size="sm" className="bg-green-600 hover:bg-green-700 text-white">
+                    <Link to={`/pay/${paymentId}`}>Complete Payment</Link>
+                  </Button>
+                </div>
+              ) : null;
+            })()}
           </div>
         ))}
 

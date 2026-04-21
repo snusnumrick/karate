@@ -223,6 +223,7 @@ type PendingWaiver = {
 type SeminarEnrollment = {
     id: string;
     status: string;
+    notes?: string | null;
     class: {
         id: string;
         name: string;
@@ -605,6 +606,7 @@ export async function loader({request}: LoaderFunctionArgs) {
                 .select(`
                     id,
                     status,
+                    notes,
                     class:classes!inner(
                         id,
                         name,
@@ -626,7 +628,7 @@ export async function loader({request}: LoaderFunctionArgs) {
                 `)
                 .in('student_id', studentIds)
                 .eq('classes.programs.engagement_type', 'seminar')
-                .in('status', ['active', 'trial', 'waitlist']);
+                .in('status', ['active', 'trial', 'waitlist', 'pending_payment']);
 
             if (error) {
                 console.error('Error fetching seminar enrollments:', error);
@@ -641,120 +643,114 @@ export async function loader({request}: LoaderFunctionArgs) {
     // 7-8. Fetch upcoming classes, attendance, and incomplete registrations with batch optimization
     const additionalDataStart = performance.now();
     const upcomingClassesStart = performance.now();
-    const upcomingClassesPromise = (async (): Promise<UpcomingClassSession[]> => {
-            if (studentsWithEligibility.length === 0) return [];
-
-            try {
-                const studentIds = studentsWithEligibility.map(s => s.id);
-
-                // Batch query for all students' upcoming sessions
-                const {data: allSessions} = await supabaseServer
-                    .from('class_sessions')
-                    .select(`
-                        session_date,
-                        start_time,
-                        end_time,
-                        classes!inner(
-                            name,
-                            enrollments!inner(
-                                student_id,
-                                students(
-                                    first_name,
-                                    last_name
-                                )
+    const getUpcomingClasses = async (): Promise<UpcomingClassSession[]> => {
+        if (studentsWithEligibility.length === 0) return [];
+        try {
+            const studentIds = studentsWithEligibility.map(s => s.id);
+            const {data: allSessions} = await supabaseServer
+                .from('class_sessions')
+                .select(`
+                    session_date,
+                    start_time,
+                    end_time,
+                    classes!inner(
+                        name,
+                        enrollments!inner(
+                            student_id,
+                            students(
+                                first_name,
+                                last_name
                             )
-                        ),
-                        instructor:profiles(
-                            first_name,
-                            last_name
                         )
-                    `)
-                    .in('classes.enrollments.student_id', studentIds)
-                    .in('classes.enrollments.status', ['active', 'trial'])
-                    .gte('session_date', getTodayLocalDateString())
-                    .order('session_date', {ascending: true})
-                    .order('start_time', {ascending: true});
+                    ),
+                    instructor:profiles(
+                        first_name,
+                        last_name
+                    )
+                `)
+                .in('classes.enrollments.student_id', studentIds)
+                .in('classes.enrollments.status', ['active', 'trial'])
+                .gte('session_date', getTodayLocalDateString())
+                .order('session_date', {ascending: true})
+                .order('start_time', {ascending: true});
 
-                // Group by student and get first session for each
-                type SessionRecord = NonNullable<typeof allSessions>[number];
-                const sessionsByStudent = new Map<string, SessionRecord>();
-                allSessions?.forEach(session => {
-                    const enrollment = session.classes.enrollments[0];
-                    if (enrollment) {
-                        const studentId = enrollment.student_id;
-                        if (!sessionsByStudent.has(studentId)) {
-                            sessionsByStudent.set(studentId, session);
-                        }
+            type SessionRecord = NonNullable<typeof allSessions>[number];
+            const sessionsByStudent = new Map<string, SessionRecord>();
+            allSessions?.forEach(session => {
+                const enrollment = session.classes.enrollments[0];
+                if (enrollment) {
+                    const studentId = enrollment.student_id;
+                    if (!sessionsByStudent.has(studentId)) {
+                        sessionsByStudent.set(studentId, session);
                     }
-                });
+                }
+            });
 
-                return Array.from(sessionsByStudent.values())
-                    .filter(session => session.classes.enrollments[0])
-                    .map(session => {
-                        const enrollment = session.classes.enrollments[0]!;
-                        return {
-                            student_id: enrollment.student_id,
-                            student_name: `${enrollment.students.first_name} ${enrollment.students.last_name}`,
-                            class_name: session.classes.name,
-                            session_date: session.session_date,
-                            start_time: session.start_time,
-                            end_time: session.end_time,
-                            instructor_name: session.instructor ? `${session.instructor.first_name} ${session.instructor.last_name}` : undefined
-                        };
-                    });
-            } catch (error) {
-                console.error('Error processing upcoming class sessions:', error);
-                return [];
-            }
-        })();
-
-    const attendanceDataStart = performance.now();
-    const attendanceDataPromise = (async (): Promise<StudentAttendance[]> => {
-            if (studentsWithEligibility.length === 0) return [];
-
-            try {
-                const studentIds = studentsWithEligibility.map(s => s.id);
-
-                // Batch query for all students' attendance
-                const {data: allAttendance} = await supabaseServer
-                    .from('attendance')
-                    .select(`
-                        student_id,
-                        status,
-                        class_sessions!inner(
-                            session_date
-                        )
-                    `)
-                    .in('student_id', studentIds)
-                    .not('class_session_id', 'is', null)
-                    .order('class_sessions(session_date)', {ascending: false});
-
-                // Group by student and get latest attendance for each
-                type AttendanceRecord = NonNullable<typeof allAttendance>[number];
-                const attendanceByStudent = new Map<string, AttendanceRecord>();
-                allAttendance?.forEach(attendance => {
-                    if (!attendanceByStudent.has(attendance.student_id)) {
-                        attendanceByStudent.set(attendance.student_id, attendance);
-                    }
-                });
-
-                return studentsWithEligibility.map(student => {
-                    const attendance = attendanceByStudent.get(student.id);
+            return Array.from(sessionsByStudent.values())
+                .filter(session => session.classes.enrollments[0])
+                .map(session => {
+                    const enrollment = session.classes.enrollments[0]!;
                     return {
-                        student_id: student.id,
-                        student_name: `${student.first_name} ${student.last_name}`,
-                        last_session_date: attendance?.class_sessions?.session_date || undefined,
-                        attendance_status: attendance?.status === 'present' ? 'Present' as const :
-                            attendance?.status === 'absent' ? 'Absent' as const :
-                                attendance?.status === 'excused' ? 'Excused' as const :
-                                    attendance?.status === 'late' ? 'Late' as const : undefined
+                        student_id: enrollment.student_id,
+                        student_name: `${enrollment.students.first_name} ${enrollment.students.last_name}`,
+                        class_name: session.classes.name,
+                        session_date: session.session_date,
+                        start_time: session.start_time,
+                        end_time: session.end_time,
+                        instructor_name: session.instructor ? `${session.instructor.first_name} ${session.instructor.last_name}` : undefined
                     };
                 });
-            } catch (error) {
-                console.error('Error fetching attendance data:', error);
-                return [];
-            }
-        })();
+        } catch (error) {
+            console.error('Error processing upcoming class sessions:', error);
+            return [];
+        }
+    };
+    const upcomingClassesPromise = getUpcomingClasses();
+
+    const attendanceDataStart = performance.now();
+    const getAttendanceData = async (): Promise<StudentAttendance[]> => {
+        if (studentsWithEligibility.length === 0) return [];
+        try {
+            const studentIds = studentsWithEligibility.map(s => s.id);
+            const {data: allAttendance} = await supabaseServer
+                .from('attendance')
+                .select(`
+                    student_id,
+                    status,
+                    class_sessions!inner(
+                        session_date
+                    )
+                `)
+                .in('student_id', studentIds)
+                .not('class_session_id', 'is', null)
+                .order('class_sessions(session_date)', {ascending: false});
+
+            type AttendanceRecord = NonNullable<typeof allAttendance>[number];
+            const attendanceByStudent = new Map<string, AttendanceRecord>();
+            allAttendance?.forEach(attendance => {
+                if (!attendanceByStudent.has(attendance.student_id)) {
+                    attendanceByStudent.set(attendance.student_id, attendance);
+                }
+            });
+
+            return studentsWithEligibility.map(student => {
+                const attendance = attendanceByStudent.get(student.id);
+                return {
+                    student_id: student.id,
+                    student_name: `${student.first_name} ${student.last_name}`,
+                    last_session_date: attendance?.class_sessions?.session_date || undefined,
+                    attendance_status: attendance?.status === 'present' ? 'Present' as const :
+                        attendance?.status === 'absent' ? 'Absent' as const :
+                            attendance?.status === 'excused' ? 'Excused' as const :
+                                attendance?.status === 'late' ? 'Late' as const : undefined
+                };
+            });
+        } catch (error) {
+            console.error('Error fetching attendance data:', error);
+            return [];
+        }
+    };
+    const attendanceDataPromise = getAttendanceData();
 
     const incompleteRegistrationsStart = performance.now();
     const incompleteRegistrationsPromise = getIncompleteRegistrations(supabaseServer, profileData.family_id);

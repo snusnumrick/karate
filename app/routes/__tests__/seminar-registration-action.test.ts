@@ -212,7 +212,7 @@ describe('seminar registration action', () => {
         class_id: 'series-1',
         student_id: 'student-1',
         program_id: 'program-1',
-        status: 'waitlist',
+        status: 'pending_payment',
       }),
       supabaseAdmin,
     );
@@ -284,7 +284,7 @@ describe('seminar registration action', () => {
       maybeSingleResult: {
         data: {
           id: 'enrollment-1',
-          status: 'waitlist',
+          status: 'pending_payment',
           notes: null,
           created_at: '2026-04-20T10:00:00.000Z',
         },
