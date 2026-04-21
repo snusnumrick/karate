@@ -3,7 +3,7 @@ import { useLoaderData, Form, useNavigation, useActionData, Link, useSubmit } fr
 import { csrf } from "~/utils/csrf.server";
 import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 import { Button } from "~/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
@@ -29,6 +29,7 @@ import { useState, useEffect } from "react";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { validateClassConstraints, getSessionFrequencyDescription } from "~/utils/class-validation";
 import { serializeMoney } from "~/utils/money";
+import { cn } from "~/lib/utils";
 
 
 async function loaderImpl({ params }: LoaderFunctionArgs) {
@@ -256,468 +257,503 @@ export default function EditClass() {
   const navigation = useNavigation();
 
   const isSubmitting = navigation.state === "submitting";
+  const pageTitle = isSeminarView ? "Edit Seminar" : "Edit Class";
+  const pageDescription = isSeminarView
+    ? "Update seminar details, schedule, capacity, pricing, and registration settings."
+    : "Update class details, schedule, capacity, and instructor assignment.";
+  const sectionClass = "rounded-xl border border-gray-200 bg-gray-50/80 p-6 shadow-sm dark:border-gray-700 dark:bg-gray-900/40";
+  const sectionTitleClass = "text-lg font-semibold text-gray-900 dark:text-gray-100";
+  const sectionDescriptionClass = "mt-1 text-sm text-gray-600 dark:text-gray-400";
+  const helperTextClass = "text-xs text-gray-500 dark:text-gray-400";
+  const toggleCardClass = "flex items-start space-x-3 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800";
+  const scheduleRowClass = "rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800";
+  const primaryButtonClass = "bg-green-600 text-white shadow-sm hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-500";
+  const secondaryButtonClass = "border-green-200 text-green-700 hover:bg-green-50 hover:text-green-800 dark:border-green-800 dark:text-green-300 dark:hover:bg-green-900/30 dark:hover:text-green-200";
+  const dangerButtonClass = "border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-900/30 dark:hover:text-red-200";
+  const activeBadgeClass = "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/30 dark:text-green-200";
+  const inactiveBadgeClass = "border-gray-200 bg-gray-100 text-gray-700 dark:border-gray-700 dark:bg-gray-700/70 dark:text-gray-200";
+  const checkboxClass = "checkbox-custom-styles border-green-600 data-[state=checked]:border-green-600 data-[state=checked]:bg-green-600";
+  const inputClass = (hasError?: boolean) => cn(
+    "h-11 input-custom-styles border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800",
+    hasError && "border-red-500 focus-visible:border-red-500"
+  );
+  const textareaClass = "input-custom-styles min-h-[96px] border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800";
 
 
 
   return (
-    <div className="container mx-auto py-8 max-w-4xl">
-      <AppBreadcrumb
-        items={isSeminarView
-          ? [{ label: "Admin Dashboard", href: "/admin" }, { label: "Seminars", href: "/admin/classes?engagement=seminar" }, { label: classData.name, current: true }]
-          : breadcrumbPatterns.adminClassEdit(classData.name)
-        }
-        className="mb-6"
-      />
+    <div className="min-h-screen bg-gray-50 py-12 text-foreground dark:bg-gray-900">
+      <div className="mx-auto max-w-5xl space-y-6 px-4 sm:px-6 lg:px-8">
+        <Card className="border border-gray-200 bg-white shadow-md dark:border-gray-700 dark:bg-gray-800">
+          <CardHeader className="space-y-6 border-b border-gray-100 pb-8 dark:border-gray-700">
+            <AppBreadcrumb
+              items={isSeminarView
+                ? [{ label: "Admin Dashboard", href: "/admin" }, { label: "Seminars", href: "/admin/classes?engagement=seminar" }, { label: classData.name, current: true }]
+                : breadcrumbPatterns.adminClassEdit(classData.name)
+              }
+              className="mb-0"
+            />
 
-      <div className="flex items-center gap-4 mb-8">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">{isSeminarView ? "Edit Seminars" : "Edit Class"}</h1>
-          <p className="text-muted-foreground">
-            {isSeminarView ? "Update seminar details, schedule, and capacity." : "Update class details, schedule, and capacity."}
-          </p>
-        </div>
-      </div>
-
-      {actionData?.error && (
-        <Alert className="mb-6 border-destructive/50 text-destructive dark:border-destructive [&>svg]:text-destructive">
-          <AlertDescription>{actionData.error}</AlertDescription>
-        </Alert>
-      )}
-
-      <div className="space-y-6">
-        <Card className="shadow-sm">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-xl">{isSeminarView ? "Seminar Details" : "Class Details"}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-          <Form method="post" className="space-y-8">
-            <AuthenticityTokenInput />
-            <input type="hidden" name="intent" value="update" />
-            <input type="hidden" name="is_seminar_view" value={isSeminarView ? "true" : "false"} />
-
-            {/* Basic Information Section */}
-            <div className="space-y-6">
-              <h3 className="text-lg font-medium text-foreground border-b pb-2">Basic Information</h3>
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="program_id" className="text-sm font-medium">{isSeminarView ? "Seminar Template *" : "Program *"}</Label>
-                  <Select 
-                    name="program_id" 
-                    value={selectedProgramId}
-                    onValueChange={setSelectedProgramId}
-                    required
-                  >
-                    <SelectTrigger className="h-10 input-custom-styles">
-                      <SelectValue placeholder={isSeminarView ? "Select seminar template" : "Select program"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {programs.filter((p: ProgramType) => p.is_active).map((program: ProgramType) => (
-                        <SelectItem key={program.id} value={program.id}>
-                          {program.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {selectedProgram && (
-                    <p className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Info className="h-3 w-3" />
-                      {getSessionFrequencyDescription(selectedProgram)}
-                    </p>
-                  )}
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex items-start gap-4">
+                <div className="rounded-xl bg-green-50 p-3 text-green-700 dark:bg-green-900/30 dark:text-green-300">
+                  <Info className="h-6 w-6" />
                 </div>
-
-                {!isSeminarView && (
-                  <div className="space-y-2">
-                    <Label htmlFor="name" className="text-sm font-medium">Class Name</Label>
-                    <Input
-                      id="name"
-                      name="name"
-                      defaultValue={classData.name}
-                      placeholder="Leave empty to use program name"
-                      className="h-10 input-custom-styles"
-                    />
+                <div>
+                  <div className="inline-flex rounded-full border border-green-200 bg-green-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-green-700 dark:border-green-800 dark:bg-green-900/30 dark:text-green-300">
+                    {isSeminarView ? "Seminar Setup" : "Class Setup"}
                   </div>
-                )}
-
-                <div className="space-y-2">
-                  <Label htmlFor="max_capacity" className="text-sm font-medium">Max Capacity *</Label>
-                  <Input
-                    type="number"
-                    name="max_capacity"
-                    value={maxCapacity}
-                    onChange={(e) => setMaxCapacity(e.target.value)}
-                    min="1"
-                    max={selectedProgram?.max_capacity}
-                    placeholder={selectedProgram ? `Max: ${selectedProgram.max_capacity}` : "Enter capacity"}
-                    required
-                    className={`h-10 input-custom-styles ${
-                      validationResult.errors.some(error => error.includes('capacity')) 
-                        ? 'border-red-500 focus:border-red-500' 
-                        : ''
-                    }`}
-                  />
-                  {selectedProgram && (
-                    <p className="text-xs text-muted-foreground">
-                      {isSeminarView ? "Seminar template maximum:" : "Program maximum:"} {selectedProgram.max_capacity} students
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="instructor_id" className="text-sm font-medium">Instructor</Label>
-                  <Select name="instructor_id" defaultValue={classData.instructor_id || 'none'}>
-                    <SelectTrigger className="h-10 input-custom-styles">
-                      <SelectValue placeholder="Select instructor" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No instructor assigned</SelectItem>
-                      {instructors.map((instructor) => (
-                        <SelectItem key={instructor.id} value={instructor.id}>
-                          {instructor.first_name} {instructor.last_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <CardTitle className="mt-3 text-3xl font-bold tracking-tight text-green-600 dark:text-green-400">
+                    {pageTitle}
+                  </CardTitle>
+                  <p className="mt-1 text-lg font-semibold text-gray-900 dark:text-gray-100">{classData.name}</p>
+                  <CardDescription className="mt-2 max-w-2xl text-sm text-gray-600 dark:text-gray-400">
+                    {pageDescription}
+                  </CardDescription>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="description" className="text-sm font-medium">Description</Label>
-                <Textarea
-                  id="description"
-                  name="description"
-                  defaultValue={classData.description || ''}
-                  placeholder={isSeminarView ? "Leave empty to use seminar template description" : "Leave empty to use program description"}
-                  rows={3}
-                  className="resize-none input-custom-styles"
-                />
-              </div>
-
-              {/* Seminar-specific fields */}
-              {isSeminarView && (
-                <div className="space-y-4 border-t pt-4">
-                  <h3 className="text-base font-medium">Seminar Run Details</h3>
-                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="series_label" className="text-sm font-medium">Series Label</Label>
-                      <Input
-                        id="series_label"
-                        name="series_label"
-                        defaultValue={classData.series_label || ''}
-                        placeholder="e.g. Week 1: July 7–11"
-                        className="h-10 input-custom-styles"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="topic" className="text-sm font-medium">Topic (Optional)</Label>
-                      <Input
-                        id="topic"
-                        name="topic"
-                        defaultValue={classData.topic || ''}
-                        placeholder="e.g. Beginner Fundamentals"
-                        className="h-10 input-custom-styles"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="series_start_on" className="text-sm font-medium">Start Date</Label>
-                      <Input
-                        id="series_start_on"
-                        name="series_start_on"
-                        type="date"
-                        defaultValue={classData.series_start_on || ''}
-                        className="h-10 input-custom-styles"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="series_end_on" className="text-sm font-medium">End Date</Label>
-                      <Input
-                        id="series_end_on"
-                        name="series_end_on"
-                        type="date"
-                        defaultValue={classData.series_end_on || ''}
-                        className="h-10 input-custom-styles"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="series_session_quota" className="text-sm font-medium">Number of Sessions</Label>
-                      <Input
-                        id="series_session_quota"
-                        name="series_session_quota"
-                        type="number"
-                        min="1"
-                        defaultValue={classData.series_session_quota?.toString() || ''}
-                        placeholder="e.g. 5"
-                        className="h-10 input-custom-styles"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="min_capacity" className="text-sm font-medium">Min Capacity</Label>
-                      <Input
-                        id="min_capacity"
-                        name="min_capacity"
-                        type="number"
-                        min="1"
-                        defaultValue={classData.min_capacity?.toString() || ''}
-                        placeholder="e.g. 8"
-                        className="h-10 input-custom-styles"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="price_override" className="text-sm font-medium">Price Override ($)</Label>
-                      <Input
-                        id="price_override"
-                        name="price_override"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        defaultValue={classData.price_override_cents != null ? (classData.price_override_cents / 100).toFixed(2) : ''}
-                        placeholder="Leave blank to use template price"
-                        className="h-10 input-custom-styles"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="series_status" className="text-sm font-medium">Series Status</Label>
-                      <Select name="series_status" defaultValue={classData.series_status || 'tentative'}>
-                        <SelectTrigger className="h-10 input-custom-styles">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="tentative">Tentative</SelectItem>
-                          <SelectItem value="confirmed">Confirmed</SelectItem>
-                          <SelectItem value="in_progress">In Progress</SelectItem>
-                          <SelectItem value="cancelled">Cancelled</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="registration_status" className="text-sm font-medium">Registration Status</Label>
-                      <Select name="registration_status" defaultValue={classData.registration_status || 'closed'}>
-                        <SelectTrigger className="h-10 input-custom-styles">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="open">Open</SelectItem>
-                          <SelectItem value="closed">Closed</SelectItem>
-                          <SelectItem value="waitlisted">Waitlisted</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-3 p-4 bg-muted/30 rounded-lg">
-                    <Checkbox
-                      id="allow_self_enrollment"
-                      name="allow_self_enrollment"
-                      defaultChecked={classData.allow_self_enrollment}
-                      className="h-4 w-4"
-                    />
-                    <div className="space-y-1">
-                      <Label htmlFor="allow_self_enrollment" className="text-sm font-medium cursor-pointer">Allow Self-Enrollment</Label>
-                      <p className="text-xs text-muted-foreground">Families can register online without contacting admin</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex items-center space-x-3 p-4 bg-muted/30 rounded-lg">
-                <Checkbox id="is_active" name="is_active" defaultChecked={classData.is_active} className="h-4 w-4" />
-                <div className="space-y-1">
-                  <Label htmlFor="is_active" className="text-sm font-medium cursor-pointer">{isSeminarView ? "Active Seminar" : "Active Class"}</Label>
-                  <p className="text-xs text-muted-foreground">{isSeminarView ? "Students can enroll in this active seminar" : "Students can enroll in active classes"}</p>
-                </div>
+              <div className={cn(
+                "inline-flex h-fit rounded-full border px-3 py-1 text-sm font-medium",
+                classData.is_active ? activeBadgeClass : inactiveBadgeClass
+              )}>
+                {classData.is_active ? "Active" : "Inactive"}
               </div>
             </div>
+          </CardHeader>
 
-            {/* Validation Errors */}
-            {validationResult.errors.length > 0 && (
-              <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
-                  <ul className="list-disc list-inside space-y-1">
-                    {validationResult.errors.map((error, index) => (
-                      <li key={index}>{error}</li>
-                    ))}
-                  </ul>
-                </AlertDescription>
+          <CardContent className="pt-8">
+            {actionData?.error && (
+              <Alert className="mb-6 border-red-200 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300">
+                <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
+                <AlertDescription>{actionData.error}</AlertDescription>
               </Alert>
             )}
 
-            {/* Validation Warnings */}
-            {validationResult.warnings.length > 0 && (
-              <Alert>
-                <Info className="h-4 w-4" />
-                <AlertDescription>
-                  <ul className="list-disc list-inside space-y-1">
-                    {validationResult.warnings.map((warning, index) => (
-                      <li key={index}>{warning}</li>
-                    ))}
-                  </ul>
-                </AlertDescription>
-              </Alert>
-            )}
+            <Form method="post" className="space-y-8">
+              <AuthenticityTokenInput />
+              <input type="hidden" name="intent" value="update" />
+              <input type="hidden" name="is_seminar_view" value={isSeminarView ? "true" : "false"} />
 
-            {/* Class Schedule Section */}
-            <div className="space-y-6">
-              <div className="flex items-center justify-between border-b pb-2">
-                <div>
-                  <h3 className="text-lg font-medium text-foreground">{isSeminarView ? "Session Schedule" : "Class Schedule"}</h3>
-                  <p className="text-sm text-muted-foreground mt-1">{isSeminarView ? "Set up sessions for this seminar" : "Set up weekly recurring sessions for this class"}</p>
-                  {selectedProgram && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {getSessionFrequencyDescription(selectedProgram)}
-                    </p>
-                  )}
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={addSchedule}
-                  className="flex items-center gap-2 h-9"
-                  tabIndex={0}
-                >
-                  <Plus className="h-4 w-4" />
-                  Add Schedule
-                </Button>
-              </div>
-
-              {classSchedules.length === 0 && (
-                <div className="text-center py-8 bg-muted/30 rounded-lg border-2 border-dashed border-muted-foreground/25">
-                  <p className="text-sm text-muted-foreground mb-2">
-                    No schedules added yet
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Click &quot;Add Schedule&quot; to create your first weekly session
+              <div className={sectionClass}>
+                <div className="border-b border-gray-200 pb-4 dark:border-gray-700">
+                  <h3 className={sectionTitleClass}>Basic Information</h3>
+                  <p className={sectionDescriptionClass}>
+                    Update program assignment, naming, capacity, instructor, and description.
                   </p>
                 </div>
-              )}
 
-              {classSchedules.length > 0 && (
-                <div className="space-y-3">
-                  {/* Header row */}
-                  <div className="grid grid-cols-12 gap-4 px-4 py-3 bg-muted/50 rounded-lg text-sm font-medium text-muted-foreground">
-                    <div className="col-span-5">Day of Week</div>
-                    <div className="col-span-5">Start Time</div>
-                    <div className="col-span-2 text-center">Action</div>
+                <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="program_id" className="text-sm font-medium">{isSeminarView ? "Seminar Template *" : "Program *"}</Label>
+                    <Select
+                      name="program_id"
+                      value={selectedProgramId}
+                      onValueChange={setSelectedProgramId}
+                      required
+                    >
+                      <SelectTrigger className={inputClass()}>
+                        <SelectValue placeholder={isSeminarView ? "Select seminar template" : "Select program"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {programs.filter((p: ProgramType) => p.is_active).map((program: ProgramType) => (
+                          <SelectItem key={program.id} value={program.id}>
+                            {program.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {selectedProgram && (
+                      <p className={cn(helperTextClass, "flex items-center gap-1")}>
+                        <Info className="h-3 w-3" />
+                        {getSessionFrequencyDescription(selectedProgram)}
+                      </p>
+                    )}
                   </div>
 
-                  {/* Schedule rows */}
-                  {classSchedules.map((schedule, index) => (
-                    <div key={index} className="grid grid-cols-12 gap-4 p-4 border border-border rounded-lg bg-card hover:bg-muted/30 transition-colors items-center">
-                      <div className="col-span-5">
-                        <Select
-                          name={`schedule_${index}_day`}
-                          value={schedule.day}
-                          onValueChange={(value) => updateSchedule(index, 'day', value)}
-                        >
-                          <SelectTrigger className="h-10 input-custom-styles">
+                  {!isSeminarView && (
+                    <div className="space-y-2">
+                      <Label htmlFor="name" className="text-sm font-medium">Class Name</Label>
+                      <Input
+                        id="name"
+                        name="name"
+                        defaultValue={classData.name}
+                        placeholder="Leave empty to use program name"
+                        className={inputClass()}
+                      />
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label htmlFor="max_capacity" className="text-sm font-medium">Max Capacity *</Label>
+                    <Input
+                      id="max_capacity"
+                      type="number"
+                      name="max_capacity"
+                      value={maxCapacity}
+                      onChange={(e) => setMaxCapacity(e.target.value)}
+                      min="1"
+                      max={selectedProgram?.max_capacity}
+                      placeholder={selectedProgram?.max_capacity != null ? `Max: ${selectedProgram.max_capacity}` : "Enter capacity"}
+                      required
+                      className={inputClass(validationResult.errors.some((error) => error.includes('capacity')))}
+                    />
+                    {selectedProgram?.max_capacity != null && (
+                      <p className={helperTextClass}>
+                        {isSeminarView ? "Seminar template maximum:" : "Program maximum:"} {selectedProgram.max_capacity} students
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="instructor_id" className="text-sm font-medium">Instructor</Label>
+                    <Select name="instructor_id" defaultValue={classData.instructor_id || 'none'}>
+                      <SelectTrigger className={inputClass()}>
+                        <SelectValue placeholder="Select instructor" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No instructor assigned</SelectItem>
+                        {instructors.map((instructor) => (
+                          <SelectItem key={instructor.id} value={instructor.id}>
+                            {instructor.first_name} {instructor.last_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="mt-6 space-y-2">
+                  <Label htmlFor="description" className="text-sm font-medium">Description</Label>
+                  <Textarea
+                    id="description"
+                    name="description"
+                    defaultValue={classData.description || ''}
+                    placeholder={isSeminarView ? "Leave empty to use seminar template description" : "Leave empty to use program description"}
+                    rows={3}
+                    className={textareaClass}
+                  />
+                </div>
+
+                {isSeminarView && (
+                  <div className="mt-6 space-y-4 border-t border-gray-200 pt-6 dark:border-gray-700">
+                    <div>
+                      <h3 className={sectionTitleClass}>Seminar Run Details</h3>
+                      <p className={sectionDescriptionClass}>Adjust pricing, timing, and registration for this seminar run.</p>
+                    </div>
+                    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="series_label" className="text-sm font-medium">Series Label</Label>
+                        <Input
+                          id="series_label"
+                          name="series_label"
+                          defaultValue={classData.series_label || ''}
+                          placeholder="e.g. Week 1: July 7–11"
+                          className={inputClass()}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="topic" className="text-sm font-medium">Topic (Optional)</Label>
+                        <Input
+                          id="topic"
+                          name="topic"
+                          defaultValue={classData.topic || ''}
+                          placeholder="e.g. Beginner Fundamentals"
+                          className={inputClass()}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="series_start_on" className="text-sm font-medium">Start Date</Label>
+                        <Input
+                          id="series_start_on"
+                          name="series_start_on"
+                          type="date"
+                          defaultValue={classData.series_start_on || ''}
+                          className={inputClass()}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="series_end_on" className="text-sm font-medium">End Date</Label>
+                        <Input
+                          id="series_end_on"
+                          name="series_end_on"
+                          type="date"
+                          defaultValue={classData.series_end_on || ''}
+                          className={inputClass()}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="series_session_quota" className="text-sm font-medium">Number of Sessions</Label>
+                        <Input
+                          id="series_session_quota"
+                          name="series_session_quota"
+                          type="number"
+                          min="1"
+                          defaultValue={classData.series_session_quota?.toString() || ''}
+                          placeholder="e.g. 5"
+                          className={inputClass()}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="min_capacity" className="text-sm font-medium">Min Capacity</Label>
+                        <Input
+                          id="min_capacity"
+                          name="min_capacity"
+                          type="number"
+                          min="1"
+                          defaultValue={classData.min_capacity?.toString() || ''}
+                          placeholder="e.g. 8"
+                          className={inputClass()}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="price_override" className="text-sm font-medium">Price Override ($)</Label>
+                        <Input
+                          id="price_override"
+                          name="price_override"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          defaultValue={classData.price_override_cents != null ? (classData.price_override_cents / 100).toFixed(2) : ''}
+                          placeholder="Leave blank to use template price"
+                          className={inputClass()}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="series_status" className="text-sm font-medium">Series Status</Label>
+                        <Select name="series_status" defaultValue={classData.series_status || 'tentative'}>
+                          <SelectTrigger className={inputClass()}>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="monday">Monday</SelectItem>
-                            <SelectItem value="tuesday">Tuesday</SelectItem>
-                            <SelectItem value="wednesday">Wednesday</SelectItem>
-                            <SelectItem value="thursday">Thursday</SelectItem>
-                            <SelectItem value="friday">Friday</SelectItem>
-                            <SelectItem value="saturday">Saturday</SelectItem>
-                            <SelectItem value="sunday">Sunday</SelectItem>
+                            <SelectItem value="tentative">Tentative</SelectItem>
+                            <SelectItem value="confirmed">Confirmed</SelectItem>
+                            <SelectItem value="in_progress">In Progress</SelectItem>
+                            <SelectItem value="cancelled">Cancelled</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
-
-                      <div className="col-span-5">
-                        <Input
-                          id={`schedule_${index}_time`}
-                          name={`schedule_${index}_time`}
-                          type="time"
-                          value={schedule.time}
-                          onChange={(e) => updateSchedule(index, 'time', e.target.value)}
-                          required
-                          className="h-10 input-custom-styles"
-                        />
-                      </div>
-
-                      <div className="col-span-2 flex justify-center">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeSchedule(index)}
-                          className="h-9 w-9 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                          tabIndex={0}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
+                      <div className="space-y-2">
+                        <Label htmlFor="registration_status" className="text-sm font-medium">Registration Status</Label>
+                        <Select name="registration_status" defaultValue={classData.registration_status || 'closed'}>
+                          <SelectTrigger className={inputClass()}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="open">Open</SelectItem>
+                            <SelectItem value="closed">Closed</SelectItem>
+                            <SelectItem value="waitlisted">Waitlisted</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
-                  ))}
+
+                    <div className={toggleCardClass}>
+                      <Checkbox
+                        id="allow_self_enrollment"
+                        name="allow_self_enrollment"
+                        defaultChecked={classData.allow_self_enrollment}
+                        className={cn("mt-1", checkboxClass)}
+                      />
+                      <div className="space-y-1">
+                        <Label htmlFor="allow_self_enrollment" className="text-sm font-medium cursor-pointer text-gray-900 dark:text-gray-100">Allow Self-Enrollment</Label>
+                        <p className={helperTextClass}>Families can register online without contacting admin.</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                {validationResult.errors.length > 0 && (
+                  <Alert className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20">
+                    <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
+                    <AlertDescription className="text-red-800 dark:text-red-300">
+                      <ul className="list-disc list-inside space-y-1">
+                        {validationResult.errors.map((error, index) => (
+                          <li key={index}>{error}</li>
+                        ))}
+                      </ul>
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {validationResult.warnings.length > 0 && (
+                  <Alert className="border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-900/20">
+                    <Info className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+                    <AlertDescription className="text-yellow-800 dark:text-yellow-300">
+                      <ul className="list-disc list-inside space-y-1">
+                        {validationResult.warnings.map((warning, index) => (
+                          <li key={index}>{warning}</li>
+                        ))}
+                      </ul>
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
+
+              <div className={sectionClass}>
+                <div className="flex flex-col gap-4 border-b border-gray-200 pb-4 dark:border-gray-700 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <h3 className={sectionTitleClass}>{isSeminarView ? "Session Schedule" : "Class Schedule"}</h3>
+                    <p className={sectionDescriptionClass}>{isSeminarView ? "Set up sessions for this seminar." : "Set up weekly recurring sessions for this class."}</p>
+                    {selectedProgram && (
+                      <p className={cn(helperTextClass, "mt-1")}>
+                        {getSessionFrequencyDescription(selectedProgram)}
+                      </p>
+                    )}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={addSchedule}
+                    className={secondaryButtonClass}
+                    tabIndex={0}
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Schedule
+                  </Button>
                 </div>
-              )}
 
-              {/* Hidden input to track schedule count */}
-              <input type="hidden" name="schedule_count" value={classSchedules.length} />
-            </div>
+                {classSchedules.length === 0 && (
+                  <div className="mt-6 rounded-lg border border-dashed border-gray-300 bg-white px-4 py-8 text-center dark:border-gray-700 dark:bg-gray-800">
+                    <p className="mb-2 text-sm text-gray-600 dark:text-gray-300">
+                      No schedules added yet
+                    </p>
+                    <p className={helperTextClass}>
+                      Click &quot;Add Schedule&quot; to create your first weekly session.
+                    </p>
+                  </div>
+                )}
 
-            {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-3 pt-6 border-t">
-              <div className="flex gap-3">
-                <Button type="button" variant="outline" asChild className="h-10">
-                  <Link to={isSeminarView ? "/admin/classes?engagement=seminar" : "/admin/classes"}>Cancel</Link>
-                </Button>
-                <Button type="button" variant="outline" asChild className="h-10">
-                  <Link to={`/admin/classes/${classData.id}/sessions`}>
-                    View Sessions
-                  </Link>
-                </Button>
+                {classSchedules.length > 0 && (
+                  <div className="mt-6 space-y-3">
+                    <div className="grid grid-cols-12 gap-4 rounded-lg bg-gray-100 px-4 py-3 text-sm font-medium text-gray-600 dark:bg-gray-800/80 dark:text-gray-300">
+                      <div className="col-span-5">Day of Week</div>
+                      <div className="col-span-5">Start Time</div>
+                      <div className="col-span-2 text-center">Action</div>
+                    </div>
+
+                    {classSchedules.map((schedule, index) => (
+                      <div key={index} className={cn(scheduleRowClass, "grid grid-cols-12 gap-4 items-center")}>
+                        <div className="col-span-5">
+                          <Select
+                            name={`schedule_${index}_day`}
+                            value={schedule.day}
+                            onValueChange={(value) => updateSchedule(index, 'day', value)}
+                          >
+                            <SelectTrigger className={inputClass()}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="monday">Monday</SelectItem>
+                              <SelectItem value="tuesday">Tuesday</SelectItem>
+                              <SelectItem value="wednesday">Wednesday</SelectItem>
+                              <SelectItem value="thursday">Thursday</SelectItem>
+                              <SelectItem value="friday">Friday</SelectItem>
+                              <SelectItem value="saturday">Saturday</SelectItem>
+                              <SelectItem value="sunday">Sunday</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="col-span-5">
+                          <Input
+                            id={`schedule_${index}_time`}
+                            name={`schedule_${index}_time`}
+                            type="time"
+                            value={schedule.time}
+                            onChange={(e) => updateSchedule(index, 'time', e.target.value)}
+                            required
+                            className={inputClass()}
+                          />
+                        </div>
+
+                        <div className="col-span-2 flex justify-center">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => removeSchedule(index)}
+                            className={dangerButtonClass}
+                            tabIndex={0}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <input type="hidden" name="schedule_count" value={classSchedules.length} />
               </div>
-              <div className="sm:ml-auto">
-                <Button 
-                  type="submit" 
-                  disabled={isSubmitting || !validationResult.isValid}
-                  className="h-10 px-8"
-                >
-                  {isSubmitting ? "Updating..." : isSeminarView ? "Update Seminars" : "Update Class"}
-                </Button>
+
+              <div className="flex flex-col gap-4 border-t border-gray-200 pt-6 dark:border-gray-700 sm:flex-row sm:items-center sm:justify-between">
+                <div className={cn(toggleCardClass, "w-full sm:w-auto")}>
+                  <Checkbox id="is_active" name="is_active" defaultChecked={classData.is_active} className={cn("mt-1", checkboxClass)} />
+                  <div className="space-y-1">
+                    <Label htmlFor="is_active" className="text-sm font-medium cursor-pointer text-gray-900 dark:text-gray-100">{isSeminarView ? "Active Seminar" : "Active Class"}</Label>
+                    <p className={helperTextClass}>{isSeminarView ? "Students can enroll in this active seminar." : "Students can enroll in this active class."}</p>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <Button type="button" variant="outline" asChild className={secondaryButtonClass}>
+                    <Link to={isSeminarView ? "/admin/classes?engagement=seminar" : "/admin/classes"}>Cancel</Link>
+                  </Button>
+                  <Button type="button" variant="outline" asChild className={secondaryButtonClass}>
+                    <Link to={`/admin/classes/${classData.id}/sessions`}>
+                      View Sessions
+                    </Link>
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={isSubmitting || !validationResult.isValid}
+                    className={primaryButtonClass}
+                  >
+                    {isSubmitting ? "Updating..." : isSeminarView ? "Update Seminar" : "Update Class"}
+                  </Button>
+                </div>
               </div>
-            </div>
-
-
-          </Form>
+            </Form>
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm border-destructive/20">
+        <Card className="border border-red-200 bg-white shadow-sm dark:border-red-800/60 dark:bg-gray-800">
           <CardHeader className="pb-4">
-            <CardTitle className="text-xl text-destructive">Danger Zone</CardTitle>
+            <CardTitle className="text-xl text-red-700 dark:text-red-400">Danger Zone</CardTitle>
+            <CardDescription className="text-sm text-gray-600 dark:text-gray-400">
+              Permanently remove this {isSeminarView ? "seminar" : "class"} and its associated data.
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">
-              Once you delete a class, there is no going back. Please be certain.
-            </p>
             <Button
               type="button"
-              variant="destructive"
+              variant="outline"
               disabled={isSubmitting}
               onClick={() => setIsDeleteDialogOpen(true)}
+              className={dangerButtonClass}
               tabIndex={0}
             >
-              <Trash2 className="h-4 w-4 mr-2" />
-              {isSubmitting ? "Deleting..." : isSeminarView ? "Delete Seminars" : "Delete Class"}
+              <Trash2 className="h-4 w-4" />
+              {isSubmitting ? "Deleting..." : isSeminarView ? "Delete Seminar" : "Delete Class"}
             </Button>
           </CardContent>
         </Card>
 
-        {/* Delete Confirmation Dialog */}
         <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-          <AlertDialogContent>
+          <AlertDialogContent className="border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
             <AlertDialogHeader>
-              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-              <AlertDialogDescription>
+              <AlertDialogTitle className="text-gray-900 dark:text-gray-100">Are you absolutely sure?</AlertDialogTitle>
+              <AlertDialogDescription className="text-gray-600 dark:text-gray-400">
                 This action cannot be undone. This will permanently delete the {isSeminarView ? "seminar" : "class"}
-                <span className="font-semibold"> {classData.name}</span> and remove all associated data from our servers.
+                <span className="font-semibold text-gray-900 dark:text-gray-100"> {classData.name}</span> and remove all associated data from our servers.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel disabled={isSubmitting} tabIndex={0}>Cancel</AlertDialogCancel>
+              <AlertDialogCancel disabled={isSubmitting} className={secondaryButtonClass} tabIndex={0}>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => {
                   const formData = new FormData();
@@ -727,10 +763,10 @@ export default function EditClass() {
                   setIsDeleteDialogOpen(false);
                 }}
                 disabled={isSubmitting}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                className="bg-red-600 text-white hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-500"
                 tabIndex={0}
               >
-                {isSubmitting ? 'Deleting...' : 'Delete Class'}
+                {isSubmitting ? 'Deleting...' : isSeminarView ? 'Delete Seminar' : 'Delete Class'}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
