@@ -72,6 +72,13 @@ type SupabaseServerClientReturn = {
     }
 };
 
+function bindClientMethod<T>(value: T, thisArg: unknown): T {
+    if (typeof value !== "function") {
+        return value;
+    }
+
+    return value.bind(thisArg) as T;
+}
 
 export function getSupabaseServerClient(request: Request): SupabaseServerClientReturn {
     const response = new Response();
@@ -93,17 +100,39 @@ export function getSupabaseServerClient(request: Request): SupabaseServerClientR
     }
 
     // Now we know the variables are non-empty strings, proceed with initialization
-    const supabaseServer = createServerClient<Database, "public">(
+    const serviceRoleClient = createServerClient<Database, "public">(
         supabaseUrl,
         supabaseServiceKey,
         {request, response}
     ) as unknown as TypedSupabaseClient;
 
-    const supabaseClient = createServerClient<Database, "public">(
+    const requestClient = createServerClient<Database, "public">(
         supabaseUrl, // Use the validated variable
         supabaseAnonKey, // Use the validated variable
         {request, response}
     ) as unknown as TypedSupabaseClient;
+
+    // Keep the legacy supabaseServer alias service-role backed for data access,
+    // but route session-bound auth calls through the request-scoped anon client.
+    const requestAwareAuth = new Proxy(requestClient.auth, {
+        get(target, prop, receiver) {
+            if (prop === "admin") {
+                return serviceRoleClient.auth.admin;
+            }
+
+            return bindClientMethod(Reflect.get(target, prop, receiver), target);
+        }
+    }) as TypedSupabaseClient["auth"];
+
+    const supabaseServer = new Proxy(serviceRoleClient, {
+        get(target, prop, receiver) {
+            if (prop === "auth") {
+                return requestAwareAuth;
+            }
+
+            return bindClientMethod(Reflect.get(target, prop, receiver), target);
+        }
+    }) as TypedSupabaseClient;
 
     const ENV = { // Pass environment variables needed by client
         SUPABASE_URL: supabaseUrl,
@@ -112,11 +141,11 @@ export function getSupabaseServerClient(request: Request): SupabaseServerClientR
     }
 
     return {
-        serviceRoleClient: supabaseServer,
-        requestClient: supabaseClient,
+        serviceRoleClient,
+        requestClient,
         // Backward-compatible aliases
         supabaseServer,
-        supabaseClient,
+        supabaseClient: requestClient,
         response,
         ENV
     };

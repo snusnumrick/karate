@@ -1,15 +1,15 @@
 import { Outlet, useLoaderData, useMatches, useOutletContext, useRouteError } from '@remix-run/react';
 import { withInstructorLoader } from '~/utils/auth.server';
 import { json, redirect, type LoaderFunctionArgs } from '@vercel/remix';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { getSupabaseServerClient, getUserRole } from '~/utils/supabase.server';
 import { isAdminRole, isInstructorRole, type UserRole } from '~/types/auth';
 import InstructorNavbar from '~/components/InstructorNavbar';
 import InstructorFooter from '~/components/InstructorFooter';
 import { AppBreadcrumb, type BreadcrumbItem } from '~/components/AppBreadcrumb';
-import { createBrowserClient } from '@supabase/auth-helpers-remix';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '~/types/database.types';
+import { getSupabaseBrowserAuthClient } from '~/utils/supabase.client';
 
 async function loaderImpl({ request }: LoaderFunctionArgs) {
   const { supabaseServer, response, ENV } = getSupabaseServerClient(request);
@@ -43,18 +43,17 @@ export type InstructorOutletContext = {
 export default function InstructorLayout() {
   const { role, ENV } = useLoaderData<typeof loader>();
   const matches = useMatches();
-  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(null);
-
-  useEffect(() => {
+  const supabase = useMemo(() => {
     const url = ENV?.SUPABASE_URL;
     const anonKey = ENV?.SUPABASE_ANON_KEY;
-    if (!url || !anonKey) {
-      console.warn('InstructorLayout missing Supabase environment configuration.');
-      return;
+    if (typeof window === 'undefined' || !url || !anonKey) {
+      if (typeof window !== 'undefined' && (!url || !anonKey)) {
+        console.warn('InstructorLayout missing Supabase environment configuration.');
+      }
+      return null;
     }
 
-    const client = createBrowserClient<Database, 'public'>(url, anonKey) as unknown as SupabaseClient<Database>;
-    setSupabase(client);
+    return getSupabaseBrowserAuthClient({ url, anonKey });
   }, [ENV?.SUPABASE_URL, ENV?.SUPABASE_ANON_KEY]);
 
   const breadcrumbItems = useMemo(() => {

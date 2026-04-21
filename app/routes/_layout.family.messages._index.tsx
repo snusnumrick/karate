@@ -10,6 +10,7 @@ import {Button} from "~/components/ui/button"; // Import Button
 import {AlertCircle, MessageCircle, Plus} from "lucide-react"; // Import an icon
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
+import { hasUsableSupabaseSessionTokens } from "~/utils/supabase-session";
 
 // Remove global singleton declaration
 
@@ -110,26 +111,19 @@ export default function MessagesIndex() {
     const isCleaningUpRef = useRef(false); // Ref to prevent race conditions during cleanup
     const [sessionReady, setSessionReady] = useState(false); // True only after session is authenticated
 
-    // Effect for Supabase Client Initialization + Session setup
+    // Only subscribe when the browser already has a safe session to use.
     useEffect(() => {
         if (!supabase) {
             console.warn("[FamilyMessagesIndex] Supabase client not available from context.");
+            setSessionReady(false);
             return;
         }
-        if (!accessToken || !refreshToken) {
-            console.warn("[FamilyMessagesIndex] Access token or refresh token missing, cannot set session.");
+        if (!hasUsableSupabaseSessionTokens(accessToken ?? undefined, refreshToken ?? undefined)) {
+            console.warn("[FamilyMessagesIndex] Session tokens missing or expired, skipping realtime subscription.");
+            setSessionReady(false);
             return;
         }
-        supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-        }).then(({error: sessionError}) => {
-            if (sessionError) {
-                console.error("[FamilyMessagesIndex] Error setting session:", sessionError.message);
-            } else {
-                setSessionReady(true);
-            }
-        });
+        setSessionReady(true);
     }, [accessToken, refreshToken, supabase]);
 
     // Effect for Supabase Realtime Subscription — only runs after session is authenticated

@@ -12,6 +12,7 @@ import type { Tables } from '~/types/database.types';
 import type { InstructorOutletContext } from '~/routes/instructor';
 import MessageView, { type MessageWithSender, type SenderProfile } from '~/components/MessageView';
 import MessageInput from '~/components/MessageInput';
+import { hasUsableSupabaseSessionTokens } from '~/utils/supabase-session';
 
 interface LoaderData {
   conversation: Tables<'conversations'> & { participantNames: string | null };
@@ -211,15 +212,11 @@ export default function InstructorConversationPage() {
   }, [messages.length]);
 
   useEffect(() => {
-    if (!supabase || !accessToken || !refreshToken) return;
-    supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken }).catch((error) => {
-      const message = error instanceof Error ? error.message : String(error);
-      console.error('Instructor conversation: failed to set Supabase session', message);
-    });
-  }, [supabase, accessToken, refreshToken]);
-
-  useEffect(() => {
     if (!supabase || !conversation.id) return;
+    if (!hasUsableSupabaseSessionTokens(accessToken ?? undefined, refreshToken ?? undefined)) {
+      console.warn('Instructor conversation: session tokens missing or expired, skipping realtime subscription');
+      return;
+    }
     const channel = supabase
       .channel(`instructor-conversation-${conversation.id}`)
       .on('postgres_changes', {
@@ -238,7 +235,7 @@ export default function InstructorConversationPage() {
         console.error('Instructor conversation: failed to remove channel', message);
       });
     };
-  }, [supabase, conversation.id, revalidator]);
+  }, [supabase, conversation.id, accessToken, refreshToken, revalidator]);
 
   const title = conversation.subject || conversation.participantNames || 'Conversation';
 

@@ -1,5 +1,5 @@
-import { Link, useActionData, useFetcher, useNavigation, useSearchParams } from "@remix-run/react"; // Import useNavigation and useSearchParams
-import { ActionFunctionArgs, json, redirect, TypedResponse } from "@vercel/remix";
+import { Link, useActionData, useFetcher, useLoaderData, useNavigation, useSearchParams } from "@remix-run/react";
+import { ActionFunctionArgs, json, LoaderFunctionArgs, redirect, TypedResponse } from "@vercel/remix";
 import { AuthApiError } from "@supabase/supabase-js"; // Import AuthApiError
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -8,19 +8,14 @@ import {Checkbox} from "~/components/ui/checkbox";
 import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import {getSupabaseServerClient} from "~/utils/supabase.server";
 import { clearSupabaseAuthCookies } from "~/utils/auth-cookies.server";
-import {
-    clearLoginRateLimitCookie,
-    DEFAULT_RETRY_AFTER_SECONDS,
-    formatRetryDelay,
-    getLoginRateLimitState,
-    setLoginRateLimitCookie,
-} from "~/utils/login-rate-limit.server";
+import { DEFAULT_RETRY_AFTER_SECONDS, formatRetryDelay } from "~/utils/login-rate-limit";
 import { csrf } from "~/utils/csrf.server";
 import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 import type {ResendActionData} from "~/routes/api.resend-confirmation"; // Import the type
-import { safeRedirect } from "~/utils/redirect";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { resolveLoginCopy } from "~/utils/login-page-copy";
+import { resolvePostLoginRedirect } from "~/utils/post-login-redirect";
+import { getSupabaseBrowserAuthClient } from "~/utils/supabase.client";
 
 interface ActionResponse {
     error?: string;
@@ -28,8 +23,19 @@ interface ActionResponse {
     retryAfterSeconds?: number;
 }
 
+export async function loader({request}: LoaderFunctionArgs) {
+    const { ENV } = getSupabaseServerClient(request);
+    return json({ ENV });
+}
+
 export async function action({request}: ActionFunctionArgs)
     : Promise<TypedResponse<ActionResponse>> {
+    const {
+        clearLoginRateLimitCookie,
+        getLoginRateLimitState,
+        setLoginRateLimitCookie,
+    } = await import("~/utils/login-rate-limit.server");
+
     try {
         await csrf.validate(request);
     } catch (error) {
@@ -121,9 +127,7 @@ export async function action({request}: ActionFunctionArgs)
     }
 
     // Determine redirect target
-    const defaultRedirect = profile?.role === 'admin' ? '/admin' : (profile?.role === 'instructor' ? '/instructor' : '/family');
-    const redirectToParam = formData.get('redirectTo');
-    const redirectTo = safeRedirect(redirectToParam, defaultRedirect);
+    const redirectTo = resolvePostLoginRedirect(formData.get('redirectTo'), profile?.role);
 
     clearLoginRateLimitCookie(headers);
 
@@ -131,18 +135,32 @@ export async function action({request}: ActionFunctionArgs)
 }
 export default function LoginPage() {
     const actionData = useActionData<typeof action>();
+    const { ENV } = useLoaderData<typeof loader>();
     const fetcher = useFetcher<ResendActionData>(); // Use the imported type
     const navigation = useNavigation(); // Get navigation state
-    const isSubmitting = navigation.state === 'submitting'; // Check if form is submitting
     const [searchParams] = useSearchParams();
     const successMessage = searchParams.get('message');
     const redirectTo = searchParams.get('redirectTo') || undefined;
     const { heading, linkPrefix, linkLabel, linkHref, linkSuffix, extraMessage } = resolveLoginCopy(redirectTo);
-    const [retryAfterSeconds, setRetryAfterSeconds] = useState(actionData?.retryAfterSeconds ?? 0);
+    const supabase = useMemo(() => {
+        if (typeof window === "undefined") {
+            return null;
+        }
+
+        return getSupabaseBrowserAuthClient({
+            url: ENV.SUPABASE_URL,
+            anonKey: ENV.SUPABASE_ANON_KEY,
+        });
+    }, [ENV.SUPABASE_ANON_KEY, ENV.SUPABASE_URL]);
+    const [clientActionData, setClientActionData] = useState<ActionResponse | null>(null);
+    const [isClientSubmitting, setIsClientSubmitting] = useState(false);
+    const displayActionData = clientActionData ?? actionData;
+    const isSubmitting = navigation.state === 'submitting' || isClientSubmitting;
+    const [retryAfterSeconds, setRetryAfterSeconds] = useState(displayActionData?.retryAfterSeconds ?? 0);
 
     useEffect(() => {
-        setRetryAfterSeconds(actionData?.retryAfterSeconds ?? 0);
-    }, [actionData?.retryAfterSeconds]);
+        setRetryAfterSeconds(displayActionData?.retryAfterSeconds ?? 0);
+    }, [displayActionData?.retryAfterSeconds]);
 
     useEffect(() => {
         if (retryAfterSeconds <= 0) {
@@ -160,7 +178,84 @@ export default function LoginPage() {
     // type ResendActionData = { success?: boolean; error?: string };
     // const fetcher = useFetcher<ResendActionData>();
 
-    const isUnconfirmedEmailError = actionData?.error === "Please check your inbox and confirm your email address before logging in.";
+    const isUnconfirmedEmailError = displayActionData?.error === "Please check your inbox and confirm your email address before logging in.";
+
+    async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+        if (!supabase) {
+            return;
+        }
+
+        event.preventDefault();
+
+        const formData = new FormData(event.currentTarget);
+        const email = formData.get("email") as string;
+        const password = formData.get("password") as string;
+        const redirectTarget = formData.get("redirectTo");
+
+        if (!email || !password) {
+            setClientActionData({
+                error: "Email and password are required.",
+                email,
+            });
+            return;
+        }
+
+        if (retryAfterSeconds > 0) {
+            return;
+        }
+
+        setIsClientSubmitting(true);
+        setClientActionData(null);
+
+        try {
+            console.log("[Login Page] Attempting browser-side supabase.auth.signInWithPassword...");
+            const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            });
+
+            if (authError || !authData.user) {
+                console.error("Browser login error:", authError?.message, "Status:", (authError as AuthApiError)?.status);
+
+                if (authError instanceof AuthApiError && authError.status === 429) {
+                    setClientActionData({
+                        error: `Too many login attempts. Supabase is temporarily rate limiting sign-ins from this connection. Please wait ${formatRetryDelay(DEFAULT_RETRY_AFTER_SECONDS)} and try once.`,
+                        email,
+                        retryAfterSeconds: DEFAULT_RETRY_AFTER_SECONDS,
+                    });
+                    return;
+                }
+
+                if (authError?.message === "Email not confirmed") {
+                    setClientActionData({
+                        error: "Please check your inbox and confirm your email address before logging in.",
+                        email,
+                    });
+                    return;
+                }
+
+                setClientActionData({ error: "Invalid login credentials." });
+                return;
+            }
+
+            if (!authData.user.email_confirmed_at) {
+                setClientActionData({
+                    error: "Please check your inbox and confirm your email address before logging in.",
+                    email,
+                });
+                return;
+            }
+
+            const postLoginUrl = new URL("/auth/post-login", window.location.origin);
+            if (typeof redirectTarget === "string" && redirectTarget) {
+                postLoginUrl.searchParams.set("redirectTo", redirectTarget);
+            }
+
+            window.location.assign(postLoginUrl.toString());
+        } finally {
+            setIsClientSubmitting(false);
+        }
+    }
 
     return (
         <div className="min-h-screen page-background-styles flex flex-col">
@@ -190,7 +285,7 @@ export default function LoginPage() {
 
                 <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
                     <div className="form-container-styles py-8 px-4 sm:px-10">
-                        <form className="space-y-6" method="post">
+                        <form className="space-y-6" method="post" onSubmit={handleSubmit}>
                             <AuthenticityTokenInput />
                             {redirectTo && (
                                 <input type="hidden" name="redirectTo" value={redirectTo} />
@@ -206,13 +301,13 @@ export default function LoginPage() {
                             )}
 
                             {/* Display Login Errors */}
-                            {actionData?.error && (
+                            {displayActionData?.error && (
                                 <Alert variant="destructive">
                                     <AlertTitle className="dark:text-red-200">Login Failed</AlertTitle>
                                     <AlertDescription className="dark:text-red-300">
-                                        {actionData.error}
+                                        {displayActionData.error}
                                         {/* Show Resend option only for the specific error and if email is available */}
-                                        {isUnconfirmedEmailError && actionData.email && (
+                                        {isUnconfirmedEmailError && displayActionData.email && (
                                             <div className="mt-2">
                                                 <Button
                                                     type="button"
@@ -221,7 +316,7 @@ export default function LoginPage() {
                                                     disabled={fetcher.state !== 'idle'}
                                                     onClick={() => {
                                                         const formData = new FormData();
-                                                        formData.append('email', actionData.email || '');
+                                                        formData.append('email', displayActionData.email || '');
                                                         fetcher.submit(formData, {
                                                             method: 'post',
                                                             action: '/api/resend-confirmation'

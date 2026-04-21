@@ -4,10 +4,10 @@ import {getSupabaseServerClient, isUserAdmin} from "~/utils/supabase.server";
 import AdminNavbar from "~/components/AdminNavbar";
 import AdminFooter from "~/components/AdminFooter";
 import * as React from "react";
-import { createBrowserClient } from "@supabase/auth-helpers-remix";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "~/types/database.types";
 import { clearSupabaseAuthCookies, isRefreshTokenNotFoundError } from "~/utils/auth-cookies.server";
+import { getSupabaseBrowserAuthClient } from "~/utils/supabase.client";
 
 // This is a pathless layout route that will wrap all routes in the admin directory
 export async function loader({request}: LoaderFunctionArgs) {
@@ -88,14 +88,15 @@ function AuthTokenSender({ supabase }: { supabase: SupabaseClient<Database> }) {
 export default function AdminLayout() {
     const { ENV } = useLoaderData<typeof loader>();
     const navigate = useNavigate();
-    const [supabase, setSupabase] = React.useState<SupabaseClient<Database> | null>(null);
+    const supabase = React.useMemo<SupabaseClient<Database> | null>(() => {
+        if (typeof window === "undefined") {
+            return null;
+        }
 
-    React.useEffect(() => {
-        const client = createBrowserClient<Database, "public">(
-            ENV.SUPABASE_URL!,
-            ENV.SUPABASE_ANON_KEY!
-        ) as unknown as SupabaseClient<Database>;
-        setSupabase(client);
+        return getSupabaseBrowserAuthClient({
+            url: ENV.SUPABASE_URL!,
+            anonKey: ENV.SUPABASE_ANON_KEY!,
+        });
     }, [ENV.SUPABASE_URL, ENV.SUPABASE_ANON_KEY]);
 
     React.useEffect(() => {

@@ -1,7 +1,7 @@
 import { parse, serialize } from "cookie";
+import { DEFAULT_RETRY_AFTER_SECONDS, formatRetryDelay } from "./login-rate-limit";
 
 const LOGIN_RATE_LIMIT_COOKIE = "login-rate-limit-until";
-const DEFAULT_RETRY_AFTER_SECONDS = 60;
 
 function readRetryUntilTimestamp(request: Request): number | null {
   const cookies = parse(request.headers.get("cookie") ?? "");
@@ -70,13 +70,5 @@ export function clearLoginRateLimitCookie(headers: Headers): void {
   }));
 }
 
-export function formatRetryDelay(retryAfterSeconds: number): string {
-  if (retryAfterSeconds < 60) {
-    return `${retryAfterSeconds} second${retryAfterSeconds === 1 ? "" : "s"}`;
-  }
-
-  const minutes = Math.ceil(retryAfterSeconds / 60);
-  return `${minutes} minute${minutes === 1 ? "" : "s"}`;
-}
-
 export { DEFAULT_RETRY_AFTER_SECONDS };
+export { formatRetryDelay };

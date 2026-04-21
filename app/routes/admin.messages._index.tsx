@@ -10,6 +10,7 @@ import {Alert, AlertDescription, AlertTitle} from "~/components/ui/alert";
 import AdminConversationList, {AdminConversationSummary} from "~/components/AdminConversationList";
 import { Button } from "~/components/ui/button"; // Import Button
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
+import { hasUsableSupabaseSessionTokens } from "~/utils/supabase-session";
 
 interface LoaderData {
     conversations: AdminConversationSummary[];
@@ -107,26 +108,19 @@ export default function AdminMessagesIndex() {
     const isCleaningUpRef = useRef(false); // Ref to prevent race conditions during cleanup
     const [sessionReady, setSessionReady] = useState(false); // True only after session is authenticated
 
-    // Effect for Supabase Client Initialization + Session setup
+    // Only subscribe when the browser already has a safe session to use.
     useEffect(() => {
         if (!supabase) {
             console.warn("[AdminMessagesIndex] Supabase client not available from context.");
+            setSessionReady(false);
             return;
         }
-        if (!accessToken || !refreshToken) {
-            console.warn("[AdminMessagesIndex] Access token or refresh token missing, cannot set session.");
+        if (!hasUsableSupabaseSessionTokens(accessToken ?? undefined, refreshToken ?? undefined)) {
+            console.warn("[AdminMessagesIndex] Session tokens missing or expired, skipping realtime subscription.");
+            setSessionReady(false);
             return;
         }
-        supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-        }).then(({error: sessionError}) => {
-            if (sessionError) {
-                console.error("[AdminMessagesIndex] Error setting session:", sessionError.message);
-            } else {
-                setSessionReady(true);
-            }
-        });
+        setSessionReady(true);
     }, [accessToken, refreshToken, supabase]);
 
     // Effect for Supabase Realtime Subscription — only runs after session is authenticated
