@@ -1222,7 +1222,7 @@ export default function FamilyDashboard() {
 
                         {/* Seminar Enrollments Section */}
                         {seminarEnrollments && seminarEnrollments.length > 0 && (
-                            <div className="form-container-styles backdrop-blur-lg">
+                            <div className="form-container-styles p-6 backdrop-blur-lg hover:shadow-lg transition-shadow duration-300">
                                 <SeminarEnrollmentsCard
                                     enrollments={seminarEnrollments as SeminarEnrollment[]}
                                     isAdult={isSelfFamily}

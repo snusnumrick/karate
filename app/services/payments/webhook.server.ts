@@ -210,6 +210,10 @@ async function handlePaymentSuccess(
       await handleEventRegistrationSuccess(provider.id, supabasePaymentId);
     }
 
+    if (type === 'individual_session') {
+      await handleSeminarEnrollmentSuccess(provider.id, supabasePaymentId);
+    }
+
     return { success: true };
   } catch (updateError) {
     logger.error(`[Webhook ${provider.id}] Failed during post-payment processing for Supabase payment ${supabasePaymentId}:`, updateError instanceof Error ? updateError.message : updateError);
@@ -324,6 +328,37 @@ async function handleStorePurchaseFailure(providerId: string, orderId: string) {
     logger.error(`[Webhook ${providerId}] FAILED to update order ${orderId} status to cancelled:`, orderUpdateError.message);
   } else {
     logger.info(`[Webhook ${providerId}] Successfully updated order ${orderId} status to cancelled.`);
+  }
+}
+
+async function handleSeminarEnrollmentSuccess(providerId: string, paymentId: string) {
+  logger.info(`[Webhook ${providerId}] Activating seminar enrollment for paymentId: ${paymentId}`);
+  const supabaseAdmin = getSupabaseAdminClient();
+
+  const { data: enrollments, error } = await supabaseAdmin
+    .from('enrollments')
+    .select('id, status')
+    .ilike('notes', `%[seminar_pending_payment:${paymentId}:%`);
+
+  if (error) {
+    logger.error(`[Webhook ${providerId}] Failed to find seminar enrollment for payment ${paymentId}:`, error.message);
+    return;
+  }
+
+  if (!enrollments || enrollments.length === 0) {
+    logger.warn(`[Webhook ${providerId}] No seminar enrollment found for payment ${paymentId}`);
+    return;
+  }
+
+  const { error: updateError } = await supabaseAdmin
+    .from('enrollments')
+    .update({ status: 'active' })
+    .in('id', enrollments.map(e => e.id));
+
+  if (updateError) {
+    logger.error(`[Webhook ${providerId}] Failed to activate seminar enrollment for payment ${paymentId}:`, updateError.message);
+  } else {
+    logger.info(`[Webhook ${providerId}] Activated ${enrollments.length} seminar enrollment(s) for payment ${paymentId}`);
   }
 }
 
