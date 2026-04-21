@@ -7,6 +7,7 @@ import { parse } from "cookie";
 import { MapPin, Clock, Users, Phone, Mail, Award, GraduationCap, Baby, Trophy, Dumbbell, Brain, ShieldCheck, Star, Footprints, Wind, Calendar, ExternalLink } from 'lucide-react'; // Import icons for environment
 import { siteConfig } from "~/config/site"; // Import site config
 import { EventService, type UpcomingEvent } from "~/services/event.server";
+import { getUpcomingPublicSeminars, type UpcomingPublicSeminar } from "~/services/program.server";
 import { mergeMeta } from "~/utils/meta";
 import { useEffect, useMemo, useState } from "react";
 import { getScheduleData } from "~/utils/site-data.client";
@@ -29,6 +30,7 @@ type SerializedUpcomingEventWithFormatted = Omit<UpcomingEventWithFormatted, 're
 
 type LoaderData = {
     upcomingEvents: SerializedUpcomingEventWithFormatted[];
+    upcomingSeminars: UpcomingPublicSeminar[];
     eventTypeConfig: Record<string, unknown>;
     scheduleData: {
         days: string;
@@ -82,12 +84,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
         });
         const schedulePromise = time('schedule', () => getMainPageScheduleData());
         const eventTypePromise = time('eventTypes', () => getEventTypeConfigWithDarkMode(request));
+        const upcomingSeminarsPromise = time('seminars', () => getUpcomingPublicSeminars());
 
-        const [user, upcomingEvents, scheduleData, eventTypeConfig] = await Promise.all([
+        const [user, upcomingEvents, scheduleData, eventTypeConfig, upcomingSeminars] = await Promise.all([
             authPromise,
             upcomingEventsPromise,
             schedulePromise,
-            eventTypePromise
+            eventTypePromise,
+            upcomingSeminarsPromise,
         ]);
 
         const serializationStart = performance.now();
@@ -123,8 +127,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
         });
 
         return json(
-            { 
-                upcomingEvents: serializedUpcomingEvents, 
+            {
+                upcomingEvents: serializedUpcomingEvents,
+                upcomingSeminars,
                 eventTypeConfig,
                 scheduleData
             },
@@ -146,8 +151,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
         }
 
         return json(
-            { 
-                upcomingEvents: [], 
+            {
+                upcomingEvents: [],
+                upcomingSeminars: [],
                 eventTypeConfig,
                 scheduleData: null
             },
@@ -192,7 +198,7 @@ export const meta: MetaFunction = (args: MetaArgs) => {
 };
 
 export default function Index() {
-    const { upcomingEvents: serializedUpcomingEvents, eventTypeConfig, scheduleData } = useLoaderData<typeof loader>();
+    const { upcomingEvents: serializedUpcomingEvents, upcomingSeminars, eventTypeConfig, scheduleData } = useLoaderData<typeof loader>();
     const upcomingEvents = useMemo<UpcomingEventWithFormatted[]>(() =>
         serializedUpcomingEvents.map(event => ({
             ...event,
@@ -539,6 +545,116 @@ export default function Index() {
                                     className="inline-flex items-center bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200"
                                 >
                                     View All Events
+                                    <ExternalLink className="h-5 w-5 ml-2" />
+                                </Link>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Upcoming Seminars Section */}
+            {upcomingSeminars.length > 0 && (
+                <div className="bg-white dark:bg-gray-900 py-16">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                        <h2 className="text-3xl font-bold text-center text-green-600 dark:text-green-400 mb-12">
+                            Upcoming Seminars
+                        </h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                            {upcomingSeminars.map((seminar) => {
+                                const priceCents = seminar.nextClass.effective_price_cents;
+                                const registrationOpen = seminar.nextClass.registration_status === 'open';
+                                const seminarHref = `/curriculum/seminars/${seminar.slug || seminar.id}`;
+                                return (
+                                    <div key={seminar.id} className="bg-gray-50 dark:bg-gray-700 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
+                                        <div className="p-6">
+                                            <div className="flex items-center justify-between mb-4">
+                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                                                    {seminar.seminar_type ? seminar.seminar_type.toUpperCase() : 'SEMINAR'}
+                                                </span>
+                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                                    registrationOpen
+                                                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                                                        : 'bg-gray-100 text-gray-800 dark:bg-gray-600 dark:text-gray-200'
+                                                }`}>
+                                                    {registrationOpen ? 'OPEN' : seminar.nextClass.registration_status.toUpperCase()}
+                                                </span>
+                                            </div>
+
+                                            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                                                {seminar.name}
+                                            </h3>
+
+                                            {seminar.nextClass.series_label && (
+                                                <p className="text-sm text-green-600 dark:text-green-400 font-medium mb-2">
+                                                    {seminar.nextClass.series_label}
+                                                </p>
+                                            )}
+
+                                            {seminar.description && (
+                                                <p className="text-gray-600 dark:text-gray-300 mb-4 line-clamp-3">
+                                                    {seminar.description}
+                                                </p>
+                                            )}
+
+                                            <div className="space-y-2 text-sm text-gray-500 dark:text-gray-400">
+                                                <div className="flex items-center">
+                                                    <Calendar className="h-4 w-4 mr-2 flex-shrink-0" />
+                                                    <span>
+                                                        {formatDate(seminar.nextClass.series_start_on)}
+                                                        {seminar.nextClass.series_end_on && seminar.nextClass.series_end_on !== seminar.nextClass.series_start_on && (
+                                                            <> - {formatDate(seminar.nextClass.series_end_on)}</>
+                                                        )}
+                                                    </span>
+                                                </div>
+
+                                                {seminar.audience_scope && (
+                                                    <div className="flex items-center">
+                                                        <Users className="h-4 w-4 mr-2 flex-shrink-0" />
+                                                        <span className="capitalize">{seminar.audience_scope}</span>
+                                                    </div>
+                                                )}
+
+                                                {priceCents != null && priceCents > 0 && (
+                                                    <div className="flex items-center">
+                                                        <span className="text-green-600 dark:text-green-400 font-semibold">
+                                                            ${(priceCents / 100).toFixed(2)} {siteConfig.localization.currency}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <div className="mt-6 flex justify-between items-center">
+                                                <Link
+                                                    to={seminarHref}
+                                                    className="inline-flex items-center text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium"
+                                                >
+                                                    Learn More
+                                                    <ExternalLink className="h-4 w-4 ml-1" />
+                                                </Link>
+
+                                                {registrationOpen && (
+                                                    <Link
+                                                        to={`${seminarHref}/register?seriesId=${seminar.nextClass.id}`}
+                                                        className="inline-flex items-center bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                                                    >
+                                                        Register
+                                                    </Link>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {upcomingSeminars.length >= 6 && (
+                            <div className="text-center mt-12">
+                                <Link
+                                    to="/curriculum?tab=seminars"
+                                    className="inline-flex items-center bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200"
+                                >
+                                    View All Seminars
                                     <ExternalLink className="h-5 w-5 ml-2" />
                                 </Link>
                             </div>

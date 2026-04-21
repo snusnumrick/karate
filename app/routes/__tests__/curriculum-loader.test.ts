@@ -146,7 +146,7 @@ describe('curriculum loader filters', () => {
       .mockResolvedValueOnce([]);
     mockGetUpcomingEvents.mockResolvedValue([]);
 
-    const response = await loader();
+    const response = await loader({ request: new Request('http://localhost/curriculum'), params: {}, context: {} });
     const payload = await response.json();
 
     expect(mockGetPrograms).toHaveBeenNthCalledWith(1, { is_active: true, engagement_type: 'program' });

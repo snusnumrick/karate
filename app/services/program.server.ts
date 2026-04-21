@@ -473,6 +473,88 @@ export async function getSeminars(
   return (data || []).map(mapProgramFromRow);
 }
 
+export type UpcomingPublicSeminar = Program & {
+  nextClass: {
+    id: string;
+    series_label: string | null;
+    series_start_on: string;
+    series_end_on: string | null;
+    registration_status: string;
+    allow_self_enrollment: boolean;
+    effective_price_cents: number | null;
+  };
+};
+
+/**
+ * Get active seminars that have upcoming runs, matching the criteria shown
+ * on the public /curriculum page (active seminars with active upcoming classes).
+ */
+export async function getUpcomingPublicSeminars(
+  supabase = getSupabaseAdminClient()
+): Promise<UpcomingPublicSeminar[]> {
+  const today = new Date().toISOString().split('T')[0];
+
+  const { data, error } = await supabase
+    .from('programs')
+    .select(`
+      ${PROGRAM_SELECT_COLUMNS},
+      classes (
+        id,
+        series_label,
+        series_start_on,
+        series_end_on,
+        registration_status,
+        price_override_cents,
+        registration_fee_override_cents,
+        allow_self_enrollment,
+        is_active
+      )
+    `)
+    .eq('engagement_type', 'seminar')
+    .eq('is_active', true);
+
+  if (error) {
+    throw new Error(`Failed to fetch upcoming public seminars: ${error.message}`);
+  }
+
+  const results: UpcomingPublicSeminar[] = [];
+
+  for (const row of data || []) {
+    const upcomingClasses = (row.classes || [])
+      .filter(
+        (cls) =>
+          cls.is_active &&
+          cls.series_start_on != null &&
+          cls.series_start_on >= today
+      )
+      .sort((a, b) => a.series_start_on!.localeCompare(b.series_start_on!));
+
+    if (upcomingClasses.length === 0) continue;
+
+    const nextClass = upcomingClasses[0];
+    const effectivePriceCents =
+      nextClass.price_override_cents ??
+      row.single_purchase_price_cents ??
+      row.registration_fee_cents ??
+      null;
+    results.push({
+      ...mapProgramFromRow(row),
+      nextClass: {
+        id: nextClass.id,
+        series_label: nextClass.series_label ?? null,
+        series_start_on: nextClass.series_start_on!,
+        series_end_on: nextClass.series_end_on ?? null,
+        registration_status: nextClass.registration_status,
+        allow_self_enrollment: nextClass.allow_self_enrollment ?? false,
+        effective_price_cents: effectivePriceCents,
+      },
+    });
+  }
+
+  results.sort((a, b) => a.nextClass.series_start_on.localeCompare(b.nextClass.series_start_on));
+  return results.slice(0, 6);
+}
+
 /**
  * Get a seminar with its series and ordered sessions.
  */

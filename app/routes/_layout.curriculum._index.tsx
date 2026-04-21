@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { json } from "@remix-run/node";
+import { json, type LoaderFunctionArgs } from "@remix-run/node";
 import { useLoaderData, Link } from "@remix-run/react";
 import { getSupabaseAdminClient } from "~/utils/supabase.server";
 import { getPrograms } from "~/services/program.server";
+import { parse } from "cookie";
 import { EventService } from "~/services/event.server";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -32,8 +33,19 @@ type ClassWithSchedule = {
     }>;
 };
 
-export async function loader() {
+export async function loader({ request }: LoaderFunctionArgs) {
   const supabaseAdmin = getSupabaseAdminClient();
+
+  const cookies = parse(request.headers.get('cookie') ?? '');
+  const hasSession = Object.keys(cookies).some(
+    (k) => k.startsWith('sb-') || k.startsWith('sb:') || k.endsWith('-token')
+  );
+  let isLoggedIn = false;
+  if (hasSession) {
+    const { getOptionalUser } = await import('~/utils/auth.server');
+    const { user } = await getOptionalUser(request);
+    isLoggedIn = Boolean(user);
+  }
 
   // Fetch active programs, seminars, events, and classes with schedules
   const [programs, seminars, events] = await Promise.all([
@@ -153,11 +165,11 @@ export async function loader() {
   }));
 
   // Fetch active seminar runs (classes) to get date ranges
-  const seminarIds = seminars.map(s => s.id);
+  const seminarIds = seminars.map((s) => s.id);
   const { data: seminarRunsData } = seminarIds.length > 0
     ? await supabaseAdmin
         .from('classes')
-        .select('id, program_id, series_label, series_start_on, series_end_on')
+        .select('id, program_id, series_label, series_start_on, series_end_on, allow_self_enrollment')
         .eq('is_active', true)
         .in('program_id', seminarIds)
         .not('series_start_on', 'is', null)
@@ -169,14 +181,22 @@ export async function loader() {
     series_label: string | null;
     series_start_on: string | null;
     series_end_on: string | null;
+    allow_self_enrollment: boolean;
   }>>>((acc, run) => {
     const key = run.program_id;
     if (!acc[key]) acc[key] = [];
-    acc[key].push({ id: run.id, series_label: run.series_label, series_start_on: run.series_start_on, series_end_on: run.series_end_on });
+    acc[key].push({ id: run.id, series_label: run.series_label, series_start_on: run.series_start_on, series_end_on: run.series_end_on, allow_self_enrollment: run.allow_self_enrollment ?? false });
     return acc;
   }, {});
 
-  const seminarsSerialized = seminars.map((seminar) => {
+  // For unlogged users, only show seminars that have at least one self-enrollment run
+  const visibleSeminars = isLoggedIn
+    ? seminars
+    : seminars.filter((s) =>
+        (runsByProgramId[s.id] || []).some((r) => r.allow_self_enrollment)
+      );
+
+  const seminarsSerialized = visibleSeminars.map((seminar) => {
     const {
       monthly_fee,
       registration_fee,
