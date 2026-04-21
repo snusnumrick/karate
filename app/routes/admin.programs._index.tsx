@@ -9,6 +9,7 @@ import { Checkbox } from "~/components/ui/checkbox";
 import { Plus, Edit, Calendar, Archive, Users } from "lucide-react";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
 import { serializeMoney, fromCents, formatMoney, isPositive } from "~/utils/money";
+import { cn } from "~/lib/utils";
 
 type EngagementFilter = "program" | "seminar";
 
@@ -51,6 +52,18 @@ export default function ProgramsIndex() {
   const { programs, showInactive, selectedEngagement } = useLoaderData<typeof loader>();
   const [searchParams, setSearchParams] = useSearchParams();
   const isSeminarView = selectedEngagement === "seminar";
+  const pageTitle = isSeminarView ? "Seminar Templates" : "Programs";
+  const pageDescription = isSeminarView
+    ? "Manage seminar templates and keep them visually aligned with the rest of the admin experience."
+    : "Manage your martial arts programs and keep pricing, duration, and availability aligned with the rest of the admin experience.";
+  const createLabel = isSeminarView ? "New Seminar Template" : "New Program";
+  const emptyStateTitle = showInactive
+    ? isSeminarView ? "No seminar templates found" : "No programs found"
+    : isSeminarView ? "No active seminar templates found" : "No active programs found";
+  const primaryButtonClass = "bg-green-600 text-white shadow-sm hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-500";
+  const secondaryButtonClass = "border-green-200 text-green-700 hover:bg-green-50 hover:text-green-800 dark:border-green-800 dark:text-green-300 dark:hover:bg-green-900/30 dark:hover:text-green-200";
+  const activeBadgeClass = "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/30 dark:text-green-200";
+  const inactiveBadgeClass = "border-gray-200 bg-gray-100 text-gray-700 dark:border-gray-700 dark:bg-gray-700/70 dark:text-gray-200";
 
   // Helper to format money from serialized MoneyJSON
   const formatProgramFee = (moneyJson: { amount: number; currency: string } | undefined) => {
@@ -70,60 +83,69 @@ export default function ProgramsIndex() {
 
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <AppBreadcrumb
         items={isSeminarView
           ? [{ label: "Admin Dashboard", href: "/admin" }, { label: "Seminar Templates", current: true }]
           : breadcrumbPatterns.adminPrograms()
         }
-        className="mb-6"
+        className="mb-0"
       />
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">{isSeminarView ? "Seminar Templates" : "Programs"}</h1>
-          <p className="text-muted-foreground">
-            {isSeminarView
-              ? "Manage seminar templates and their configurations"
-              : "Manage your martial arts programs and their configurations"}
-          </p>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="show-inactive"
-              checked={showInactive}
-              onCheckedChange={handleToggleInactive}
-            />
-            <label
-              htmlFor="show-inactive"
-              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-            >
-              Show Inactive
-            </label>
+
+      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-md dark:border-gray-700 dark:bg-gray-800">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+          <div className="space-y-3">
+            <Badge className={activeBadgeClass}>
+              {showInactive ? "Showing active and inactive items" : "Showing active items"}
+            </Badge>
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight text-green-600 dark:text-green-400">{pageTitle}</h1>
+              <p className="mt-2 max-w-2xl text-sm text-gray-600 dark:text-gray-400">
+                {pageDescription}
+              </p>
+            </div>
           </div>
-          <Button asChild>
-            <Link to={isSeminarView ? "/admin/programs/new?engagement=seminar" : "/admin/programs/new"}>
-              <Plus className="h-4 w-4 mr-2" />
-              {isSeminarView ? "New Seminar Template" : "New Program"}
-            </Link>
-          </Button>
+
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+            <div className="flex items-center space-x-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-900/40">
+              <Checkbox
+                id="show-inactive"
+                checked={showInactive}
+                onCheckedChange={handleToggleInactive}
+                className="border-green-600 data-[state=checked]:border-green-600 data-[state=checked]:bg-green-600"
+              />
+              <label
+                htmlFor="show-inactive"
+                className="text-sm font-medium leading-none text-gray-700 peer-disabled:cursor-not-allowed peer-disabled:opacity-70 dark:text-gray-200"
+              >
+                Show Inactive
+              </label>
+            </div>
+
+            <Button asChild className={primaryButtonClass}>
+              <Link to={isSeminarView ? "/admin/programs/new?engagement=seminar" : "/admin/programs/new"}>
+                <Plus className="h-4 w-4" />
+                {createLabel}
+              </Link>
+            </Button>
+          </div>
         </div>
       </div>
 
       {programs.length === 0 ? (
-        <Card>
+        <Card className="border border-dashed border-gray-300 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
           <CardContent className="flex flex-col items-center justify-center py-12">
-            {showInactive ? (
-              <Archive className="h-12 w-12 text-muted-foreground mb-4" />
-            ) : (
-              <Users className="h-12 w-12 text-muted-foreground mb-4" />
-            )}
-            <h3 className="text-lg font-semibold mb-2">
-              {showInactive
-                ? isSeminarView ? "No seminar templates found" : "No programs found"
-                : isSeminarView ? "No active seminar templates found" : "No active programs found"}
+            <div className="mb-4 rounded-full bg-green-50 p-4 text-green-700 dark:bg-green-900/30 dark:text-green-300">
+              {showInactive ? (
+                <Archive className="h-8 w-8" />
+              ) : (
+                <Users className="h-8 w-8" />
+              )}
+            </div>
+            <h3 className="mb-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
+              {emptyStateTitle}
             </h3>
-            <p className="text-muted-foreground text-center mb-4">
+            <p className="mb-6 max-w-xl text-center text-sm text-gray-600 dark:text-gray-400">
               {showInactive
                 ? isSeminarView
                   ? "Create your first seminar template to start managing seminars."
@@ -133,16 +155,16 @@ export default function ProgramsIndex() {
                   : "All programs are currently inactive, or create your first program to get started"
               }
             </p>
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-3 sm:flex-row">
               {!showInactive && (
-                <Button variant="outline" onClick={() => handleToggleInactive(true)}>
-                  <Archive className="h-4 w-4 mr-2" />
+                <Button variant="outline" className={secondaryButtonClass} onClick={() => handleToggleInactive(true)}>
+                  <Archive className="h-4 w-4" />
                   Show Inactive Programs
                 </Button>
               )}
-              <Button asChild>
+              <Button asChild className={primaryButtonClass}>
                 <Link to={isSeminarView ? "/admin/programs/new?engagement=seminar" : "/admin/programs/new"}>
-                  <Plus className="h-4 w-4 mr-2" />
+                  <Plus className="h-4 w-4" />
                   {isSeminarView ? "Create Seminar Template" : "Create Program"}
                 </Link>
               </Button>
@@ -150,57 +172,78 @@ export default function ProgramsIndex() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
           {programs.map((program) => {
             const monthlyFee = formatProgramFee(program.monthly_fee);
             const yearlyFee = formatProgramFee(program.yearly_fee);
             const sessionFee = formatProgramFee(program.individual_session_fee);
             const registrationFee = formatProgramFee(program.registration_fee);
             const isSeminarCard = program.engagement_type === 'seminar';
+            const primaryFeeLabel = isSeminarCard ? "Registration Fee" :
+              monthlyFee && isPositive(monthlyFee) ? "Monthly Fee" :
+              yearlyFee && isPositive(yearlyFee) ? "Yearly Fee" :
+              sessionFee && isPositive(sessionFee) ? "Session Fee" : "Monthly Fee";
+            const primaryFeeValue = isSeminarCard
+              ? (registrationFee && isPositive(registrationFee) ? formatMoney(registrationFee, { showCurrency: true, trimTrailingZeros: true }) : "Not set")
+              : monthlyFee && isPositive(monthlyFee) ? formatMoney(monthlyFee, { showCurrency: true, trimTrailingZeros: true }) :
+                yearlyFee && isPositive(yearlyFee) ? formatMoney(yearlyFee, { showCurrency: true, trimTrailingZeros: true }) :
+                sessionFee && isPositive(sessionFee) ? formatMoney(sessionFee, { showCurrency: true, trimTrailingZeros: true }) : "Not set";
 
             return (
-              <Card key={program.id} className="hover:shadow-md transition-shadow">
-                <CardHeader>
+              <Card
+                key={program.id}
+                className={cn(
+                  "overflow-hidden border border-gray-200 bg-white shadow-md transition-all hover:-translate-y-0.5 hover:shadow-lg dark:border-gray-700 dark:bg-gray-800",
+                  program.is_active ? "border-l-4 border-l-green-600" : "border-l-4 border-l-gray-300 dark:border-l-gray-600"
+                )}
+              >
+                <CardHeader className="border-b border-gray-100 bg-gray-50/80 dark:border-gray-700 dark:bg-gray-900/40">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg">{program.name}</CardTitle>
-                    <Badge variant={program.is_active ? "default" : "secondary"}>
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                        {isSeminarCard ? "Seminar Template" : "Recurring Program"}
+                      </p>
+                      <CardTitle className="text-lg text-gray-900 dark:text-gray-100">{program.name}</CardTitle>
+                    </div>
+                    <Badge className={program.is_active ? activeBadgeClass : inactiveBadgeClass}>
                       {program.is_active ? "Active" : "Inactive"}
                     </Badge>
                   </div>
                   {program.description && (
-                    <CardDescription>{program.description}</CardDescription>
+                    <CardDescription className="line-clamp-3 text-sm text-gray-600 dark:text-gray-400">
+                      {program.description}
+                    </CardDescription>
                   )}
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground flex items-center">
-                        {isSeminarCard ? 'Registration Fee:' :
-                         monthlyFee && isPositive(monthlyFee) ? 'Monthly Fee:' :
-                         yearlyFee && isPositive(yearlyFee) ? 'Yearly Fee:' :
-                         sessionFee && isPositive(sessionFee) ? 'Session Fee:' : 'Monthly Fee:'}
-                      </span>
-                      <span>
-                        {isSeminarCard
-                          ? (registrationFee && isPositive(registrationFee) ? formatMoney(registrationFee, { showCurrency: true, trimTrailingZeros: true }) : 'Not set')
-                          : monthlyFee && isPositive(monthlyFee) ? formatMoney(monthlyFee, { showCurrency: true, trimTrailingZeros: true }) :
-                            yearlyFee && isPositive(yearlyFee) ? formatMoney(yearlyFee, { showCurrency: true, trimTrailingZeros: true }) :
-                            sessionFee && isPositive(sessionFee) ? formatMoney(sessionFee, { showCurrency: true, trimTrailingZeros: true }) : 'Not set'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground flex items-center">
-                        <Calendar className="h-4 w-4 mr-1" />
-                        Duration:
-                      </span>
-                      <span>{program.duration_minutes} minutes</span>
+                  <div className="space-y-4 text-sm">
+                    <div className="rounded-lg bg-gray-50 p-4 dark:bg-gray-900/40">
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="flex items-center font-medium text-gray-500 dark:text-gray-400">
+                          <Users className="mr-2 h-4 w-4 text-green-600 dark:text-green-400" />
+                          {primaryFeeLabel}
+                        </span>
+                        <span className="font-semibold text-gray-900 dark:text-gray-100">
+                          {primaryFeeValue}
+                        </span>
+                      </div>
                     </div>
 
+                    <div className="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 dark:border-gray-700">
+                      <span className="flex items-center font-medium text-gray-500 dark:text-gray-400">
+                        <Calendar className="mr-2 h-4 w-4 text-green-600 dark:text-green-400" />
+                        Duration
+                      </span>
+                      <span className="font-semibold text-gray-900 dark:text-gray-100">
+                        {program.duration_minutes} minutes
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex gap-2 mt-4">
-                    <Button asChild size="sm" variant="outline" className="flex-1">
+
+                  <div className="mt-5 flex gap-2">
+                    <Button asChild size="sm" variant="outline" className={cn("flex-1", secondaryButtonClass)}>
                       <Link to={`/admin/programs/${program.id}/edit`}>
-                        <Edit className="h-4 w-4 mr-1" />
+                        <Edit className="h-4 w-4" />
                         Edit
                       </Link>
                     </Button>
