@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { json, type LoaderFunctionArgs } from "@remix-run/node";
-import { useLoaderData, Link } from "@remix-run/react";
+import { useLoaderData, Link, useSearchParams } from "@remix-run/react";
 import { getSupabaseAdminClient } from "~/utils/supabase.server";
 import { getPrograms } from "~/services/program.server";
 import { parse } from "cookie";
@@ -226,7 +226,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 export default function CurriculumIndex() {
   const { programs, seminars, events, classes, scheduleSummary } = useLoaderData<typeof loader>();
-  const [activeTab, setActiveTab] = useState<'programs' | 'seminars' | 'events'>('programs');
+  const [searchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const validTabs = ['programs', 'seminars', 'events'] as const;
+  const initialTab = validTabs.includes(tabParam as typeof validTabs[number])
+    ? (tabParam as typeof validTabs[number])
+    : 'programs';
+  const [activeTab, setActiveTab] = useState<'programs' | 'seminars' | 'events'>(initialTab);
 
   const formatCents = (value: number | null | undefined) =>
     value != null ? formatMoney(fromCents(value), { showCurrency: true, trimTrailingZeros: true }) : null;

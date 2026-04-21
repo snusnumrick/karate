@@ -227,11 +227,10 @@ async function loaderImpl({
   const eventIds = [...new Set(registrations.map(reg => reg.event_id))];
 
   if (eventIds.length === 0) {
-    // No events registered, return empty
     return json({
       events: [],
       familyName: family?.name || null,
-      pendingPaymentTotal: 0
+      pendingPaymentTotal: 0,
     });
   }
 
@@ -352,7 +351,7 @@ async function loaderImpl({
   return json({
     events,
     familyName: family?.name || null,
-    pendingPaymentTotal
+    pendingPaymentTotal,
   });
 }
 
@@ -362,8 +361,8 @@ export default function FamilyEventsPage() {
   const { events, familyName, pendingPaymentTotal } = useLoaderData<LoaderData>();
 
   // Get events with pending payments
-  const eventsWithPendingPayments = events.filter(event => 
-    event.students.some(student => 
+  const eventsWithPendingPayments = events.filter(event =>
+    event.students.some(student =>
       student.payment_required && student.payment_status === 'pending'
     )
   );
@@ -699,6 +698,7 @@ export default function FamilyEventsPage() {
             </div>
           )}
         </div>
+
       </div>
     </div>
   );
