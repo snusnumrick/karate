@@ -2,6 +2,7 @@ import { json, type LoaderFunctionArgs, type SerializeFrom } from "@remix-run/no
 import { useLoaderData, Link } from "@remix-run/react";
 import type { ReactNode } from "react";
 import { getOptionalUser } from "~/utils/auth.server";
+import { getSupabaseAdminClient } from "~/utils/supabase.server";
 import { getProgramBySlug, getSeminarWithSeries } from "~/services/program.server";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -35,8 +36,22 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     throw new Response("Seminar not found", { status: 404 });
   }
 
+  const classIds = (seminarData?.classes ?? []).map((c) => c.id);
+  const enrollmentCountByClassId: Record<string, number> = {};
+  if (classIds.length > 0) {
+    const supabaseAdmin = getSupabaseAdminClient();
+    const { data: counts } = await supabaseAdmin
+      .from('enrollments')
+      .select('class_id')
+      .in('class_id', classIds)
+      .in('status', ['active', 'trial', 'pending_payment']);
+    for (const row of counts ?? []) {
+      enrollmentCountByClassId[row.class_id] = (enrollmentCountByClassId[row.class_id] ?? 0) + 1;
+    }
+  }
+
   const seminar = seminarData
-    ? serializeSeminarForClient(seminarData)
+    ? serializeSeminarForClient(seminarData, enrollmentCountByClassId)
     : null;
 
   return json({ seminar, user }, { headers });
@@ -232,9 +247,13 @@ export default function SeminarDetail() {
                       <Badge variant={getSeriesStatusVariant(series)}>
                         {formatSeriesStatus(series.series_status)}
                       </Badge>
-                      <Badge variant={getRegistrationStatusVariant(series)}>
-                        {formatRegistrationStatus(series.registration_status)}
-                      </Badge>
+                      {series.max_capacity != null && series.enrollment_count >= series.max_capacity ? (
+                        <Badge variant="destructive">Full</Badge>
+                      ) : (
+                        <Badge variant={getRegistrationStatusVariant(series)}>
+                          {formatRegistrationStatus(series.registration_status)}
+                        </Badge>
+                      )}
                     </div>
                   </div>
 
@@ -313,33 +332,53 @@ export default function SeminarDetail() {
                     </div>
                   )}
 
-                  <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="text-sm text-gray-600 dark:text-gray-400">
-                      {series.allow_self_enrollment && series.is_active
-                        ? 'Self-registration is available for this series.'
-                        : 'Contact us if you’d like help registering for this series.'}
-                    </div>
+                  {(() => {
+                    const isFull = series.max_capacity != null && series.enrollment_count >= series.max_capacity;
+                    const registerHref = `/curriculum/seminars/${seminar.slug || seminar.id}/register?seriesId=${series.id}`;
+                    const waitlistHref = `${registerHref}&waitlist=true`;
+                    const loginRegisterHref = `/login?redirectTo=${encodeURIComponent(registerHref)}`;
+                    const loginWaitlistHref = `/login?redirectTo=${encodeURIComponent(waitlistHref)}`;
 
-                    {series.is_active && series.allow_self_enrollment ? (
-                      user ? (
-                        <Button asChild>
-                          <Link to={`/curriculum/seminars/${seminar.slug || seminar.id}/register?seriesId=${series.id}`}>
-                            Register Now
-                          </Link>
-                        </Button>
-                      ) : (
-                        <Button asChild>
-                          <Link to={`/login?redirectTo=${encodeURIComponent(`/curriculum/seminars/${seminar.slug || seminar.id}/register?seriesId=${series.id}`)}`}>
-                            Sign In to Register
-                          </Link>
-                        </Button>
-                      )
-                    ) : (
-                      <div className="rounded-full border border-gray-200 px-4 py-2 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
-                        Registration unavailable online
+                    return (
+                      <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="text-sm text-gray-600 dark:text-gray-400">
+                          {series.allow_self_enrollment && series.is_active
+                            ? isFull
+                              ? "This series is full. Join the waitlist and we will contact you if a spot opens."
+                              : "Self-registration is available for this series."
+                            : "Contact us to register for this series."}
+                        </div>
+
+                        {series.is_active && series.allow_self_enrollment ? (
+                          isFull ? (
+                            user ? (
+                              <Button asChild variant="outline">
+                                <Link to={waitlistHref}>Join Waitlist</Link>
+                              </Button>
+                            ) : (
+                              <Button asChild variant="outline">
+                                <Link to={loginWaitlistHref}>Sign In to Join Waitlist</Link>
+                              </Button>
+                            )
+                          ) : (
+                            user ? (
+                              <Button asChild>
+                                <Link to={registerHref}>Register Now</Link>
+                              </Button>
+                            ) : (
+                              <Button asChild>
+                                <Link to={loginRegisterHref}>Sign In to Register</Link>
+                              </Button>
+                            )
+                          )
+                        ) : (
+                          <div className="rounded-full border border-gray-200 px-4 py-2 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                            Registration unavailable online
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
+                    );
+                  })()}
                 </div>
               ))}
             </div>
@@ -377,7 +416,10 @@ function SeriesMeta({
   );
 }
 
-function serializeSeminarForClient(seminar: NonNullable<Awaited<ReturnType<typeof getSeminarWithSeries>>>) {
+function serializeSeminarForClient(
+  seminar: NonNullable<Awaited<ReturnType<typeof getSeminarWithSeries>>>,
+  enrollmentCountByClassId: Record<string, number> = {}
+) {
   const {
     monthly_fee,
     registration_fee,
@@ -404,6 +446,7 @@ function serializeSeminarForClient(seminar: NonNullable<Awaited<ReturnType<typeo
     classes: classes.map((cls) => ({
       ...cls,
       description: cls.description ?? null,
+      enrollment_count: enrollmentCountByClassId[cls.id] ?? 0,
       class_sessions: (cls.class_sessions || []).map((session) => ({
         ...session,
         sequence_number: session.sequence_number ?? null,

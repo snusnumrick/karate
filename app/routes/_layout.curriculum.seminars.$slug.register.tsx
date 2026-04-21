@@ -358,6 +358,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 
   const url = new URL(request.url);
   const seriesId = url.searchParams.get('seriesId');
+  const isWaitlist = url.searchParams.get('waitlist') === 'true';
 
   if (!seriesId) {
     throw new Response("Series ID required", { status: 400 });
@@ -454,6 +455,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     waiverSignLinks,
     canSignRequiredWaivers: Boolean(profile?.family_id),
     addStudentUrl,
+    isWaitlist,
   }, { headers });
 }
 
@@ -624,6 +626,8 @@ async function handleSeminarRegistration(formData: FormData, request: Request) {
       : ZERO_MONEY;
     const paymentTotalCents = paymentRequired ? toCents(paymentTotal) : 0;
 
+    const isWaitlist = formData.get('waitlist') === 'true';
+
     const { data: existingEnrollment } = await supabaseAdmin
       .from('enrollments')
       .select('id, status, notes, created_at')
@@ -637,6 +641,20 @@ async function handleSeminarRegistration(formData: FormData, request: Request) {
 
     if (existingEnrollment?.status === 'trial') {
       return json({ error: 'Student is already enrolled in this class as a trial' }, { status: 400 });
+    }
+
+    if (existingEnrollment?.status === 'waitlist') {
+      return json({ error: 'Student is already on the waitlist for this class' }, { status: 400 });
+    }
+
+    if (isWaitlist) {
+      if (!existingEnrollment) {
+        await enrollStudent(
+          { student_id: studentId, class_id: seriesId, program_id: series.program_id, status: 'waitlist' },
+          supabaseAdmin
+        );
+      }
+      return json({ success: true, paymentRequired: false, waitlisted: true, enrollmentId: existingEnrollment?.id ?? '', message: 'Added to waitlist successfully!' });
     }
 
     if (existingEnrollment?.status === 'pending_payment' && paymentRequired) {
@@ -811,6 +829,7 @@ export default function SeminarRegister() {
     waiverSignLinks,
     canSignRequiredWaivers,
     addStudentUrl,
+    isWaitlist,
   } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
@@ -850,15 +869,21 @@ export default function SeminarRegister() {
   const showSuccess = actionData && 'success' in actionData && actionData.success && 'paymentRequired' in actionData && !actionData.paymentRequired;
   const seminarDetailHref = seminar ? `/curriculum/seminars/${seminar.slug || seminar.id}` : '/curriculum';
 
+  const isWaitlistSuccess = actionData && 'waitlisted' in actionData && actionData.waitlisted;
+
   if (showSuccess) {
     return (
       <div className="min-h-screen page-background-styles py-12 text-foreground">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="page-card-styles text-center">
             <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-            <h2 className="page-header-styles mb-4">Registration Successful</h2>
+            <h2 className="page-header-styles mb-4">
+              {isWaitlistSuccess ? 'Added to Waitlist' : 'Registration Successful'}
+            </h2>
             <p className="page-subheader-styles">
-              You&apos;re registered for {series.series_label || series.name}. You can head back to your dashboard whenever you&apos;re ready.
+              {isWaitlistSuccess
+                ? `You are on the waitlist for ${series.series_label || series.name}. We will contact you if a spot opens up.`
+                : `You're registered for ${series.series_label || series.name}. You can head back to your dashboard whenever you're ready.`}
             </p>
             <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
               <Button asChild>
@@ -976,10 +1001,20 @@ export default function SeminarRegister() {
                 </Alert>
               )}
 
+              {isWaitlist && (
+                <Alert className="mb-6 border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20">
+                  <AlertTitle className="text-amber-800 dark:text-amber-200">Joining Waitlist</AlertTitle>
+                  <AlertDescription className="text-amber-700 dark:text-amber-300">
+                    This series is full. Complete the form below to join the waitlist. We will contact you if a spot becomes available.
+                  </AlertDescription>
+                </Alert>
+              )}
+
               <Form method="post">
                 <input type="hidden" name="intent" value="register" />
                 <input type="hidden" name="seriesId" value={series.id} />
                 <input type="hidden" name="registrationType" value={registrationType} />
+                {isWaitlist && <input type="hidden" name="waitlist" value="true" />}
 
                 {/* Registration Type Selection */}
                 {registrationTypeSelectorVisible && (
