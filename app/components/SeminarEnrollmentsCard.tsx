@@ -75,7 +75,7 @@ export function SeminarEnrollmentsCard({ enrollments, isAdult = false }: Seminar
                     : 'outline'
                 }
               >
-                {enrollment.status}
+                {enrollment.status === 'pending_payment' ? 'Pending Payment' : enrollment.status}
               </Badge>
             </div>
 

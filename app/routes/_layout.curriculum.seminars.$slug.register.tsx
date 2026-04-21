@@ -639,7 +639,7 @@ async function handleSeminarRegistration(formData: FormData, request: Request) {
       return json({ error: 'Student is already enrolled in this class as a trial' }, { status: 400 });
     }
 
-    if (existingEnrollment?.status === 'waitlist' && paymentRequired) {
+    if (existingEnrollment?.status === 'pending_payment' && paymentRequired) {
       const enrollmentPaymentId = extractSeminarPendingPaymentId({
         notes: existingEnrollment.notes,
         seriesId,
@@ -696,14 +696,14 @@ async function handleSeminarRegistration(formData: FormData, request: Request) {
       }
     }
 
-    const enrollment = existingEnrollment?.status === 'waitlist'
+    const enrollment = existingEnrollment?.status === 'pending_payment'
       ? existingEnrollment
       : await enrollStudent(
           {
             student_id: studentId,
             class_id: seriesId,
             program_id: series.program_id,
-            status: paymentRequired ? 'waitlist' : 'active', // Waitlist until payment
+            status: paymentRequired ? 'pending_payment' : 'active',
           },
           supabaseAdmin
         );

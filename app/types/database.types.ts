@@ -3470,6 +3470,7 @@ export type Database = {
         | "waitlist"
         | "trial"
         | "pending_waivers"
+        | "pending_payment"
       entity_type_enum:
         | "family"
         | "school"
@@ -3746,6 +3747,7 @@ export const Constants = {
         "waitlist",
         "trial",
         "pending_waivers",
+        "pending_payment",
       ],
       entity_type_enum: [
         "family",

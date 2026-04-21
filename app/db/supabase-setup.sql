@@ -3947,7 +3947,7 @@ DO
 $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'enrollment_status') THEN
-        CREATE TYPE enrollment_status AS ENUM ('active', 'inactive', 'completed', 'dropped', 'waitlist', 'trial', 'pending_waivers');
+        CREATE TYPE enrollment_status AS ENUM ('active', 'inactive', 'completed', 'dropped', 'waitlist', 'trial', 'pending_waivers', 'pending_payment');
     ELSE
         -- Add 'waitlist' to existing enum if it doesn't exist
         IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = 'waitlist' AND enumtypid = 'enrollment_status'::regtype) THEN
@@ -3960,6 +3960,10 @@ BEGIN
         -- Add 'pending_waivers' to existing enum if it doesn't exist
         IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = 'pending_waivers' AND enumtypid = 'enrollment_status'::regtype) THEN
             ALTER TYPE enrollment_status ADD VALUE 'pending_waivers';
+        END IF;
+        -- Add 'pending_payment' to existing enum if it doesn't exist
+        IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = 'pending_payment' AND enumtypid = 'enrollment_status'::regtype) THEN
+            ALTER TYPE enrollment_status ADD VALUE 'pending_payment';
         END IF;
     END IF;
 END $$;
