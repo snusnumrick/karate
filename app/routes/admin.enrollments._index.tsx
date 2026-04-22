@@ -19,6 +19,7 @@ import { getPrograms } from "~/services/program.server";
 import { checkStudentEligibility, getSupabaseAdminClient } from "~/utils/supabase.server";
 import { csrf } from "~/utils/csrf.server";
 import { AuthenticityTokenInput } from "remix-utils/csrf/react";
+import { CSRFError } from "remix-utils/csrf/server";
 import { serializeMoney } from "~/utils/money";
 
 async function loaderImpl({ request }: LoaderFunctionArgs) {
@@ -85,8 +86,18 @@ async function loaderImpl({ request }: LoaderFunctionArgs) {
 export const loader = withAdminLoader(loaderImpl);
 
 async function actionImpl({ request }: ActionFunctionArgs) {
-  await csrf.validate(request);
-  
+  try {
+    await csrf.validate(request);
+  } catch (error) {
+    if (error instanceof CSRFError) {
+      return json(
+        { error: "Your session expired. Please refresh the page and try again." },
+        { status: 403 }
+      );
+    }
+    throw error;
+  }
+
   const formData = await request.formData();
   const intent = formData.get("intent") as string;
   
