@@ -10,10 +10,10 @@ import { Input } from "~/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "~/components/ui/dialog";
 import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "~/components/ui/alert-dialog";
 import { AppBreadcrumb, breadcrumbPatterns } from "~/components/AppBreadcrumb";
-import { CheckCircle, Clock, AlertCircle, Users, Plus, Edit, Trash2 } from "lucide-react";
+import { CheckCircle, Clock, AlertCircle, Users, Plus, Edit, Trash2, ArrowUpCircle } from "lucide-react";
 import { formatDate } from "~/utils/misc";
 import { withAdminLoader, withAdminAction } from "~/utils/auth.server";
-import { getEnrollments, updateEnrollment, dropStudent } from "~/services/enrollment.server";
+import { advanceWaitlistedEnrollment, getEnrollments, updateEnrollment, dropStudent } from "~/services/enrollment.server";
 import { getClasses } from "~/services/class.server";
 import { getPrograms } from "~/services/program.server";
 import { checkStudentEligibility, getSupabaseAdminClient } from "~/utils/supabase.server";
@@ -21,6 +21,7 @@ import { csrf } from "~/utils/csrf.server";
 import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 import { CSRFError } from "remix-utils/csrf/server";
 import { serializeMoney } from "~/utils/money";
+import { isServiceError } from "~/utils/service-errors.server";
 
 type EnrollmentStatusFilter =
   | 'active'
@@ -182,6 +183,25 @@ async function actionImpl({ request }: ActionFunctionArgs) {
       await dropStudent(id);
       return json({ success: true });
     }
+
+    case "advance-waitlist": {
+      const id = formData.get("id") as string;
+
+      if (!id || id === "null" || id === "") {
+        return json({ error: "Invalid enrollment ID" }, { status: 400 });
+      }
+
+      try {
+        const result = await advanceWaitlistedEnrollment(id);
+        return json({ success: true, ...result });
+      } catch (error) {
+        if (isServiceError(error)) {
+          return json({ error: error.message }, { status: error.status });
+        }
+
+        throw error;
+      }
+    }
     
     default:
       return json({ error: "Invalid intent" }, { status: 400 });
@@ -214,6 +234,38 @@ export default function AdminEnrollments() {
   const dialogFieldClass = "rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-900 dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100";
   const dialogLabelClass = "text-sm font-medium text-gray-900 dark:text-gray-100";
   const dialogInputClass = "input-custom-styles border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900/60";
+  const waitlistPositionByEnrollmentId = new Map<string, number>();
+  const waitlistPositionByClassId = new Map<string, number>();
+
+  enrollments
+    .filter((enrollment) => enrollment.status === "waitlist")
+    .sort((a, b) => {
+      const classComparison = a.class_id.localeCompare(b.class_id);
+      if (classComparison !== 0) return classComparison;
+
+      const enrolledAtComparison = new Date(a.enrolled_at).getTime() - new Date(b.enrolled_at).getTime();
+      if (enrolledAtComparison !== 0) return enrolledAtComparison;
+
+      return a.id.localeCompare(b.id);
+    })
+    .forEach((enrollment) => {
+      const nextPosition = (waitlistPositionByClassId.get(enrollment.class_id) ?? 0) + 1;
+      waitlistPositionByClassId.set(enrollment.class_id, nextPosition);
+      waitlistPositionByEnrollmentId.set(enrollment.id, nextPosition);
+    });
+
+  const advanceActionMessage = actionData && "success" in actionData && actionData.success && "status" in actionData
+    ? actionData.status === "active"
+      ? "Waitlist student advanced to active."
+      : actionData.status === "pending_payment"
+        ? "Waitlist student advanced to pending payment."
+        : "Waitlist student advanced to pending waivers."
+    : null;
+  const advancePaymentId = actionData
+    && "paymentId" in actionData
+    && typeof actionData.paymentId === "string"
+    ? actionData.paymentId
+    : null;
 
   // Close dialog after successful submission
   useEffect(() => {
@@ -243,7 +295,7 @@ export default function AdminEnrollments() {
     setSearchParams(nextSearchParams);
   };
 
-  const getStatusBadge = (enrollment: EnrollmentType) => {
+  const getStatusBadge = (enrollment: EnrollmentType, waitlistPosition?: number) => {
     const status = enrollment.status;
     const student = enrollment.student;
     const eligibility = student && 'eligibility' in student ? student.eligibility : undefined;
@@ -253,7 +305,19 @@ export default function AdminEnrollments() {
       return <Badge variant="destructive"><AlertCircle className="h-3 w-3 mr-1" />Dropped</Badge>;
     }
     if (status === "waitlist") {
-      return <Badge variant="secondary"><Clock className="h-3 w-3 mr-1" />Waitlisted</Badge>;
+      return (
+        <div className="space-y-1">
+          <Badge className="bg-yellow-100 text-yellow-800">
+            <Clock className="h-3 w-3 mr-1" />
+            {waitlistPosition ? `Waitlist #${waitlistPosition}` : "Waitlisted"}
+          </Badge>
+          {waitlistPosition === 1 && (
+            <div className="text-xs text-muted-foreground">
+              First priority
+            </div>
+          )}
+        </div>
+      );
     }
     if (status === "completed") {
       return <Badge variant="secondary"><CheckCircle className="h-3 w-3 mr-1" />Completed</Badge>;
@@ -372,6 +436,27 @@ export default function AdminEnrollments() {
               </Link>
             </Button>
           </div>
+
+          {actionData && "error" in actionData && actionData.error && (
+            <div role="alert" className="mb-6 flex items-start gap-3 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">
+              <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+              <span>{actionData.error}</span>
+            </div>
+          )}
+
+          {advanceActionMessage && (
+            <div className="mb-6 flex items-start justify-between gap-3 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 dark:border-green-900/60 dark:bg-green-950/30 dark:text-green-200">
+              <div className="flex items-start gap-3">
+                <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                <span>{advanceActionMessage}</span>
+              </div>
+              {advancePaymentId && (
+                <Link className="font-medium underline underline-offset-2" to={`/admin/payments/${advancePaymentId}`}>
+                  Review payment
+                </Link>
+              )}
+            </div>
+          )}
       
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-6 mb-8">
@@ -486,6 +571,7 @@ export default function AdminEnrollments() {
             <TableBody>
               {enrollments.map((enrollment) => {
                 const { class: classItem, program } = getClassInfo(enrollment.class_id);
+                const waitlistPosition = waitlistPositionByEnrollmentId.get(enrollment.id);
                 
                 return (
                   <TableRow key={enrollment.id}>
@@ -494,7 +580,7 @@ export default function AdminEnrollments() {
                     </TableCell>
                     <TableCell>{program?.name || "Unknown"}</TableCell>
                     <TableCell className="min-w-[200px]">{classItem?.name || "Unknown"}</TableCell>
-                    <TableCell>{getStatusBadge(enrollment)}</TableCell>
+                    <TableCell>{getStatusBadge(enrollment, waitlistPosition)}</TableCell>
                     <TableCell>
                       {formatDate(enrollment.enrolled_at, { formatString: 'MMM d, yyyy' })}
                     </TableCell>
@@ -503,6 +589,25 @@ export default function AdminEnrollments() {
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
+                        {enrollment.status === "waitlist" && (
+                          <Form method="post">
+                            <AuthenticityTokenInput />
+                            <input type="hidden" name="intent" value="advance-waitlist" />
+                            <input type="hidden" name="id" value={enrollment.id} />
+                            <Button
+                              type="submit"
+                              variant="outline"
+                              size="sm"
+                              className="border-green-200 text-green-700 hover:bg-green-50 hover:text-green-800 dark:border-green-800 dark:text-green-300 dark:hover:bg-green-900/30"
+                              disabled={isSubmitting || waitlistPosition !== 1}
+                              title={waitlistPosition === 1 ? "Advance from waitlist" : "Advance earlier waitlist entries first"}
+                              aria-label={waitlistPosition === 1 ? "Advance from waitlist" : "Advance earlier waitlist entries first"}
+                            >
+                              <ArrowUpCircle className="h-4 w-4" />
+                            </Button>
+                          </Form>
+                        )}
+
                         <Button
                           variant="outline"
                           size="sm"

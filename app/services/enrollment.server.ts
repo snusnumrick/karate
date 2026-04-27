@@ -11,15 +11,49 @@ import type {
 import type { Database } from '~/types/database.types';
 import { checkScheduleConflicts } from './class.server';
 import { checkProgramEligibility } from './program.server';
+import { calculateTaxesForPayment } from './tax-rates.server';
 import { recordStudentEnrollmentEvent } from '~/utils/auto-discount-events.server';
 import { mapEnrollmentClassNullToUndefined } from '~/utils/mappers';
-import { fromCents } from '~/utils/money';
+import { addMoney, fromCents, isPositive, toCents, ZERO_MONEY } from '~/utils/money';
+import { buildEnrollmentPendingPaymentNotes, buildSeminarPaymentNotes } from '~/utils/seminar-payment-notes';
 import { getFamilyRegistrationWaiverStatus, getProgramWaiverStatus } from './waiver.server';
-import { createNotFoundError, createPersistenceError, createValidationError } from '~/utils/service-errors.server';
+import { createNotFoundError, createPersistenceError, createValidationError, isServiceError } from '~/utils/service-errors.server';
 import { createSelfRegistrant, getSelfRegistrantByProfileId } from './self-registration.server';
 
 type EnrollmentOperation = 'enrollment' | 're-enrollment';
 type EnrollmentStatus = Database['public']['Tables']['enrollments']['Row']['status'];
+type WaitlistAdvanceStatus = Extract<EnrollmentStatus, 'active' | 'pending_waivers' | 'pending_payment'>;
+type ProgramRow = Pick<
+  Database['public']['Tables']['programs']['Row'],
+  'id' | 'name' | 'engagement_type' | 'single_purchase_price_cents' | 'registration_fee_cents'
+>;
+type ClassRow = Pick<
+  Database['public']['Tables']['classes']['Row'],
+  'id' | 'name' | 'max_capacity' | 'is_active' | 'price_override_cents' | 'program_id'
+> & {
+  program: ProgramRow | null;
+};
+type WaitlistEnrollmentRow = Pick<
+  Database['public']['Tables']['enrollments']['Row'],
+  'id' | 'class_id' | 'student_id' | 'program_id' | 'status' | 'notes' | 'enrolled_at'
+> & {
+  class: ClassRow | null;
+  student: Pick<Database['public']['Tables']['students']['Row'], 'id' | 'family_id'> | null;
+};
+
+export type WaitlistAdvanceResult = {
+  enrollmentId: string;
+  status: WaitlistAdvanceStatus;
+  paymentId?: string;
+};
+
+const WAITLIST_ALREADY_ENROLLED_ERROR = 'Student is already on the waitlist for this class';
+const CAPACITY_HOLDING_ENROLLMENT_STATUSES: EnrollmentStatus[] = [
+  'active',
+  'trial',
+  'pending_waivers',
+  'pending_payment',
+];
 
 export class EnrollmentValidationError extends Error {
   readonly validation: EnrollmentValidation;
@@ -646,7 +680,7 @@ export async function evaluateEnrollment(
     .from('enrollments')
     .select('id', { count: 'exact' })
     .eq('class_id', classId)
-    .in('status', ['active', 'trial']);
+    .in('status', CAPACITY_HOLDING_ENROLLMENT_STATUSES);
 
     const currentEnrollment = enrollmentCount || 0;
     const maxCapacity = classData.max_capacity || 0;
@@ -748,6 +782,314 @@ export async function validateEnrollment(
   return validation;
 }
 
+function appendEnrollmentNote(existingNotes: string | null | undefined, note: string): string {
+  const trimmedNotes = existingNotes?.trim();
+
+  if (trimmedNotes?.includes(note)) {
+    return trimmedNotes;
+  }
+
+  return trimmedNotes ? `${trimmedNotes}\n${note}` : note;
+}
+
+function getSeminarFee(classRecord: ClassRow) {
+  const program = classRecord.program;
+  const feeCents = classRecord.price_override_cents
+    || program?.single_purchase_price_cents
+    || program?.registration_fee_cents
+    || 0;
+
+  return feeCents > 0 ? fromCents(feeCents) : ZERO_MONEY;
+}
+
+async function createSeminarPaymentForWaitlistAdvance({
+  enrollment,
+  familyId,
+  supabaseAdmin,
+}: {
+  enrollment: WaitlistEnrollmentRow;
+  familyId: string;
+  supabaseAdmin: ReturnType<typeof getSupabaseAdminClient>;
+}): Promise<string> {
+  if (!enrollment.class) {
+    throw createNotFoundError('Class not found');
+  }
+
+  const seminarFee = getSeminarFee(enrollment.class);
+  if (!isPositive(seminarFee)) {
+    throw createValidationError('Seminar payment is not required');
+  }
+
+  const taxCalculation = await calculateTaxesForPayment({
+    subtotalAmount: seminarFee,
+    paymentType: 'individual_session',
+    studentIds: [enrollment.student_id],
+  });
+  const paymentTotal = addMoney(seminarFee, taxCalculation.totalTaxAmount);
+
+  const { data: payment, error: paymentError } = await supabaseAdmin
+    .from('payments')
+    .insert({
+      family_id: familyId,
+      subtotal_amount: toCents(seminarFee),
+      total_amount: toCents(paymentTotal),
+      type: 'individual_session',
+      status: 'pending',
+      notes: buildSeminarPaymentNotes({
+        seriesId: enrollment.class_id,
+        studentId: enrollment.student_id,
+      }),
+    })
+    .select('id')
+    .single();
+
+  if (paymentError || !payment) {
+    throw createPersistenceError(`Failed to create seminar payment: ${paymentError?.message ?? 'Unknown error'}`);
+  }
+
+  if (taxCalculation.paymentTaxes.length > 0) {
+    const paymentTaxes = taxCalculation.paymentTaxes.map((tax) => ({
+      payment_id: payment.id,
+      tax_rate_id: tax.tax_rate_id,
+      tax_amount: toCents(tax.tax_amount),
+      tax_name_snapshot: tax.tax_name_snapshot,
+      tax_rate_snapshot: tax.tax_rate_snapshot,
+    }));
+
+    const { error: paymentTaxesError } = await supabaseAdmin
+      .from('payment_taxes')
+      .insert(paymentTaxes);
+
+    if (paymentTaxesError) {
+      await supabaseAdmin.from('payments').delete().eq('id', payment.id);
+      throw createPersistenceError(`Failed to create seminar payment taxes: ${paymentTaxesError.message}`);
+    }
+  }
+
+  const { error: paymentStudentError } = await supabaseAdmin
+    .from('payment_students')
+    .insert({
+      payment_id: payment.id,
+      student_id: enrollment.student_id,
+    });
+
+  if (paymentStudentError) {
+    await supabaseAdmin.from('payments').delete().eq('id', payment.id);
+    throw createPersistenceError(`Failed to link seminar payment to the student: ${paymentStudentError.message}`);
+  }
+
+  return payment.id;
+}
+
+async function updateWaitlistedEnrollmentStatus({
+  enrollmentId,
+  status,
+  notes,
+  supabaseAdmin,
+}: {
+  enrollmentId: string;
+  status: WaitlistAdvanceStatus;
+  notes: string;
+  supabaseAdmin: ReturnType<typeof getSupabaseAdminClient>;
+}) {
+  const { error } = await supabaseAdmin
+    .from('enrollments')
+    .update({
+      status,
+      notes,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', enrollmentId);
+
+  if (error) {
+    throw createPersistenceError(`Failed to advance waitlist enrollment: ${error.message}`);
+  }
+}
+
+/**
+ * Advance the first waitlisted enrollment for a class into the correct next status.
+ */
+export async function advanceWaitlistedEnrollment(
+  enrollmentId: string,
+  supabaseAdmin = getSupabaseAdminClient()
+): Promise<WaitlistAdvanceResult> {
+  const { data: enrollmentData, error: enrollmentError } = await supabaseAdmin
+    .from('enrollments')
+    .select(`
+      id,
+      class_id,
+      student_id,
+      program_id,
+      status,
+      notes,
+      enrolled_at,
+      class:classes(
+        id,
+        name,
+        max_capacity,
+        is_active,
+        price_override_cents,
+        program_id,
+        program:programs(
+          id,
+          name,
+          engagement_type,
+          single_purchase_price_cents,
+          registration_fee_cents
+        )
+      ),
+      student:students(
+        id,
+        family_id
+      )
+    `)
+    .eq('id', enrollmentId)
+    .single();
+
+  if (enrollmentError || !enrollmentData) {
+    throw createNotFoundError(`Waitlist enrollment not found: ${enrollmentError?.message ?? 'Unknown error'}`);
+  }
+
+  const enrollment = enrollmentData as unknown as WaitlistEnrollmentRow;
+
+  if (enrollment.status !== 'waitlist') {
+    throw createValidationError('Only waitlisted enrollments can be advanced');
+  }
+
+  if (!enrollment.class) {
+    throw createNotFoundError('Class not found');
+  }
+
+  if (!enrollment.class.program) {
+    throw createNotFoundError('Program not found');
+  }
+
+  if (!enrollment.student?.family_id) {
+    throw createNotFoundError('Student family information not found');
+  }
+
+  const { data: firstWaitlisted, error: firstWaitlistedError } = await supabaseAdmin
+    .from('enrollments')
+    .select('id')
+    .eq('class_id', enrollment.class_id)
+    .eq('status', 'waitlist')
+    .order('enrolled_at', { ascending: true })
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .single();
+
+  if (firstWaitlistedError || !firstWaitlisted) {
+    throw createPersistenceError(`Failed to verify waitlist priority: ${firstWaitlistedError?.message ?? 'Unknown error'}`);
+  }
+
+  if (firstWaitlisted.id !== enrollment.id) {
+    throw createValidationError('Advance the first waitlisted student before advancing later waitlist entries.');
+  }
+
+  const validation = await evaluateEnrollment(enrollment.class_id, enrollment.student_id, supabaseAdmin);
+  const blockingErrors = validation.errors.filter((error) => error !== WAITLIST_ALREADY_ENROLLED_ERROR);
+
+  if (blockingErrors.length > 0) {
+    throw createValidationError(blockingErrors.join('; '));
+  }
+
+  if (!validation.capacity_available) {
+    throw createValidationError(validation.warnings[0] ?? 'Class is at capacity. Open a spot before advancing the waitlist.');
+  }
+
+  if (!validation.meets_eligibility) {
+    throw createValidationError('Student does not meet program eligibility requirements.');
+  }
+
+  const { data: familyProfile, error: familyProfileError } = await supabaseAdmin
+    .from('profiles')
+    .select('id')
+    .eq('family_id', enrollment.student.family_id)
+    .limit(1)
+    .maybeSingle();
+
+  if (familyProfileError) {
+    throw createPersistenceError(`Failed to check family profile: ${familyProfileError.message}`);
+  }
+
+  if (!familyProfile) {
+    throw createNotFoundError('Family profile not found');
+  }
+
+  const [registrationWaiverStatus, programWaiverStatus] = await Promise.all([
+    getFamilyRegistrationWaiverStatus(enrollment.student.family_id, supabaseAdmin),
+    getProgramWaiverStatus(familyProfile.id, enrollment.program_id, 'active', supabaseAdmin),
+  ]);
+  const missingRegistrationWaivers = registrationWaiverStatus.missing_waivers.map((waiver) => waiver.title);
+  const missingProgramWaivers = programWaiverStatus.missing_waivers.map((waiver) => waiver.waiver_title);
+  const missingWaivers = [...missingRegistrationWaivers, ...missingProgramWaivers].filter(Boolean);
+
+  if (!registrationWaiverStatus.is_complete || !programWaiverStatus.is_complete) {
+    const notes = appendEnrollmentNote(
+      enrollment.notes,
+      missingWaivers.length > 0
+        ? `Advanced from waitlist - pending waivers: ${missingWaivers.join(', ')}`
+        : 'Advanced from waitlist - pending waivers'
+    );
+
+    await updateWaitlistedEnrollmentStatus({
+      enrollmentId: enrollment.id,
+      status: 'pending_waivers',
+      notes,
+      supabaseAdmin,
+    });
+
+    return {
+      enrollmentId: enrollment.id,
+      status: 'pending_waivers',
+    };
+  }
+
+  if (enrollment.class.program.engagement_type === 'seminar' && isPositive(getSeminarFee(enrollment.class))) {
+    const paymentId = await createSeminarPaymentForWaitlistAdvance({
+      enrollment,
+      familyId: enrollment.student.family_id,
+      supabaseAdmin,
+    });
+    const notes = buildEnrollmentPendingPaymentNotes({
+      existingNotes: appendEnrollmentNote(enrollment.notes, 'Advanced from waitlist - pending payment'),
+      paymentId,
+      seriesId: enrollment.class_id,
+      studentId: enrollment.student_id,
+    });
+
+    try {
+      await updateWaitlistedEnrollmentStatus({
+        enrollmentId: enrollment.id,
+        status: 'pending_payment',
+        notes,
+        supabaseAdmin,
+      });
+    } catch (error) {
+      await supabaseAdmin.from('payments').delete().eq('id', paymentId);
+      throw error;
+    }
+
+    return {
+      enrollmentId: enrollment.id,
+      status: 'pending_payment',
+      paymentId,
+    };
+  }
+
+  await updateWaitlistedEnrollmentStatus({
+    enrollmentId: enrollment.id,
+    status: 'active',
+    notes: appendEnrollmentNote(enrollment.notes, 'Advanced from waitlist'),
+    supabaseAdmin,
+  });
+
+  return {
+    enrollmentId: enrollment.id,
+    status: 'active',
+  };
+}
+
 /**
  * Process waitlist - promote students when spots become available
  */
@@ -769,12 +1111,12 @@ export async function processWaitlist(
     throw createPersistenceError('Failed to get class information');
   }
 
-  // Get current active enrollment count
+  // Get current capacity-holding enrollment count
   const { count: enrollmentCount } = await supabaseAdmin
     .from('enrollments')
     .select('id', { count: 'exact' })
     .eq('class_id', classId)
-    .in('status', ['active', 'trial']);
+    .in('status', CAPACITY_HOLDING_ENROLLMENT_STATUSES);
 
   const currentEnrollment = enrollmentCount || 0;
   const maxCapacity = classData.max_capacity || 0;
@@ -784,13 +1126,14 @@ export async function processWaitlist(
     return 0; // No spots available
   }
 
-  // Get waitlisted students in order of enrollment
+  // Get waitlisted students in priority order
   const { data: waitlistStudents, error: waitlistError } = await supabaseAdmin
     .from('enrollments')
-    .select('id, student_id, enrolled_at')
+    .select('id')
     .eq('class_id', classId)
     .eq('status', 'waitlist')
-    .order('enrolled_at')
+    .order('enrolled_at', { ascending: true })
+    .order('created_at', { ascending: true })
     .limit(availableSpots);
 
   if (waitlistError) {
@@ -801,41 +1144,22 @@ export async function processWaitlist(
     return 0; // No one on waitlist
   }
 
-  // Re-validate waitlist entries in parallel and promote in a single batch update.
-  const validationResults = await Promise.all(
-    waitlistStudents.map(async (enrollment) => ({
-      enrollmentId: enrollment.id,
-      validation: await evaluateEnrollment(
-        classId,
-        enrollment.student_id,
-        supabaseAdmin
-      ),
-    }))
-  );
+  let advancedCount = 0;
 
-  const promotableEnrollmentIds = validationResults
-    .filter(({ validation }) => validation.capacity_available && validation.meets_eligibility)
-    .map(({ enrollmentId }) => enrollmentId)
-    .slice(0, availableSpots);
+  for (const enrollment of waitlistStudents) {
+    try {
+      await advanceWaitlistedEnrollment(enrollment.id, supabaseAdmin);
+      advancedCount += 1;
+    } catch (error) {
+      if (isServiceError(error) && ['validation_error', 'not_found'].includes(error.code)) {
+        continue;
+      }
 
-  if (promotableEnrollmentIds.length === 0) {
-    return 0;
+      throw error;
+    }
   }
 
-  const { error: updateError } = await supabaseAdmin
-    .from('enrollments')
-    .update({
-      status: 'active',
-      updated_at: new Date().toISOString(),
-      notes: 'Promoted from waitlist',
-    })
-    .in('id', promotableEnrollmentIds);
-
-  if (updateError) {
-    throw createPersistenceError(`Failed to promote waitlist entries: ${updateError.message}`);
-  }
-
-  return promotableEnrollmentIds.length;
+  return advancedCount;
 }
 
 /**
