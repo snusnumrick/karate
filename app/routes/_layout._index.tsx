@@ -39,6 +39,85 @@ type LoaderData = {
     } | null;
 };
 
+type SeminarCardStatus = 'open' | 'waitlisted' | 'closed';
+
+function formatSeminarPriceSummary(prices: Array<number | null>, currency: string) {
+    const uniquePrices = [...new Set(prices.filter((price): price is number => price != null && price > 0))]
+        .sort((a, b) => a - b);
+
+    if (uniquePrices.length === 0) {
+        return null;
+    }
+
+    const formatPrice = (price: number) => `$${(price / 100).toFixed(2)}`;
+
+    if (uniquePrices.length === 1) {
+        return `${formatPrice(uniquePrices[0])} ${currency}`;
+    }
+
+    return `${formatPrice(uniquePrices[0])}-${formatPrice(uniquePrices[uniquePrices.length - 1])} ${currency}`;
+}
+
+function getSeminarGroupStatus(runs: UpcomingPublicSeminar['nextClass'][]): SeminarCardStatus {
+    if (runs.some((run) => run.allow_self_enrollment && run.registration_status === 'open')) {
+        return 'open';
+    }
+
+    if (runs.some((run) => run.allow_self_enrollment && run.registration_status === 'waitlisted')) {
+        return 'waitlisted';
+    }
+
+    return 'closed';
+}
+
+function getSeminarStatusClasses(status: SeminarCardStatus) {
+    if (status === 'open') {
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+    }
+
+    if (status === 'waitlisted') {
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+    }
+
+    return 'bg-gray-100 text-gray-800 dark:bg-gray-600 dark:text-gray-200';
+}
+
+function formatCompactSeminarDateRange(start: string, end: string | null) {
+    const startDate = new Date(`${start}T00:00:00`);
+    const endDate = end ? new Date(`${end}T00:00:00`) : null;
+
+    if (Number.isNaN(startDate.getTime()) || (endDate && Number.isNaN(endDate.getTime()))) {
+        if (!end || end === start) {
+            return formatDate(start);
+        }
+        return `${formatDate(start)} - ${formatDate(end)}`;
+    }
+
+    const startMonth = startDate.toLocaleDateString(undefined, { month: 'short' });
+    const startDay = startDate.getDate();
+    const startYear = startDate.getFullYear();
+    const currentYear = new Date().getFullYear();
+    const formatYear = (year: number) => (year === currentYear ? '' : `, ${year}`);
+
+    if (!endDate || end === start) {
+        return `${startMonth} ${startDay}${formatYear(startYear)}`;
+    }
+
+    const endMonth = endDate.toLocaleDateString(undefined, { month: 'short' });
+    const endDay = endDate.getDate();
+    const endYear = endDate.getFullYear();
+
+    if (startYear === endYear && startMonth === endMonth) {
+        return `${startMonth} ${startDay} - ${endDay}${formatYear(startYear)}`;
+    }
+
+    if (startYear === endYear) {
+        return `${startMonth} ${startDay} - ${endMonth} ${endDay}${formatYear(startYear)}`;
+    }
+
+    return `${formatDate(start)} - ${formatDate(end)}`;
+}
+
 // Loader for homepage - fetch upcoming events and schedule data
 export async function loader({ request }: LoaderFunctionArgs) {
     const { getEventTypeConfigWithDarkMode } = await import("~/utils/event-helpers.server");
@@ -207,6 +286,40 @@ export default function Index() {
         })),
         [serializedUpcomingEvents]
     );
+    const upcomingSeminarGroups = useMemo(() => {
+        type LoadedUpcomingSeminar = typeof upcomingSeminars[number];
+        type LoadedUpcomingSeminarRun = LoadedUpcomingSeminar['nextClass'];
+        const groups = new Map<string, LoadedUpcomingSeminar & { runs: LoadedUpcomingSeminarRun[] }>();
+
+        for (const seminar of upcomingSeminars) {
+            const existingGroup = groups.get(seminar.id);
+            if (existingGroup) {
+                existingGroup.runs.push(seminar.nextClass);
+            } else {
+                groups.set(seminar.id, {
+                    ...seminar,
+                    runs: [seminar.nextClass],
+                });
+            }
+        }
+
+        return [...groups.values()]
+            .map((seminar) => {
+                const runs = [...seminar.runs].sort((a, b) => a.series_start_on.localeCompare(b.series_start_on));
+                return {
+                    ...seminar,
+                    runs,
+                    nextClass: runs[0],
+                    priceSummary: formatSeminarPriceSummary(
+                        runs.map((run) => run.effective_price_cents),
+                        siteConfig.localization.currency
+                    ),
+                    status: getSeminarGroupStatus(runs),
+                };
+            })
+            .sort((a, b) => a.nextClass.series_start_on.localeCompare(b.nextClass.series_start_on))
+            .slice(0, 6);
+    }, [upcomingSeminars]);
     const nonce = useNonce();
     const [clientScheduleData, setClientScheduleData] = useState<{
         days: string;
@@ -554,30 +667,26 @@ export default function Index() {
             )}
 
             {/* Upcoming Seminars Section */}
-            {upcomingSeminars.length > 0 && (
+            {upcomingSeminarGroups.length > 0 && (
                 <div className="bg-white dark:bg-gray-900 py-16">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                         <h2 className="text-3xl font-bold text-center text-green-600 dark:text-green-400 mb-12">
                             Upcoming Seminars
                         </h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                            {upcomingSeminars.map((seminar) => {
-                                const priceCents = seminar.nextClass.effective_price_cents;
-                                const registrationOpen = seminar.nextClass.registration_status === 'open';
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            {upcomingSeminarGroups.map((seminar) => {
                                 const seminarHref = `/curriculum/seminars/${seminar.slug || seminar.id}`;
+                                const visibleRuns = seminar.runs.slice(0, 4);
+                                const hiddenRunCount = seminar.runs.length - visibleRuns.length;
                                 return (
                                     <div key={seminar.id} className="bg-gray-50 dark:bg-gray-700 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
-                                        <div className="p-6">
+                                        <div className="flex h-full flex-col p-6">
                                             <div className="flex items-center justify-between mb-4">
                                                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
                                                     {seminar.seminar_type ? seminar.seminar_type.toUpperCase() : 'SEMINAR'}
                                                 </span>
-                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                                    registrationOpen
-                                                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                                                        : 'bg-gray-100 text-gray-800 dark:bg-gray-600 dark:text-gray-200'
-                                                }`}>
-                                                    {registrationOpen ? 'OPEN' : seminar.nextClass.registration_status.toUpperCase()}
+                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getSeminarStatusClasses(seminar.status)}`}>
+                                                    {seminar.status.toUpperCase()}
                                                 </span>
                                             </div>
 
@@ -585,46 +694,70 @@ export default function Index() {
                                                 {seminar.name}
                                             </h3>
 
-                                            {seminar.nextClass.name !== seminar.name && (
-                                                <p className="text-sm text-green-600 dark:text-green-400 font-medium mb-2">
-                                                    {seminar.nextClass.name}
-                                                </p>
-                                            )}
-
                                             {seminar.description && (
                                                 <p className="text-gray-600 dark:text-gray-300 mb-4 line-clamp-3">
                                                     {seminar.description}
                                                 </p>
                                             )}
 
-                                            <div className="space-y-2 text-sm text-gray-500 dark:text-gray-400">
-                                                <div className="flex items-center">
-                                                    <Calendar className="h-4 w-4 mr-2 flex-shrink-0" />
-                                                    <span>
-                                                        {formatDate(seminar.nextClass.series_start_on)}
-                                                        {seminar.nextClass.series_end_on && seminar.nextClass.series_end_on !== seminar.nextClass.series_start_on && (
-                                                            <> - {formatDate(seminar.nextClass.series_end_on)}</>
-                                                        )}
-                                                    </span>
-                                                </div>
-
+                                            <div className="mb-5 flex flex-wrap gap-4 text-sm text-gray-500 dark:text-gray-400">
                                                 {seminar.audience_scope && (
                                                     <div className="flex items-center">
                                                         <Users className="h-4 w-4 mr-2 flex-shrink-0" />
                                                         <span className="capitalize">{seminar.audience_scope}</span>
                                                     </div>
                                                 )}
+                                                {seminar.priceSummary && (
+                                                    <span className="font-semibold text-green-600 dark:text-green-400">
+                                                        {seminar.priceSummary}
+                                                    </span>
+                                                )}
+                                            </div>
 
-                                                {priceCents != null && priceCents > 0 && (
-                                                    <div className="flex items-center">
-                                                        <span className="text-green-600 dark:text-green-400 font-semibold">
-                                                            ${(priceCents / 100).toFixed(2)} {siteConfig.localization.currency}
-                                                        </span>
+                                            <div className="mb-6 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-600">
+                                                <div className="hidden grid-cols-[minmax(6rem,1fr),minmax(8rem,1fr),8rem] gap-3 bg-white/70 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:bg-gray-800/60 dark:text-gray-400 sm:grid">
+                                                    <span>Name</span>
+                                                    <span>Date</span>
+                                                    <span className="text-center">Registration</span>
+                                                </div>
+                                                <div className="divide-y divide-gray-200 dark:divide-gray-600">
+                                                    {visibleRuns.map((run) => {
+                                                        const runName = run.name !== seminar.name ? run.name : '';
+                                                        const registrationOpen = run.allow_self_enrollment && run.registration_status === 'open';
+                                                        return (
+                                                            <div key={run.id} className="grid gap-3 bg-white/50 px-4 py-3 text-sm dark:bg-gray-800/30 sm:grid-cols-[minmax(6rem,1fr),minmax(8rem,1fr),8rem] sm:items-center">
+                                                                <div className="min-h-5 font-medium text-gray-900 dark:text-white">
+                                                                    {runName}
+                                                                </div>
+                                                                <div className="text-gray-500 dark:text-gray-400">
+                                                                    {formatCompactSeminarDateRange(run.series_start_on, run.series_end_on)}
+                                                                </div>
+                                                                <div className="flex justify-start sm:justify-center">
+                                                                    {registrationOpen ? (
+                                                                        <Link
+                                                                            to={`${seminarHref}/register?seriesId=${run.id}`}
+                                                                            className="inline-flex items-center rounded-md bg-green-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors duration-200 hover:bg-green-700"
+                                                                        >
+                                                                            Register
+                                                                        </Link>
+                                                                    ) : (
+                                                                        <span className={`inline-flex w-fit items-center px-2 py-0.5 rounded-full text-xs font-medium ${getSeminarStatusClasses(run.registration_status === 'waitlisted' ? 'waitlisted' : 'closed')}`}>
+                                                                            {run.registration_status === 'waitlisted' ? 'Waitlist' : 'Closed'}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                                {hiddenRunCount > 0 && (
+                                                    <div className="bg-white/70 px-4 py-2 text-sm text-gray-500 dark:bg-gray-800/60 dark:text-gray-400">
+                                                        +{hiddenRunCount} more dates
                                                     </div>
                                                 )}
                                             </div>
 
-                                            <div className="mt-6 flex justify-between items-center">
+                                            <div className="mt-auto flex justify-between items-center">
                                                 <Link
                                                     to={seminarHref}
                                                     className="inline-flex items-center text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium"
@@ -632,15 +765,6 @@ export default function Index() {
                                                     Learn More
                                                     <ExternalLink className="h-4 w-4 ml-1" />
                                                 </Link>
-
-                                                {registrationOpen && (
-                                                    <Link
-                                                        to={`${seminarHref}/register?seriesId=${seminar.nextClass.id}`}
-                                                        className="inline-flex items-center bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
-                                                    >
-                                                        Register
-                                                    </Link>
-                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -648,7 +772,7 @@ export default function Index() {
                             })}
                         </div>
 
-                        {upcomingSeminars.length >= 6 && (
+                        {upcomingSeminarGroups.length >= 6 && (
                             <div className="text-center mt-12">
                                 <Link
                                     to="/curriculum?tab=seminars"

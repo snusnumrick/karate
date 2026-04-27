@@ -531,28 +531,29 @@ export async function getUpcomingPublicSeminars(
 
     if (upcomingClasses.length === 0) continue;
 
-    const nextClass = upcomingClasses[0];
-    const effectivePriceCents =
-      nextClass.price_override_cents ??
-      row.single_purchase_price_cents ??
-      row.registration_fee_cents ??
-      null;
-    results.push({
-      ...mapProgramFromRow(row),
-      nextClass: {
-        id: nextClass.id,
-        name: nextClass.name,
-        series_start_on: nextClass.series_start_on!,
-        series_end_on: nextClass.series_end_on ?? null,
-        registration_status: nextClass.registration_status,
-        allow_self_enrollment: nextClass.allow_self_enrollment ?? false,
-        effective_price_cents: effectivePriceCents,
-      },
-    });
+    for (const nextClass of upcomingClasses) {
+      const effectivePriceCents =
+        nextClass.price_override_cents ??
+        row.single_purchase_price_cents ??
+        row.registration_fee_cents ??
+        null;
+      results.push({
+        ...mapProgramFromRow(row),
+        nextClass: {
+          id: nextClass.id,
+          name: nextClass.name,
+          series_start_on: nextClass.series_start_on!,
+          series_end_on: nextClass.series_end_on ?? null,
+          registration_status: nextClass.registration_status,
+          allow_self_enrollment: nextClass.allow_self_enrollment ?? false,
+          effective_price_cents: effectivePriceCents,
+        },
+      });
+    }
   }
 
   results.sort((a, b) => a.nextClass.series_start_on.localeCompare(b.nextClass.series_start_on));
-  return results.slice(0, 6);
+  return results;
 }
 
 /**

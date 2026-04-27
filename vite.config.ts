@@ -11,8 +11,15 @@ import viteImagemin from 'vite-plugin-imagemin';
 import { setRemixDevLoadContext } from "@remix-run/dev/dist/vite/plugin";
 
 const devServerHost = process.env.VITE_DEV_SERVER_HOST || "0.0.0.0";
-const devHmrHost = process.env.VITE_DEV_HMR_HOST || "localhost";
-const devHmrPort = process.env.VITE_DEV_HMR_PORT ? Number(process.env.VITE_DEV_HMR_PORT) : 5176;
+const devHmrHost = process.env.VITE_DEV_HMR_HOST;
+const devHmrPort = process.env.VITE_DEV_HMR_PORT ? Number(process.env.VITE_DEV_HMR_PORT) : undefined;
+const devHmrConfig =
+  devHmrHost || devHmrPort
+    ? {
+        ...(devHmrHost ? { host: devHmrHost } : {}),
+        ...(devHmrPort ? { port: devHmrPort } : {}),
+      }
+    : undefined;
 
 const allowedHostsEnv = process.env.VITE_DEV_ALLOWED_HOSTS;
 const devAllowedHosts: true | string[] = allowedHostsEnv
@@ -138,10 +145,7 @@ export default defineConfig({
     port: 5176,
     host: devServerHost,
     allowedHosts: devAllowedHosts,
-    hmr: {
-      port: devHmrPort,
-      host: devHmrHost,
-    },
+    ...(devHmrConfig ? { hmr: devHmrConfig } : {}),
   },
   test: {
     globals: true,
