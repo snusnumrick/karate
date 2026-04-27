@@ -22,25 +22,67 @@ import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 import { CSRFError } from "remix-utils/csrf/server";
 import { serializeMoney } from "~/utils/money";
 
+type EnrollmentStatusFilter =
+  | 'active'
+  | 'inactive'
+  | 'dropped'
+  | 'completed'
+  | 'waitlist'
+  | 'trial'
+  | 'pending_waivers'
+  | 'pending_payment';
+
+const enrollmentStatusFilters = new Set<EnrollmentStatusFilter>([
+  'active',
+  'inactive',
+  'dropped',
+  'completed',
+  'waitlist',
+  'trial',
+  'pending_waivers',
+  'pending_payment',
+]);
+
+function parseEnrollmentStatus(value: string | null): EnrollmentStatusFilter | undefined {
+  return value && enrollmentStatusFilters.has(value as EnrollmentStatusFilter)
+    ? value as EnrollmentStatusFilter
+    : undefined;
+}
+
+function stripSeminarPendingPaymentNote(notes?: string | null): string {
+  return notes?.replace(/\[seminar_pending_payment:[^\]]+\]/g, '').trim() ?? '';
+}
+
 async function loaderImpl({ request }: LoaderFunctionArgs) {
 
   const url = new URL(request.url);
   const classId = url.searchParams.get("class");
   const programId = url.searchParams.get("program");
-  const status = url.searchParams.get("status");
+  const status = parseEnrollmentStatus(url.searchParams.get("status"));
 
   const [enrollments, classes, programs] = await Promise.all([
-    getEnrollments({ class_id: classId || undefined, status: status as 'active' | 'waitlist' | 'dropped' | 'completed' | 'pending_waivers' | undefined }),
+    getEnrollments({ class_id: classId || undefined, status }),
     getClasses(),
     getPrograms()
   ]);
+
+  const selectedClass = classId ? classes.find(classItem => classItem.id === classId) : undefined;
+  const effectiveProgramId = selectedClass?.program_id ?? programId;
+  const filteredEnrollments = !classId && effectiveProgramId
+    ? enrollments.filter(enrollment =>
+        enrollment.program_id === effectiveProgramId || enrollment.class?.program_id === effectiveProgramId
+      )
+    : enrollments;
+  const filteredClasses = effectiveProgramId
+    ? classes.filter(classItem => classItem.program_id === effectiveProgramId)
+    : classes;
 
   // Create supabase admin client for eligibility checks
   const supabaseAdmin = getSupabaseAdminClient();
 
   // Fetch eligibility for each enrolled student
   const enrollmentsWithEligibility = await Promise.all(
-    enrollments.map(async (enrollment) => {
+    filteredEnrollments.map(async (enrollment) => {
       if (enrollment.student) {
         const eligibility = await checkStudentEligibility(enrollment.student.id, supabaseAdmin);
         return {
@@ -57,12 +99,13 @@ async function loaderImpl({ request }: LoaderFunctionArgs) {
 
   // Calculate stats from enrollments
   const stats = {
-    total: enrollments.length,
-    active: enrollments.filter(e => e.status === 'active').length,
-    trial: enrollments.filter(e => e.status === 'trial').length,
-    waitlisted: enrollments.filter(e => e.status === 'waitlist').length,
-    pending_waivers: enrollments.filter(e => e.status === 'pending_waivers').length,
-    dropped: enrollments.filter(e => e.status === 'dropped').length
+    total: filteredEnrollments.length,
+    active: filteredEnrollments.filter(e => e.status === 'active').length,
+    trial: filteredEnrollments.filter(e => e.status === 'trial').length,
+    pending_payment: filteredEnrollments.filter(e => e.status === 'pending_payment').length,
+    waitlisted: filteredEnrollments.filter(e => e.status === 'waitlist').length,
+    pending_waivers: filteredEnrollments.filter(e => e.status === 'pending_waivers').length,
+    dropped: filteredEnrollments.filter(e => e.status === 'dropped').length
   };
 
   // Serialize Money objects in programs for JSON transmission
@@ -76,10 +119,10 @@ async function loaderImpl({ request }: LoaderFunctionArgs) {
 
   return json({
     enrollments: enrollmentsWithEligibility,
-    classes,
+    classes: filteredClasses,
     programs: serializedPrograms,
     stats,
-    filters: { classId, programId, status }
+    filters: { classId, programId: effectiveProgramId, status: status ?? null }
   });
 }
 
@@ -106,7 +149,7 @@ async function actionImpl({ request }: ActionFunctionArgs) {
     case "update": {
       const id = formData.get("id") as string;
       const updates = {
-        status: formData.get("status") as "active" | "waitlist" | "dropped",
+        status: formData.get("status") as EnrollmentStatusFilter,
         notes: formData.get("notes") as string,
       };
       
@@ -163,12 +206,23 @@ export default function AdminEnrollments() {
   }, [actionData, navigation.state]);
   
   const handleFilterChange = (key: string, value: string) => {
+    const nextSearchParams = new URLSearchParams(searchParams);
+
     if (value === "all" || value === "") {
-      searchParams.delete(key);
+      nextSearchParams.delete(key);
     } else {
-      searchParams.set(key, value);
+      nextSearchParams.set(key, value);
     }
-    setSearchParams(searchParams);
+
+    if (key === "program") {
+      nextSearchParams.delete("class");
+    }
+
+    if (key === "class") {
+      nextSearchParams.delete("program");
+    }
+
+    setSearchParams(nextSearchParams);
   };
 
   const getStatusBadge = (enrollment: EnrollmentType) => {
@@ -183,6 +237,12 @@ export default function AdminEnrollments() {
     if (status === "waitlist") {
       return <Badge variant="secondary"><Clock className="h-3 w-3 mr-1" />Waitlisted</Badge>;
     }
+    if (status === "completed") {
+      return <Badge variant="secondary"><CheckCircle className="h-3 w-3 mr-1" />Completed</Badge>;
+    }
+    if (status === "inactive") {
+      return <Badge variant="secondary"><AlertCircle className="h-3 w-3 mr-1" />Inactive</Badge>;
+    }
     if (status === "pending_waivers") {
       return (
         <div className="space-y-1">
@@ -191,6 +251,18 @@ export default function AdminEnrollments() {
           </Badge>
           <div className="text-xs text-muted-foreground">
             Awaiting waiver completion
+          </div>
+        </div>
+      );
+    }
+    if (status === "pending_payment") {
+      return (
+        <div className="space-y-1">
+          <Badge className="bg-yellow-100 text-yellow-800">
+            <Clock className="h-3 w-3 mr-1" />Pending Payment
+          </Badge>
+          <div className="text-xs text-muted-foreground">
+            Awaiting payment completion
           </div>
         </div>
       );
@@ -246,8 +318,11 @@ export default function AdminEnrollments() {
       }
     }
     
-    // Fallback for active without eligibility data
-    return <Badge className="bg-green-100 text-green-800"><CheckCircle className="h-3 w-3 mr-1" />Active</Badge>;
+    if (status === "active") {
+      return <Badge className="bg-green-100 text-green-800"><CheckCircle className="h-3 w-3 mr-1" />Active</Badge>;
+    }
+
+    return <Badge variant="secondary"><AlertCircle className="h-3 w-3 mr-1" />Unknown</Badge>;
   };
   
   const getClassInfo = (classId: string) => {
@@ -281,7 +356,7 @@ export default function AdminEnrollments() {
           </div>
       
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-6 mb-8">
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border-l-4 border-green-600">
           <h3 className="text-lg font-medium text-gray-500 dark:text-gray-400">Total</h3>
           <p className="text-3xl font-bold text-gray-800 dark:text-gray-100">{stats.total}</p>
@@ -293,6 +368,10 @@ export default function AdminEnrollments() {
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border-l-4 border-blue-600">
           <h3 className="text-lg font-medium text-gray-500 dark:text-gray-400">Trial</h3>
           <p className="text-3xl font-bold text-gray-800 dark:text-gray-100">{stats.trial}</p>
+        </div>
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border-l-4 border-yellow-600">
+          <h3 className="text-lg font-medium text-gray-500 dark:text-gray-400">Pending Payment</h3>
+          <p className="text-3xl font-bold text-gray-800 dark:text-gray-100">{stats.pending_payment}</p>
         </div>
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border-l-4 border-amber-600">
           <h3 className="text-lg font-medium text-gray-500 dark:text-gray-400">Pending Waivers</h3>
@@ -356,6 +435,7 @@ export default function AdminEnrollments() {
                 <SelectItem value="all">All Statuses</SelectItem>
                 <SelectItem value="active">Active</SelectItem>
                 <SelectItem value="trial">Trial</SelectItem>
+                <SelectItem value="pending_payment">Pending Payment</SelectItem>
                 <SelectItem value="pending_waivers">Pending Waivers</SelectItem>
                 <SelectItem value="waitlist">Waitlisted</SelectItem>
                 <SelectItem value="dropped">Dropped</SelectItem>
@@ -401,7 +481,7 @@ export default function AdminEnrollments() {
                       {formatDate(enrollment.enrolled_at, { formatString: 'MMM d, yyyy' })}
                     </TableCell>
                     <TableCell className="max-w-xs truncate">
-                      {enrollment.notes || "-"}
+                      {stripSeminarPendingPaymentNote(enrollment.notes) || "-"}
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
@@ -494,6 +574,7 @@ export default function AdminEnrollments() {
                   <SelectContent>
                     <SelectItem value="active">Active</SelectItem>
                     <SelectItem value="trial">Trial</SelectItem>
+                    <SelectItem value="pending_payment">Pending Payment</SelectItem>
                     <SelectItem value="pending_waivers">Pending Waivers</SelectItem>
                     <SelectItem value="waitlist">Waitlisted</SelectItem>
                     <SelectItem value="dropped">Dropped</SelectItem>
