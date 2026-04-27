@@ -1,5 +1,5 @@
+/* eslint-disable react/prop-types */
 import * as React from "react"
-import PropTypes from "prop-types"
 
 import {cn} from "~/lib/utils"
 
@@ -80,9 +80,6 @@ const TableHead = React.forwardRef<
         {...props}
     />
 ))
-TableHead.propTypes = {
-    className: PropTypes.string,
-}
 TableHead.displayName = "TableHead"
 
 const TableCell = React.forwardRef<
@@ -98,9 +95,6 @@ const TableCell = React.forwardRef<
         {...props}
     />
 ))
-TableCell.propTypes = {
-    className: PropTypes.string,
-}
 TableCell.displayName = "TableCell"
 
 const TableCaption = React.forwardRef<
