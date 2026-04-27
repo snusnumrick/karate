@@ -476,7 +476,7 @@ export async function getSeminars(
 export type UpcomingPublicSeminar = Program & {
   nextClass: {
     id: string;
-    series_label: string | null;
+    name: string;
     series_start_on: string;
     series_end_on: string | null;
     registration_status: string;
@@ -500,7 +500,7 @@ export async function getUpcomingPublicSeminars(
       ${PROGRAM_SELECT_COLUMNS},
       classes (
         id,
-        series_label,
+        name,
         series_start_on,
         series_end_on,
         registration_status,
@@ -541,7 +541,7 @@ export async function getUpcomingPublicSeminars(
       ...mapProgramFromRow(row),
       nextClass: {
         id: nextClass.id,
-        series_label: nextClass.series_label ?? null,
+        name: nextClass.name,
         series_start_on: nextClass.series_start_on!,
         series_end_on: nextClass.series_end_on ?? null,
         registration_status: nextClass.registration_status,
@@ -571,7 +571,6 @@ export async function getSeminarWithSeries(
         name,
         description,
         topic,
-        series_label,
         series_status,
         registration_status,
         series_start_on,
@@ -626,7 +625,6 @@ export async function getSeminarWithSeries(
       ...cls,
       description: cls.description ?? undefined,
       topic: cls.topic ?? undefined,
-      series_label: cls.series_label ?? undefined,
       series_status: cls.series_status ?? 'tentative',
       registration_status: cls.registration_status ?? 'closed',
       series_start_on: cls.series_start_on ?? undefined,

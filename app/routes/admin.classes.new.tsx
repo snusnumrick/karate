@@ -106,7 +106,6 @@ async function actionImpl({ request }: ActionFunctionArgs) {
       );
     }
 
-    const seriesLabel = formData.get("series_label") as string;
     const topic = formData.get("topic") as string;
     const seriesStartOn = formData.get("series_start_on") as string;
     const seriesEndOn = formData.get("series_end_on") as string;
@@ -125,7 +124,6 @@ async function actionImpl({ request }: ActionFunctionArgs) {
       instructor_id: instructorIdValue || undefined,
       is_active: formData.get("is_active") === "on",
       ...(engagement === "seminar" ? {
-        series_label: seriesLabel || undefined,
         topic: topic || undefined,
         series_start_on: seriesStartOn || undefined,
         series_end_on: seriesEndOn || undefined,
@@ -352,17 +350,15 @@ export default function NewClass() {
                     )}
                   </div>
 
-                  {!isSeminarView && (
-                    <div className="space-y-2">
-                      <Label htmlFor="name">Class Name (Optional)</Label>
-                      <Input
-                        id="name"
-                        name="name"
-                        placeholder="Leave empty to use program name"
-                        className={inputClass()}
-                      />
-                    </div>
-                  )}
+                  <div className="space-y-2">
+                    <Label htmlFor="name">{isSeminarView ? "Seminar Name" : "Class Name"} (Optional)</Label>
+                    <Input
+                      id="name"
+                      name="name"
+                      placeholder={isSeminarView ? "Leave empty to use seminar template name" : "Leave empty to use program name"}
+                      className={inputClass()}
+                    />
+                  </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="instructor_id">Instructor</Label>
@@ -422,15 +418,6 @@ export default function NewClass() {
                   </div>
 
                   <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="series_label">Series Label</Label>
-                      <Input
-                        id="series_label"
-                        name="series_label"
-                        placeholder="e.g. Week 1: July 7–11"
-                        className={inputClass()}
-                      />
-                    </div>
                     <div className="space-y-2">
                       <Label htmlFor="topic">Topic (Optional)</Label>
                       <Input

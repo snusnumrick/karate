@@ -68,7 +68,6 @@ export interface Class {
   updated_at: string;
   // Seminar-series fields
   topic?: string | null;
-  series_label?: string | null;
   series_status: 'tentative' | 'confirmed' | 'cancelled' | 'in_progress' | 'completed';
   registration_status: 'open' | 'closed' | 'waitlisted';
   series_start_on?: string | null;
@@ -201,7 +200,6 @@ export interface CreateClassData {
   series_status?: 'tentative' | 'confirmed' | 'cancelled' | 'in_progress' | 'completed';
   registration_status?: 'open' | 'closed' | 'waitlisted';
   allow_self_enrollment?: boolean;
-  series_label?: string;
   series_start_on?: string;
   series_end_on?: string;
   sessions_per_week_override?: number;

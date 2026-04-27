@@ -169,7 +169,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const { data: seminarRunsData } = seminarIds.length > 0
     ? await supabaseAdmin
         .from('classes')
-        .select('id, program_id, series_label, series_start_on, series_end_on, allow_self_enrollment')
+        .select('id, program_id, name, series_start_on, series_end_on, allow_self_enrollment')
         .eq('is_active', true)
         .in('program_id', seminarIds)
         .not('series_start_on', 'is', null)
@@ -178,14 +178,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   const runsByProgramId = (seminarRunsData || []).reduce<Record<string, Array<{
     id: string;
-    series_label: string | null;
+    name: string;
     series_start_on: string | null;
     series_end_on: string | null;
     allow_self_enrollment: boolean;
   }>>>((acc, run) => {
     const key = run.program_id;
     if (!acc[key]) acc[key] = [];
-    acc[key].push({ id: run.id, series_label: run.series_label, series_start_on: run.series_start_on, series_end_on: run.series_end_on, allow_self_enrollment: run.allow_self_enrollment ?? false });
+    acc[key].push({ id: run.id, name: run.name, series_start_on: run.series_start_on, series_end_on: run.series_end_on, allow_self_enrollment: run.allow_self_enrollment ?? false });
     return acc;
   }, {});
 

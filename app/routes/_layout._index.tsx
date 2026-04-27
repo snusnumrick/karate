@@ -585,9 +585,9 @@ export default function Index() {
                                                 {seminar.name}
                                             </h3>
 
-                                            {seminar.nextClass.series_label && (
+                                            {seminar.nextClass.name !== seminar.name && (
                                                 <p className="text-sm text-green-600 dark:text-green-400 font-medium mb-2">
-                                                    {seminar.nextClass.series_label}
+                                                    {seminar.nextClass.name}
                                                 </p>
                                             )}
 

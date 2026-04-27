@@ -3,7 +3,7 @@
 Summer camps are modelled as **Seminars** in the system. A seminar has two layers:
 
 - **Seminar Template** — defines the camp's name, audience, pricing, duration, and age range. Think of it as the "product" definition. Reusable across years.
-- **Seminars** — a specific run of that camp with concrete dates, sessions, capacity, and registration status. Think of it as the "scheduled instance".
+- **Seminar** — a specific run of that camp with its own name, concrete dates, sessions, capacity, and registration status. Think of it as the "scheduled instance".
 
 ---
 
@@ -29,7 +29,7 @@ Summer camps are modelled as **Seminars** in the system. A seminar has two layer
 2. Click **Create Seminar**
 3. Select the **Seminar Template** created in Step 1 from the dropdown
 4. Fill in:
-   - **Series Label** — e.g. "Week 1: July 7–11"
+   - **Seminar Name** — e.g. "Week 1: July 7–11" or "Summer Camp Week 1"
    - **Topic** — optional theme, e.g. "Beginner Fundamentals"
    - **Start Date / End Date** — camp start and end dates
    - **Number of Sessions** — total sessions in the series
@@ -115,7 +115,7 @@ If online registration is not available (the page shows "Contact us to register"
 | Concept | What it means |
 |---|---|
 | **Seminar Template** | The camp "product" — reusable definition shared across all runs |
-| **Seminars** | A specific camp run with actual dates and capacity |
+| **Seminar** | A specific camp run with its own name, actual dates, and capacity |
 | **Series Status: Confirmed** | Dates are locked and the camp is running |
 | **Registration Status: Open** | Families can sign up online |
 | **Allow Self-Enrollment** | Families can register without contacting admin |

@@ -231,10 +231,10 @@ export default function SeminarDetail() {
                         </p>
                       )}
                       <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
-                        {series.topic || series.series_label || series.name || 'Seminar Series'}
+                        {series.topic || series.name || 'Seminar Series'}
                       </h3>
-                      {series.series_label && series.topic && (
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">{series.series_label}</p>
+                      {series.name && series.topic && (
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">{series.name}</p>
                       )}
                       {series.description && (
                         <p className="text-base leading-relaxed text-gray-600 dark:text-gray-300 mt-4">

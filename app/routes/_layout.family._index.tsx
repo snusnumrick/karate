@@ -227,7 +227,6 @@ type SeminarEnrollment = {
     class: {
         id: string;
         name: string;
-        series_label?: string;
         series_start_on?: string;
         series_end_on?: string;
         series_session_quota?: number;
@@ -610,7 +609,6 @@ export async function loader({request}: LoaderFunctionArgs) {
                     class:classes!inner(
                         id,
                         name,
-                        series_label,
                         series_start_on,
                         series_end_on,
                         series_session_quota,

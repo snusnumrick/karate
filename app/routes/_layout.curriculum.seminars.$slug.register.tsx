@@ -804,8 +804,8 @@ export default function SeminarRegister() {
             </h2>
             <p className="page-subheader-styles">
               {isWaitlistSuccess
-                ? `You are on the waitlist for ${series.series_label || series.name}. We will contact you if a spot opens up.`
-                : `You're registered for ${series.series_label || series.name}. You can head back to your dashboard whenever you're ready.`}
+                ? `You are on the waitlist for ${series.name}. We will contact you if a spot opens up.`
+                : `You're registered for ${series.name}. You can head back to your dashboard whenever you're ready.`}
             </p>
             <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
               <Button asChild>
@@ -858,7 +858,7 @@ export default function SeminarRegister() {
           </p>
           <h1 className="page-header-styles mt-3">{seminar.name}</h1>
           <p className="page-subheader-styles">
-            {series.series_label || series.name} • Review your registration path, confirm waivers, and complete sign-up.
+            {series.name} • Review your registration path, confirm waivers, and complete sign-up.
           </p>
         </div>
 
@@ -866,7 +866,7 @@ export default function SeminarRegister() {
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-2xl border border-gray-200 bg-gray-50/80 p-5 dark:border-gray-700 dark:bg-gray-800/70">
               <p className="text-sm text-gray-500 dark:text-gray-400">Series</p>
-              <p className="mt-2 text-lg font-semibold text-gray-900 dark:text-white">{series.series_label || series.name}</p>
+              <p className="mt-2 text-lg font-semibold text-gray-900 dark:text-white">{series.name}</p>
             </div>
             {series.series_start_on && series.series_end_on && (
               <div className="rounded-2xl border border-gray-200 bg-gray-50/80 p-5 dark:border-gray-700 dark:bg-gray-800/70">
@@ -1106,7 +1106,7 @@ export default function SeminarRegister() {
                     Seminar Summary
                   </p>
                   <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-2">
-                    {series.series_label || series.name}
+                    {series.name}
                   </h2>
                 </div>
                 <div className="rounded-full bg-green-100 px-3 py-1 text-sm font-semibold text-green-700 dark:bg-green-500/10 dark:text-green-300">
@@ -1117,7 +1117,7 @@ export default function SeminarRegister() {
               <div className="space-y-4">
                 <SummaryRow
                   label="Series"
-                  value={series.series_label || series.name}
+                  value={series.name}
                 />
                 {series.series_start_on && series.series_end_on && (
                   <SummaryRow

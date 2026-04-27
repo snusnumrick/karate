@@ -143,7 +143,6 @@ async function actionImpl({ request, params }: ActionFunctionArgs) {
       }
 
       const isSeminarUpdate = selectedProgram.engagement_type === 'seminar';
-      const seriesLabel = formData.get("series_label") as string;
       const topic = formData.get("topic") as string;
       const seriesStartOn = formData.get("series_start_on") as string;
       const seriesEndOn = formData.get("series_end_on") as string;
@@ -162,7 +161,6 @@ async function actionImpl({ request, params }: ActionFunctionArgs) {
         max_capacity: maxCapacity,
         instructor_id: instructorId === "none" ? undefined : instructorId || undefined,
         ...(isSeminarUpdate ? {
-          series_label: seriesLabel || undefined,
           topic: topic || undefined,
           series_start_on: seriesStartOn || undefined,
           series_end_on: seriesEndOn || undefined,
@@ -339,7 +337,9 @@ export default function EditClass() {
                 <div className="border-b border-gray-200 pb-4 dark:border-gray-700">
                   <h3 className={sectionTitleClass}>Basic Information</h3>
                   <p className={sectionDescriptionClass}>
-                    Update program assignment, naming, capacity, instructor, and description.
+                    {isSeminarView
+                      ? "Update template assignment, capacity, instructor, and description."
+                      : "Update program assignment, naming, capacity, instructor, and description."}
                   </p>
                 </div>
 
@@ -371,18 +371,18 @@ export default function EditClass() {
                     )}
                   </div>
 
-                  {!isSeminarView && (
-                    <div className="space-y-2">
-                      <Label htmlFor="name" className="text-sm font-medium">Class Name</Label>
-                      <Input
-                        id="name"
-                        name="name"
-                        defaultValue={classData.name}
-                        placeholder="Leave empty to use program name"
-                        className={inputClass()}
-                      />
-                    </div>
-                  )}
+                  <div className="space-y-2">
+                    <Label htmlFor="name" className="text-sm font-medium">
+                      {isSeminarView ? "Seminar Name" : "Class Name"}
+                    </Label>
+                    <Input
+                      id="name"
+                      name="name"
+                      defaultValue={classData.name}
+                      placeholder={isSeminarView ? "Leave empty to use seminar template name" : "Leave empty to use program name"}
+                      className={inputClass()}
+                    />
+                  </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="max_capacity" className="text-sm font-medium">Max Capacity *</Label>
@@ -442,16 +442,6 @@ export default function EditClass() {
                       <p className={sectionDescriptionClass}>Adjust pricing, timing, and registration for this seminar run.</p>
                     </div>
                     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="series_label" className="text-sm font-medium">Series Label</Label>
-                        <Input
-                          id="series_label"
-                          name="series_label"
-                          defaultValue={classData.series_label || ''}
-                          placeholder="e.g. Week 1: July 7–11"
-                          className={inputClass()}
-                        />
-                      </div>
                       <div className="space-y-2">
                         <Label htmlFor="topic" className="text-sm font-medium">Topic (Optional)</Label>
                         <Input

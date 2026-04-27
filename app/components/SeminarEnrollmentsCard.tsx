@@ -16,7 +16,6 @@ interface SeminarEnrollment {
   class: {
     id: string;
     name: string;
-    series_label?: string;
     series_start_on?: string;
     series_end_on?: string;
     series_session_quota?: number;
@@ -70,7 +69,7 @@ export function SeminarEnrollmentsCard({ enrollments, isAdult = false }: Seminar
                   {enrollment.class.program.name}
                 </h4>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {enrollment.class.series_label || enrollment.class.name}
+                  {enrollment.class.name}
                 </p>
               </div>
               <Badge
