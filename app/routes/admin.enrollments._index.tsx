@@ -53,6 +53,10 @@ function stripSeminarPendingPaymentNote(notes?: string | null): string {
   return notes?.replace(/\[seminar_pending_payment:[^\]]+\]/g, '').trim() ?? '';
 }
 
+function extractSeminarPendingPaymentNotes(notes?: string | null): string {
+  return notes?.match(/\[seminar_pending_payment:[^\]]+\]/g)?.join(' ') ?? '';
+}
+
 async function loaderImpl({ request }: LoaderFunctionArgs) {
 
   const url = new URL(request.url);
@@ -148,9 +152,18 @@ async function actionImpl({ request }: ActionFunctionArgs) {
     
     case "update": {
       const id = formData.get("id") as string;
+      const status = parseEnrollmentStatus(formData.get("status")?.toString() ?? null);
+      if (!status) {
+        return json({ error: "Invalid enrollment status" }, { status: 400 });
+      }
+
+      const notes = formData.get("notes")?.toString().trim() ?? "";
+      const systemNotes = formData.get("systemNotes")?.toString().trim() ?? "";
       const updates = {
-        status: formData.get("status") as EnrollmentStatusFilter,
-        notes: formData.get("notes") as string,
+        status,
+        notes: status === "pending_payment" && systemNotes
+          ? [notes, systemNotes].filter(Boolean).join(' ')
+          : notes,
       };
       
       await updateEnrollment(id, updates);
@@ -196,6 +209,11 @@ export default function AdminEnrollments() {
   const [deleteEnrollmentId, setDeleteEnrollmentId] = useState<string | null>(null);
 
   const isSubmitting = navigation.state === "submitting";
+  const primaryButtonClass = "bg-green-600 text-white shadow-sm hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-500";
+  const secondaryButtonClass = "border-green-200 text-green-700 hover:bg-green-50 hover:text-green-800 dark:border-green-800 dark:text-green-300 dark:hover:bg-green-900/30 dark:hover:text-green-200";
+  const dialogFieldClass = "rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-900 dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100";
+  const dialogLabelClass = "text-sm font-medium text-gray-900 dark:text-gray-100";
+  const dialogInputClass = "input-custom-styles border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900/60";
 
   // Close dialog after successful submission
   useEffect(() => {
@@ -534,30 +552,31 @@ export default function AdminEnrollments() {
       
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Enrollment</DialogTitle>
-            <DialogDescription>
+        <DialogContent className="gap-0 overflow-hidden border border-gray-200 bg-white p-0 shadow-xl dark:border-gray-700 dark:bg-gray-800 sm:max-w-xl">
+          <DialogHeader className="border-b border-gray-100 bg-gray-50/80 px-6 py-5 dark:border-gray-700 dark:bg-gray-900/40">
+            <DialogTitle className="text-xl font-semibold text-green-600 dark:text-green-400">Edit Enrollment</DialogTitle>
+            <DialogDescription className="text-sm text-gray-600 dark:text-gray-400">
               Update the enrollment status and notes.
             </DialogDescription>
           </DialogHeader>
           
           {selectedEnrollment && (
-            <Form method="post" className="space-y-4">
+            <Form method="post" className="space-y-5 p-6">
               <AuthenticityTokenInput />
               <input type="hidden" name="intent" value="update" />
               <input type="hidden" name="id" value={selectedEnrollment.id} />
+              <input type="hidden" name="systemNotes" value={extractSeminarPendingPaymentNotes(selectedEnrollment.notes)} />
               
               <div className="space-y-2">
-                <Label>Student</Label>
-                <div className="p-2 bg-muted rounded">
+                <Label className={dialogLabelClass}>Student</Label>
+                <div className={dialogFieldClass}>
                   {getStudentName(selectedEnrollment)}
                 </div>
               </div>
               
               <div className="space-y-2">
-                <Label>Class</Label>
-                <div className="p-2 bg-muted rounded">
+                <Label className={dialogLabelClass}>Class</Label>
+                <div className={dialogFieldClass}>
                   {(() => {
                     const { class: classItem, program } = getClassInfo(selectedEnrollment.class_id);
                     return `${program?.name} - ${classItem?.name}`;
@@ -566,9 +585,9 @@ export default function AdminEnrollments() {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="edit-status">Status</Label>
+                <Label htmlFor="edit-status" className={dialogLabelClass}>Status</Label>
                 <Select name="status" defaultValue={selectedEnrollment.status}>
-                  <SelectTrigger className="input-custom-styles">
+                  <SelectTrigger className={dialogInputClass}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -583,21 +602,21 @@ export default function AdminEnrollments() {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="edit-notes">Notes</Label>
+                <Label htmlFor="edit-notes" className={dialogLabelClass}>Notes</Label>
                 <Input
                   id="edit-notes"
                   name="notes"
-                  className="input-custom-styles"
-                  defaultValue={selectedEnrollment.notes || ""}
+                  className={dialogInputClass}
+                  defaultValue={stripSeminarPendingPaymentNote(selectedEnrollment.notes)}
                   placeholder="Enrollment notes..."
                 />
               </div>
               
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              <DialogFooter className="gap-2 border-t border-gray-100 pt-5 dark:border-gray-700 sm:space-x-0">
+                <Button type="button" variant="outline" className={secondaryButtonClass} onClick={() => setIsEditDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isSubmitting}>
+                <Button type="submit" disabled={isSubmitting} className={primaryButtonClass}>
                   {isSubmitting ? "Updating..." : "Update Enrollment"}
                 </Button>
               </DialogFooter>
