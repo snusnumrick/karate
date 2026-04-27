@@ -16,6 +16,7 @@ describe("chunk recovery helpers", () => {
     expect(isChunkLoadError(new Error("ChunkLoadError: Loading chunk 234 failed."))).toBe(true);
     expect(isChunkLoadError("Failed to fetch dynamically imported module")).toBe(true);
     expect(isChunkLoadError({ message: "Importing a module script failed." })).toBe(true);
+    expect(isChunkLoadError("Error loading route module `/assets/admin.programs.new-BS8rnqT7.js`, reloading page...")).toBe(true);
   });
 
   it("ignores non-chunk errors", () => {

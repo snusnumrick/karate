@@ -1,7 +1,11 @@
-import { describe, expect, it } from 'vitest';
-import { toErrorMessage } from '~/utils/errors';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { logStructuredError, toErrorMessage } from '~/utils/errors';
 
 describe('toErrorMessage', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('returns message from Error instances', () => {
     expect(toErrorMessage(new Error('boom'))).toBe('boom');
   });
@@ -26,5 +30,24 @@ describe('toErrorMessage', () => {
 
   it('never returns [object Object] for plain objects', () => {
     expect(toErrorMessage({ nested: { reason: 'x' } }, 'safe message')).toBe('safe message');
+  });
+
+  it('logs structured errors with a readable leading message', () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    logStructuredError('[PaymentReceiptPage ErrorBoundary] Caught error', {
+      statusText: 'Not Found',
+      data: { message: 'missing payment' },
+    });
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      '[PaymentReceiptPage ErrorBoundary] Caught error: Not Found',
+      {
+        error: {
+          statusText: 'Not Found',
+          data: { message: 'missing payment' },
+        },
+      }
+    );
   });
 });

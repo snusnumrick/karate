@@ -50,7 +50,7 @@ export function logStructuredError(
   error: unknown,
   metadata?: Record<string, unknown>
 ): void {
-  console.error(context, {
+  console.error(`${context}: ${toErrorMessage(error)}`, {
     ...metadata,
     error: toErrorLogDetails(error),
   });

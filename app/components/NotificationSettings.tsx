@@ -7,6 +7,7 @@ import { Label } from '~/components/ui/label';
 import { Alert, AlertDescription } from '~/components/ui/alert';
 import { Bell, BellOff, AlertCircle, CheckCircle, Smartphone, Wifi, WifiOff } from 'lucide-react';
 import { ClientOnly } from '~/components/client-only';
+import { showLocalNotification } from '~/utils/local-notification.client';
 
 interface NotificationSettingsProps {
   className?: string;
@@ -65,7 +66,7 @@ function NotificationSettingsContent({ className }: NotificationSettingsProps) {
       
       if (result === 'granted') {
         // Show a test notification
-        new Notification('Notifications Enabled!', {
+        await showLocalNotification('Notifications Enabled!', {
           body: 'You will now receive notifications for new messages.',
           icon: '/icon.svg',
         });
@@ -223,7 +224,7 @@ function NotificationSettingsContent({ className }: NotificationSettingsProps) {
     
     if (enabled && permission === 'granted') {
       // Show a test notification when enabling
-      new Notification('Notifications Enabled!', {
+      await showLocalNotification('Notifications Enabled!', {
         body: 'You will receive notifications for new messages.',
         icon: '/icon.svg',
       });
@@ -279,22 +280,24 @@ function NotificationSettingsContent({ className }: NotificationSettingsProps) {
       if (permission === 'granted') {
         console.log('🧪 Testing basic browser notification first...');
         try {
-          const basicNotification = new Notification('Basic Test', {
+          const basicNotification = await showLocalNotification('Basic Test', {
             body: 'If you see this, basic notifications work!',
             icon: '/icon.svg',
             tag: 'basic-test',
             requireInteraction: false
           });
           
-          basicNotification.onclick = () => {
-            console.log('✅ Basic notification clicked');
-            basicNotification.close();
-          };
+          if (basicNotification) {
+            basicNotification.onclick = () => {
+              console.log('✅ Basic notification clicked');
+              basicNotification.close();
+            };
 
-          // Auto-close after 3 seconds
-          setTimeout(() => {
-            basicNotification.close();
-          }, 3000);
+            // Auto-close after 3 seconds
+            setTimeout(() => {
+              basicNotification.close();
+            }, 3000);
+          }
         } catch (basicError) {
           console.warn('⚠️ Basic notification failed:', basicError);
         }
@@ -337,7 +340,7 @@ function NotificationSettingsContent({ className }: NotificationSettingsProps) {
 
       // Show instructions notification
       if (permission === 'granted') {
-        new Notification('Test Instructions', {
+        await showLocalNotification('Test Instructions', {
           body: isAndroid ? 'Switch to another app NOW to see the push test!' : 'Switch tabs NOW to see the push notification test!',
           icon: '/icon.svg',
           tag: 'test-instructions',

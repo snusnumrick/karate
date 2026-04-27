@@ -6,6 +6,7 @@ const CHUNK_ERROR_PATTERNS = [
   "failed to fetch dynamically imported module",
   "dynamically imported module",
   "importing a module script failed",
+  "error loading route module",
   "unable to preload css",
 ];
 

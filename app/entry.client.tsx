@@ -47,6 +47,11 @@ if (typeof window !== 'undefined' && window.ENV?.SENTRY_DSN) {
         replaysSessionSampleRate: 0, // Disable session replay to avoid recording sensitive data
         replaysOnErrorSampleRate: 0, // Disable error replays
         beforeSend(event) {
+            const message = typeof event.message === "string" ? event.message : "";
+            if (event.logger === "console" && event.level === "error" && isChunkLoadError(message)) {
+                return null;
+            }
+
             // Strip sensitive data from error reports
             if (event.request) {
                 // Remove cookies and auth headers
