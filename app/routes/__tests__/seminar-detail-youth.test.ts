@@ -19,6 +19,18 @@ vi.mock('~/services/program.server', () => ({
   getSeminarWithSeries: (...args: unknown[]) => mockGetSeminarWithSeries(...args),
 }));
 
+vi.mock('~/utils/supabase.server', () => ({
+  getSupabaseAdminClient: vi.fn().mockReturnValue({
+    from: vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        in: vi.fn().mockReturnValue({
+          in: vi.fn().mockResolvedValue({ data: [], error: null }),
+        }),
+      }),
+    }),
+  }),
+}));
+
 import { loader } from '../_layout.curriculum.seminars.$slug._index';
 
 const baseSeminar = {
