@@ -1,5 +1,5 @@
 import { json, redirect, type LoaderFunctionArgs, type ActionFunctionArgs } from "@remix-run/node";
-import { useLoaderData, Form, useNavigation, useActionData, Link, useSubmit } from "@remix-run/react";
+import { useLoaderData, Form, useNavigation, useActionData, Link } from "@remix-run/react";
 import { csrf } from "~/utils/csrf.server";
 import { AuthenticityTokenInput } from "remix-utils/csrf/react";
 import { Button } from "~/components/ui/button";
@@ -196,7 +196,6 @@ export const action = withAdminAction(actionImpl);
 
 export default function EditClass() {
   const { classData, programs, instructors, schedules, isSeminarView } = useLoaderData<typeof loader>();
-  const submit = useSubmit();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   type ProgramType = typeof programs[number];
@@ -744,20 +743,19 @@ export default function EditClass() {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel disabled={isSubmitting} className={secondaryButtonClass} tabIndex={0}>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => {
-                  const formData = new FormData();
-                  formData.append('intent', 'delete');
-                  formData.append('is_seminar_view', isSeminarView ? 'true' : 'false');
-                  submit(formData, { method: 'post', replace: true });
-                  setIsDeleteDialogOpen(false);
-                }}
-                disabled={isSubmitting}
-                className="bg-red-600 text-white hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-500"
-                tabIndex={0}
-              >
-                {isSubmitting ? 'Deleting...' : isSeminarView ? 'Delete Seminar' : 'Delete Class'}
-              </AlertDialogAction>
+              <Form method="post" replace onSubmit={() => setIsDeleteDialogOpen(false)}>
+                <AuthenticityTokenInput />
+                <input type="hidden" name="intent" value="delete" />
+                <input type="hidden" name="is_seminar_view" value={isSeminarView ? "true" : "false"} />
+                <AlertDialogAction
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="bg-red-600 text-white hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-500"
+                  tabIndex={0}
+                >
+                  {isSubmitting ? 'Deleting...' : isSeminarView ? 'Delete Seminar' : 'Delete Class'}
+                </AlertDialogAction>
+              </Form>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
