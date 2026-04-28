@@ -9,6 +9,8 @@ import type {Database} from "~/types/database.types";
 import * as Sentry from "@sentry/remix";
 import {
     formatMoney,
+    fromCents,
+    isPositive,
     toCents,
     toCentsFromUnknown,
     serializeMoney,
@@ -22,6 +24,7 @@ import { moneyFromRow } from "~/utils/database-money";
 import { getPaymentProvider } from '~/services/payments/index.server';
 import type { ClientRenderConfig, PaymentProviderId } from '~/services/payments/types.server';
 import { getFamilyPaymentOptions, type EnrollmentPaymentOption } from "~/services/enrollment-payment.server";
+import { calculateTaxesForPayment } from "~/services/tax-rates.server";
 import { ArrowLeft, CreditCard, Receipt, ShieldCheck } from "lucide-react";
 
 // Import types for payment table columns
@@ -36,6 +39,19 @@ type PaymentTaxWithDescription = Omit<Pick<PaymentTaxRow, 'tax_name_snapshot' | 
     tax_rates: Pick<TaxRateRow, 'description'> | null;
 };
 
+type SeminarPaymentContext = {
+    seriesId: string;
+    studentId: string;
+};
+
+type SeminarSeriesPricingRow = {
+    price_override_cents: number | null;
+    programs: {
+        single_purchase_price_cents: number | null;
+        registration_fee_cents: number | null;
+    } | null;
+};
+
 type PaymentWithDetails = Omit<PaymentColumns, 'amount' | 'tax_amount' | 'subtotal_amount' | 'total_amount'> & {
     subtotal_amount: Money;
     total_amount: Money;
@@ -43,7 +59,9 @@ type PaymentWithDetails = Omit<PaymentColumns, 'amount' | 'tax_amount' | 'subtot
     family: { name?: string; email?: string | undefined; postal_code?: string | undefined } | null;
     type: Database['public']['Enums']['payment_type_enum'];
     payment_taxes: PaymentTaxWithDescription[];
-    payment_students: Array<Pick<PaymentStudentRow, 'student_id'>>;
+    payment_students: Array<Pick<PaymentStudentRow, 'student_id'> & {
+        students: { id: string; first_name: string | null; last_name: string | null } | null;
+    }>;
     individualSessionUnitAmountCents?: number | null;
     individualSessionQuantity?: number | null;
 };
@@ -151,6 +169,29 @@ function isSeminarPayment(notes?: string | null) {
     );
 }
 
+function extractSeminarPaymentContext(notes?: string | null): SeminarPaymentContext | null {
+    if (!notes) {
+        return null;
+    }
+
+    const match = notes.match(/\[seminar_registration:([^:\]]+):([^:\]]+)\]/);
+    if (!match) {
+        return null;
+    }
+
+    return {
+        seriesId: match[1],
+        studentId: match[2],
+    };
+}
+
+function getSeminarFeeCents(series: SeminarSeriesPricingRow) {
+    return series.price_override_cents
+        ?? series.programs?.single_purchase_price_cents
+        ?? series.programs?.registration_fee_cents
+        ?? 0;
+}
+
 // --- Loader ---
 export async function loader({request, params}: LoaderFunctionArgs): Promise<TypedResponse<LoaderData>> {
     const paymentProvider = getPaymentProvider();
@@ -194,7 +235,10 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
         .select(`
             id, created_at, family_id, subtotal_amount, total_amount, payment_date, payment_method, status, stripe_session_id, payment_intent_id, receipt_url, notes, type, order_id,
             family:family_id (name, email, postal_code),
-            payment_students ( student_id ),
+            payment_students (
+                student_id,
+                students ( id, first_name, last_name )
+            ),
             payment_taxes (
                 tax_name_snapshot,
                 tax_amount,
@@ -258,6 +302,70 @@ export async function loader({request, params}: LoaderFunctionArgs): Promise<Typ
     let individualSessionUnitAmountCents: number | null = null;
     let individualSessionQuantity: number | null = null;
     let displayNotes = payment.notes;
+    const seminarPaymentContext = extractSeminarPaymentContext(payment.notes);
+
+    if (payment.status === 'pending' && payment.type === 'individual_session' && seminarPaymentContext) {
+        const { data: seriesPricing } = await supabaseAdmin
+            .from('classes')
+            .select('price_override_cents, programs(single_purchase_price_cents, registration_fee_cents)')
+            .eq('id', seminarPaymentContext.seriesId)
+            .maybeSingle();
+
+        const pricing = seriesPricing as SeminarSeriesPricingRow | null;
+        const seminarFee = pricing ? fromCents(getSeminarFeeCents(pricing)) : ZERO_MONEY;
+
+        if (isPositive(seminarFee)) {
+            const taxCalculation = await calculateTaxesForPayment({
+                subtotalAmount: seminarFee,
+                paymentType: 'individual_session',
+                studentIds: [seminarPaymentContext.studentId],
+            });
+            const totalAmount = addMoney(seminarFee, taxCalculation.totalTaxAmount);
+            const subtotalCents = toCents(seminarFee);
+            const totalCents = toCents(totalAmount);
+            const existingSubtotalCents = toCentsFromUnknown(payment.subtotal_amount, { numberUnit: 'cents' });
+            const existingTotalCents = toCentsFromUnknown(payment.total_amount, { numberUnit: 'cents' });
+            const amountChanged = existingSubtotalCents !== subtotalCents || existingTotalCents !== totalCents;
+
+            if (amountChanged) {
+                await supabaseAdmin
+                    .from('payments')
+                    .update({
+                        subtotal_amount: subtotalCents,
+                        total_amount: totalCents,
+                        payment_intent_id: null,
+                        updated_at: new Date().toISOString(),
+                    })
+                    .eq('id', payment.id);
+
+                await supabaseAdmin
+                    .from('payment_taxes')
+                    .delete()
+                    .eq('payment_id', payment.id);
+
+                if (taxCalculation.paymentTaxes.length > 0) {
+                    await supabaseAdmin
+                        .from('payment_taxes')
+                        .insert(taxCalculation.paymentTaxes.map((tax) => ({
+                            payment_id: payment.id,
+                            tax_rate_id: tax.tax_rate_id,
+                            tax_amount: toCents(tax.tax_amount),
+                            tax_name_snapshot: tax.tax_name_snapshot,
+                            tax_rate_snapshot: tax.tax_rate_snapshot,
+                        })));
+                }
+
+                payment.subtotal_amount = subtotalCents;
+                payment.total_amount = totalCents;
+                payment.payment_intent_id = null;
+                payment.payment_taxes = taxCalculation.paymentTaxes.map((tax) => ({
+                    tax_name_snapshot: tax.tax_name_snapshot,
+                    tax_amount: toCents(tax.tax_amount),
+                    tax_rates: { description: null },
+                }));
+            }
+        }
+    }
 
     if (payment.type === 'individual_session' && !isSeminarPayment(payment.notes)) {
         const { data: seminarEnrollment } = await supabaseAdmin
@@ -634,9 +742,6 @@ export default function PaymentPage() {
             amount,
         }));
     }, [payment?.payment_taxes]);
-    const providerName = formatPaymentProvider(providerConfig.provider);
-
-
     // console.log('PaymentPage, payment: ', payment);
 
 
@@ -868,7 +973,7 @@ export default function PaymentPage() {
     const paymentProductDescription = getPaymentProductDescription(payment.type, payment.notes);
     const paymentStartedAt = formatPaymentStartedAt(payment.created_at);
     const checkoutEnvironmentLabel = formatCheckoutEnvironment(providerConfig.environment);
-    const linkedStudentCount = payment.payment_students.length;
+    const linkedStudentNames = formatLinkedStudentNames(payment.payment_students);
     const taxesIncludedLabel = groupedTaxes.length > 0
         ? groupedTaxes.map((tax) => tax.description).join(', ')
         : 'No tax applied';
@@ -893,7 +998,7 @@ export default function PaymentPage() {
                             </p>
                             <h1 className="page-header-styles mt-3 mb-4">Complete Your Payment</h1>
                             <p className="text-xl leading-relaxed text-gray-500 dark:text-gray-400">
-                                Review the payment summary and finish checkout securely through {providerName}.
+                                Review the payment summary and finish through secure checkout.
                             </p>
 
                             <div className="grid gap-4 md:grid-cols-3 mt-8">
@@ -966,7 +1071,7 @@ export default function PaymentPage() {
                             <div>
                                 <h2 className="text-2xl font-bold text-green-600 dark:text-green-400">Checkout</h2>
                                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                    Your payment details are processed securely by {providerName}.
+                                    Your payment details are processed securely.
                                 </p>
                             </div>
                         </div>
@@ -1035,7 +1140,6 @@ export default function PaymentPage() {
                                 {payment.family?.email && (
                                     <PaymentDetailRow label="Billing Email" value={payment.family.email} />
                                 )}
-                                <PaymentDetailRow label="Checkout" value={`${providerName} · ${checkoutEnvironmentLabel}`} />
                                 <PaymentDetailRow
                                     label="Taxes Included"
                                     value={taxesIncludedLabel}
@@ -1044,30 +1148,12 @@ export default function PaymentPage() {
                                     label="Discount"
                                     value={hasDiscount ? 'Already included in subtotal' : 'No discount applied'}
                                 />
-                                {linkedStudentCount > 0 && (
+                                {linkedStudentNames && (
                                     <PaymentDetailRow
                                         label="Linked Students"
-                                        value={`${linkedStudentCount} ${linkedStudentCount === 1 ? 'student' : 'students'}`}
+                                        value={linkedStudentNames}
                                     />
                                 )}
-                                <PaymentDetailRow
-                                    label="Status Check"
-                                    value={payment.status === 'failed' ? 'Previous payment attempt failed and can be retried here.' : 'You can leave this page and come back later to finish this payment.'}
-                                />
-                            </div>
-                        </div>
-
-                        <div className="page-card-styles !bg-white dark:!bg-gray-700 dark:!border-gray-600">
-                            <div className="flex items-start gap-4 mb-4">
-                                <div className="rounded-2xl bg-green-100 p-3 text-green-700 dark:bg-green-900/30 dark:text-green-300">
-                                    <ShieldCheck className="h-6 w-6" />
-                                </div>
-                                <div>
-                                    <h2 className="text-xl font-bold text-green-600 dark:text-green-400">Secure Checkout</h2>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                        This payment link stays tied to the same payment record, so you can safely return and complete it later if checkout is interrupted.
-                                    </p>
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -1098,18 +1184,34 @@ function PaymentDetailRow({
     );
 }
 
-function formatPaymentProvider(provider: PaymentProviderId) {
-    if (provider === "stripe") return "Stripe";
-    if (provider === "square") return "Square";
-    return "our payment provider";
-}
-
 function formatPaymentStatus(status: string | null | undefined) {
     if (status === "pending") return "Pending";
     if (status === "processing") return "Processing";
     if (status === "succeeded") return "Paid";
     if (status === "failed") return "Failed";
     return "Pending";
+}
+
+function formatLinkedStudentNames(
+    paymentStudents: PaymentWithDetails['payment_students'],
+) {
+    const names = paymentStudents
+        .map((paymentStudent) => {
+            const student = paymentStudent.students;
+            if (!student) return null;
+            return [student.first_name, student.last_name].filter(Boolean).join(' ').trim();
+        })
+        .filter((name): name is string => Boolean(name));
+
+    if (names.length > 0) {
+        return names.join(', ');
+    }
+
+    if (paymentStudents.length > 0) {
+        return `${paymentStudents.length} ${paymentStudents.length === 1 ? 'student' : 'students'}`;
+    }
+
+    return null;
 }
 
 function formatPaymentStartedAt(value: string | null | undefined) {

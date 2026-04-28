@@ -190,7 +190,7 @@ export default function SquarePaymentForm({
         const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
         const errorMsg = isIOS
           ? 'Unable to load payment system on this device. Please try: (1) Refreshing the page, (2) Clearing your browser cache, (3) Using Safari in regular mode (not Private Browsing), or (4) Try a different browser.'
-          : 'Failed to load Square payment system. Please try refreshing the page or contact support if the issue persists.';
+          : 'Failed to load the payment system. Please try refreshing the page or contact support if the issue persists.';
 
         setSdkError(errorMsg);
         onError?.(errorMsg);
@@ -230,7 +230,7 @@ export default function SquarePaymentForm({
         locationId: !!providerConfig.locationId,
         environment: providerConfig.environment
       });
-      const errorMessage = 'Square payment configuration is incomplete. Please contact support.';
+      const errorMessage = 'Payment configuration is incomplete. Please contact support.';
       setSdkError(errorMessage);
       onError?.(errorMessage);
       return;
@@ -359,11 +359,11 @@ export default function SquarePaymentForm({
         });
 
         if (error instanceof Error) {
-          const errorMessage = `Failed to initialize Square payment form: ${error.message}`;
+          const errorMessage = `Failed to initialize payment form: ${error.message}`;
           setSdkError(errorMessage);
           onError?.(errorMessage);
         } else {
-          const errorMessage = 'Failed to initialize Square payment form. Please try refreshing the page.';
+          const errorMessage = 'Failed to initialize payment form. Please try refreshing the page.';
           setSdkError(errorMessage);
           onError?.(errorMessage);
         }
@@ -543,7 +543,7 @@ export default function SquarePaymentForm({
     return (
       <div className="space-y-4">
         <div className="text-center text-gray-500 dark:text-gray-400 py-8">
-          Loading Square payment form...
+          Loading payment form...
         </div>
       </div>
     );
@@ -556,7 +556,7 @@ export default function SquarePaymentForm({
         <AlertTitle>Secure Payment</AlertTitle>
         <AlertDescription>
           {providerConfig.environment === "production"
-            ? "Your payment information is processed securely by Square."
+            ? "Your payment information is processed securely."
             : "This is a test environment. No real charges will be made."}
         </AlertDescription>
       </Alert>

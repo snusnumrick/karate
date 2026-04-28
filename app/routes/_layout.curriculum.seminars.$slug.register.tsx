@@ -16,7 +16,7 @@ import { RadioGroup, RadioGroupItem } from '~/components/ui/radio-group';
 import { Separator } from '~/components/ui/separator';
 import { AlertCircle, ArrowLeft, Calendar, Clock, Users, CheckCircle, UserPlus } from 'lucide-react';
 import { calculateTaxesForPayment } from '~/services/tax-rates.server';
-import { addMoney, isPositive, toCents, ZERO_MONEY, fromCents } from '~/utils/money';
+import { addMoney, isPositive, toCents, ZERO_MONEY, fromCents, type Money } from '~/utils/money';
 import { formatDate } from '~/utils/misc';
 import {
   buildEnrollmentPendingPaymentNotes,
@@ -38,6 +38,14 @@ export {
 type RegistrationType = 'self' | 'student';
 type SeminarAudienceScope = 'youth' | 'adults' | 'mixed' | null | undefined;
 type RegistrationWaiverSummary = { id: string; title: string };
+type PendingSeminarPayment = {
+  id: string;
+  notes: string | null;
+  subtotal_amount?: number | null;
+  total_amount?: number | null;
+  payment_intent_id?: string | null;
+  payment_students?: Array<{ student_id: string | null }>;
+};
 
 export function seminarSupportsAdultRegistration(audienceScope: SeminarAudienceScope) {
   return audienceScope === 'adults' || audienceScope === 'mixed';
@@ -132,14 +140,14 @@ async function findPendingPaymentById({
 }) {
   const { data: payment } = await supabase
     .from('payments')
-    .select('id, notes')
+    .select('id, notes, subtotal_amount, total_amount, payment_intent_id, payment_students(student_id)')
     .eq('id', paymentId)
     .eq('family_id', familyId)
     .eq('type', 'individual_session')
     .eq('status', 'pending')
     .maybeSingle();
 
-  return payment ?? null;
+  return (payment as PendingSeminarPayment | null) ?? null;
 }
 
 async function findExistingPendingSeminarPayment({
@@ -159,7 +167,7 @@ async function findExistingPendingSeminarPayment({
 }) {
   const { data: pendingPayments } = await supabase
     .from('payments')
-    .select('id, created_at, notes, total_amount, payment_students(student_id)')
+    .select('id, created_at, notes, subtotal_amount, total_amount, payment_intent_id, payment_students(student_id)')
     .eq('family_id', familyId)
     .eq('type', 'individual_session')
     .eq('status', 'pending')
@@ -178,7 +186,7 @@ async function findExistingPendingSeminarPayment({
   );
 
   if (exactNoteMatch) {
-    return exactNoteMatch;
+    return exactNoteMatch as PendingSeminarPayment;
   }
 
   const matchingTotalPayments = pendingPayments.filter((payment) => payment.total_amount === expectedTotalCents);
@@ -187,7 +195,7 @@ async function findExistingPendingSeminarPayment({
   );
 
   if (studentLinkedPayments.length === 1) {
-    return studentLinkedPayments[0];
+    return studentLinkedPayments[0] as PendingSeminarPayment;
   }
 
   const enrollmentCreatedAtTime = new Date(enrollmentCreatedAt).getTime();
@@ -204,18 +212,83 @@ async function findExistingPendingSeminarPayment({
   });
 
   if (legacyCandidates.length === 1) {
-    return legacyCandidates[0];
+    return legacyCandidates[0] as PendingSeminarPayment;
   }
 
   if (matchingTotalPayments.length === 1) {
-    return matchingTotalPayments[0];
+    return matchingTotalPayments[0] as PendingSeminarPayment;
   }
 
   if (pendingPayments.length === 1) {
-    return pendingPayments[0];
+    return pendingPayments[0] as PendingSeminarPayment;
   }
 
   return null;
+}
+
+async function refreshPendingSeminarPayment({
+  payment,
+  studentId,
+  notes,
+  subtotalCents,
+  totalCents,
+  paymentTaxes,
+  supabase,
+}: {
+  payment: PendingSeminarPayment;
+  studentId: string;
+  notes: string;
+  subtotalCents: number;
+  totalCents: number;
+  paymentTaxes: Array<{
+    tax_rate_id: string;
+    tax_amount: Money;
+    tax_rate_snapshot: number;
+    tax_name_snapshot: string;
+  }>;
+  supabase: Pick<ReturnType<typeof getSupabaseAdminClient>, 'from'>;
+}) {
+  const amountChanged = payment.subtotal_amount !== subtotalCents || payment.total_amount !== totalCents;
+
+  await supabase
+    .from('payments')
+    .update({
+      notes,
+      subtotal_amount: subtotalCents,
+      total_amount: totalCents,
+      payment_intent_id: amountChanged ? null : payment.payment_intent_id ?? null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', payment.id);
+
+  const hasStudentLink = payment.payment_students?.some(
+    (paymentStudent) => paymentStudent.student_id === studentId,
+  );
+  if (!hasStudentLink) {
+    await supabase
+      .from('payment_students')
+      .insert({
+        payment_id: payment.id,
+        student_id: studentId,
+      });
+  }
+
+  await supabase
+    .from('payment_taxes')
+    .delete()
+    .eq('payment_id', payment.id);
+
+  if (paymentTaxes.length > 0) {
+    await supabase
+      .from('payment_taxes')
+      .insert(paymentTaxes.map((tax) => ({
+        payment_id: payment.id,
+        tax_rate_id: tax.tax_rate_id,
+        tax_amount: toCents(tax.tax_amount),
+        tax_name_snapshot: tax.tax_name_snapshot,
+        tax_rate_snapshot: tax.tax_rate_snapshot,
+      })));
+  }
 }
 
 async function getSeminarRegistrationWaiverState({
@@ -630,12 +703,15 @@ async function handleSeminarRegistration(formData: FormData, request: Request) {
           studentId,
         });
 
-        if (updatedPaymentNotes !== existingPendingPayment.notes) {
-          await supabaseAdmin
-            .from('payments')
-            .update({ notes: updatedPaymentNotes })
-            .eq('id', existingPendingPayment.id);
-        }
+        await refreshPendingSeminarPayment({
+          payment: existingPendingPayment,
+          studentId,
+          notes: updatedPaymentNotes,
+          subtotalCents: toCents(seminarFee),
+          totalCents: paymentTotalCents,
+          paymentTaxes: taxCalculation?.paymentTaxes ?? [],
+          supabase: supabaseAdmin,
+        });
 
         const updatedEnrollmentNotes = buildEnrollmentPendingPaymentNotes({
           existingNotes: existingEnrollment.notes,

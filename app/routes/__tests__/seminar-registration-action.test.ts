@@ -253,7 +253,7 @@ describe('seminar registration action', () => {
               program_id: 'program-1',
               allow_self_enrollment: true,
               registration_status: 'open',
-              price_override_cents: 15000,
+              price_override_cents: 32100,
               programs: {
                 audience_scope: 'youth',
                 single_purchase_price_cents: null,
@@ -310,6 +310,12 @@ describe('seminar registration action', () => {
     const enrollmentUpdateQuery = makeQuery({
       result: { data: null, error: null },
     });
+    const paymentStudentInsertQuery = makeQuery({
+      result: { data: null, error: null },
+    });
+    const paymentTaxesDeleteQuery = makeQuery({
+      result: { data: null, error: null },
+    });
 
     const supabaseServer = {
       from: vi.fn((table: string) => {
@@ -331,6 +337,12 @@ describe('seminar registration action', () => {
         }
         if (table === 'payments') {
           return pendingPaymentsQuery;
+        }
+        if (table === 'payment_students') {
+          return paymentStudentInsertQuery;
+        }
+        if (table === 'payment_taxes') {
+          return paymentTaxesDeleteQuery;
         }
         throw new Error(`No admin query configured for ${table}`);
       }),
@@ -360,6 +372,18 @@ describe('seminar registration action', () => {
     expect(response.status).toBe(302);
     expect(response.headers.get('Location')).toBe('/pay/payment-existing');
     expect(mockEnrollStudent).not.toHaveBeenCalled();
+    expect(pendingPaymentsQuery.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        subtotal_amount: 32100,
+        total_amount: 32100,
+        payment_intent_id: null,
+      }),
+    );
+    expect(paymentStudentInsertQuery.insert).toHaveBeenCalledWith({
+      payment_id: 'payment-existing',
+      student_id: 'student-1',
+    });
+    expect(paymentTaxesDeleteQuery.delete).toHaveBeenCalled();
     expect(enrollmentUpdateQuery.update).toHaveBeenCalledWith({
       notes: buildEnrollmentPendingPaymentNotes({
         existingNotes: null,
