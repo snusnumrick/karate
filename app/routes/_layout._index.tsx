@@ -1,5 +1,5 @@
 // Import types needed for merging parent meta
-import type { MetaFunction, MetaArgs, MetaDescriptor,  LoaderFunctionArgs } from "@remix-run/node";
+import type { LinksFunction, MetaFunction, MetaArgs, MetaDescriptor,  LoaderFunctionArgs } from "@remix-run/node";
 import { Link, useLoaderData } from "@remix-run/react";
 import { json } from "@remix-run/node";
 import { performance } from "node:perf_hooks";
@@ -38,6 +38,10 @@ type LoaderData = {
         ageRange: string;
     } | null;
 };
+
+export const links: LinksFunction = () => [
+    { rel: "preload", href: "/images/karate.webp", as: "image", type: "image/webp" },
+];
 
 type SeminarCardStatus = 'open' | 'waitlisted' | 'closed';
 
@@ -468,10 +472,17 @@ export default function Index() {
             {/* Hero Section with Background Image */}
             <div className="relative min-h-screen flex items-center justify-center overflow-hidden">
                 {/* Background Image */}
-                <div 
-                    className="absolute inset-0 bg-cover bg-center bg-no-repeat bg-[url('/images/karate.jpg')]"
-                >
-                </div>
+                <picture className="absolute inset-0">
+                    <source srcSet="/images/karate.webp" type="image/webp" />
+                    <img
+                        src="/images/karate.jpg"
+                        alt=""
+                        className="h-full w-full object-cover object-center"
+                        loading="eager"
+                        fetchPriority="high"
+                        aria-hidden="true"
+                    />
+                </picture>
                 
                 {/* Dark overlay for better text readability */}
                 <div className="absolute inset-0 bg-black bg-opacity-60 dark:bg-opacity-50"></div>
