@@ -28,6 +28,7 @@ import { formatDate, getTodayLocalDateString, getCurrentDateTimeInTimezone } fro
 import { formatLocalDate } from "~/components/calendar/utils";
 import { csrf } from "~/utils/csrf.server";
 import { AuthenticityTokenInput } from "remix-utils/csrf/react";
+import { resolveSessionGenerationDateDefaults } from "~/utils/session-generation-defaults";
 
 type ActionData = {
   error?: string;
@@ -170,6 +171,15 @@ export default function ClassSessions() {
   });
 
   const isSeminarView = classData.program.engagement_type === 'seminar';
+  const fallbackGenerationEndDate = new Date(getCurrentDateTimeInTimezone());
+  fallbackGenerationEndDate.setFullYear(fallbackGenerationEndDate.getFullYear() + 1);
+  const sessionGenerationDefaults = resolveSessionGenerationDateDefaults({
+    isSeminar: isSeminarView,
+    seriesStartOn: classData.series_start_on,
+    seriesEndOn: classData.series_end_on,
+    fallbackStartDate: getTodayLocalDateString(),
+    fallbackEndDate: formatLocalDate(fallbackGenerationEndDate),
+  });
 
   return (
     <div className="container mx-auto py-6">
@@ -245,7 +255,7 @@ export default function ClassSessions() {
                     id="start_date"
                     name="start_date"
                     type="date"
-                    defaultValue={getTodayLocalDateString()}
+                    defaultValue={sessionGenerationDefaults.startDate}
                     required
                     className="input-custom-styles"
                   />
@@ -257,7 +267,7 @@ export default function ClassSessions() {
                     id="end_date"
                     name="end_date"
                     type="date"
-                    defaultValue={formatLocalDate(new Date(getCurrentDateTimeInTimezone().setFullYear(getCurrentDateTimeInTimezone().getFullYear() + 1)))}
+                    defaultValue={sessionGenerationDefaults.endDate}
                     required
                     className="input-custom-styles"
                   />
