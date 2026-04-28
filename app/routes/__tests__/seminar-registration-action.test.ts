@@ -107,6 +107,7 @@ describe('seminar registration action', () => {
               id: 'series-1',
               program_id: 'program-1',
               allow_self_enrollment: true,
+              registration_status: 'open',
               price_override_cents: 15000,
               programs: {
                 audience_scope: 'youth',
@@ -251,6 +252,7 @@ describe('seminar registration action', () => {
               id: 'series-1',
               program_id: 'program-1',
               allow_self_enrollment: true,
+              registration_status: 'open',
               price_override_cents: 15000,
               programs: {
                 audience_scope: 'youth',
@@ -376,6 +378,23 @@ describe('seminar registration action', () => {
     });
 
     const serverTableQueries: Record<string, Array<Record<string, unknown>>> = {
+      classes: [
+        makeQuery({
+          singleResult: {
+            data: {
+              id: 'series-1',
+              program_id: 'program-1',
+              allow_self_enrollment: true,
+              registration_status: 'open',
+              price_override_cents: 15000,
+              programs: {
+                audience_scope: 'youth',
+              },
+            },
+            error: null,
+          },
+        }),
+      ],
       profiles: [
         makeQuery({
           singleResult: {
@@ -427,6 +446,73 @@ describe('seminar registration action', () => {
     expect(mockEnrollStudent).not.toHaveBeenCalled();
   });
 
+  it('rejects direct registration posts when the seminar series is closed', async () => {
+    const serverTableQueries: Record<string, Array<Record<string, unknown>>> = {
+      profiles: [
+        makeQuery({
+          singleResult: {
+            data: { family_id: 'family-1' },
+            error: null,
+          },
+        }),
+      ],
+      classes: [
+        makeQuery({
+          singleResult: {
+            data: {
+              id: 'series-1',
+              program_id: 'program-1',
+              allow_self_enrollment: true,
+              registration_status: 'closed',
+              price_override_cents: 15000,
+              programs: {
+                audience_scope: 'youth',
+              },
+            },
+            error: null,
+          },
+        }),
+      ],
+    };
+
+    const supabaseServer = {
+      from: vi.fn((table: string) => {
+        const queue = serverTableQueries[table];
+        if (!queue || queue.length === 0) {
+          throw new Error(`No server query configured for ${table}`);
+        }
+        return queue.shift();
+      }),
+    };
+
+    mockGetOptionalUser.mockResolvedValue({
+      supabaseServer,
+      user: { id: 'user-1' },
+      response: { headers: new Headers() },
+    });
+    mockGetSupabaseAdminClient.mockReturnValue({});
+
+    const formData = new FormData();
+    formData.set('intent', 'register');
+    formData.set('seriesId', 'series-1');
+    formData.set('registrationType', 'student');
+    formData.set('studentId', 'student-1');
+
+    const response = await action({
+      request: new Request('http://localhost/curriculum/seminars/summer-camp/register', {
+        method: 'POST',
+        body: formData,
+      }),
+      params: { slug: 'summer-camp' },
+    } as unknown as ActionFunctionArgs);
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: 'Registration is not open for this seminar series.',
+    });
+    expect(mockEnrollStudent).not.toHaveBeenCalled();
+  });
+
   it('rejects adult self registration for youth seminars before creating a self registrant', async () => {
     const serverTableQueries: Record<string, Array<Record<string, unknown>>> = {
       profiles: [
@@ -449,6 +535,7 @@ describe('seminar registration action', () => {
               id: 'series-1',
               program_id: 'program-1',
               allow_self_enrollment: true,
+              registration_status: 'open',
               price_override_cents: 15000,
               programs: {
                 audience_scope: 'youth',
