@@ -824,13 +824,13 @@ export default function PaymentPage() {
         return (
             <div className="min-h-screen page-background-styles py-12 text-foreground">
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="page-card-styles text-center">
+                    <div className="page-card-styles !bg-white dark:!bg-gray-700 dark:!border-gray-600 text-center">
                         <Alert variant="destructive" className="text-left">
                             <AlertTitle>Error Loading Payment</AlertTitle>
                             <AlertDescription>{loaderError}</AlertDescription>
                         </Alert>
                         <div className="mt-8">
-                            <Button asChild>
+                            <Button asChild className="bg-green-600 text-white hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600">
                                 <Link to="/family">Return to Account</Link>
                             </Button>
                         </div>
@@ -846,13 +846,13 @@ export default function PaymentPage() {
         return (
             <div className="min-h-screen page-background-styles py-12 text-foreground">
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="page-card-styles text-center">
+                    <div className="page-card-styles !bg-white dark:!bg-gray-700 dark:!border-gray-600 text-center">
                         <Alert variant="destructive" className="text-left">
                             <AlertTitle>Error</AlertTitle>
                             <AlertDescription>Payment data is unexpectedly missing.</AlertDescription>
                         </Alert>
                         <div className="mt-8">
-                            <Button asChild>
+                            <Button asChild className="bg-green-600 text-white hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600">
                                 <Link to="/family">Return to Account</Link>
                             </Button>
                         </div>
@@ -879,37 +879,37 @@ export default function PaymentPage() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <Link
                     to="/family"
-                    className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-300 dark:hover:text-white mb-6"
+                    className="inline-flex items-center gap-2 text-sm font-medium text-green-600 transition-colors hover:text-green-700 hover:underline dark:text-green-400 dark:hover:text-green-300 mb-6"
                 >
                     <ArrowLeft className="h-4 w-4" />
                     Back to Account
                 </Link>
 
-                <section className="page-card-styles mb-8">
+                <section className="page-card-styles !bg-white dark:!bg-gray-700 dark:!border-gray-600 mb-8">
                     <div className="grid gap-8 lg:grid-cols-[1.35fr,0.95fr] lg:items-start">
                         <div>
                             <p className="text-sm font-semibold uppercase tracking-[0.24em] text-green-600 dark:text-green-400">
                                 Secure Checkout
                             </p>
                             <h1 className="page-header-styles mt-3 mb-4">Complete Your Payment</h1>
-                            <p className="text-lg leading-relaxed text-gray-600 dark:text-gray-300">
+                            <p className="text-xl leading-relaxed text-gray-500 dark:text-gray-400">
                                 Review the payment summary and finish checkout securely through {providerName}.
                             </p>
 
                             <div className="grid gap-4 md:grid-cols-3 mt-8">
-                                <div className="rounded-2xl border border-gray-200 bg-gray-50/80 p-5 dark:border-gray-700 dark:bg-gray-800/70">
+                                <div className="rounded-2xl border border-gray-200 bg-amber-50 p-5 dark:border-gray-600 dark:bg-gray-800">
                                     <p className="text-sm text-gray-500 dark:text-gray-400">Account</p>
                                     <p className="mt-2 text-lg font-semibold text-gray-900 dark:text-white">
                                         {payment.family?.name ?? "N/A"}
                                     </p>
                                 </div>
-                                <div className="rounded-2xl border border-gray-200 bg-gray-50/80 p-5 dark:border-gray-700 dark:bg-gray-800/70">
+                                <div className="rounded-2xl border border-gray-200 bg-amber-50 p-5 dark:border-gray-600 dark:bg-gray-800">
                                     <p className="text-sm text-gray-500 dark:text-gray-400">Product</p>
                                     <p className="mt-2 text-lg font-semibold text-gray-900 dark:text-white">
                                         {paymentProductDescription}
                                     </p>
                                 </div>
-                                <div className="rounded-2xl border border-gray-200 bg-gray-50/80 p-5 dark:border-gray-700 dark:bg-gray-800/70">
+                                <div className="rounded-2xl border border-gray-200 bg-amber-50 p-5 dark:border-gray-600 dark:bg-gray-800">
                                     <p className="text-sm text-gray-500 dark:text-gray-400">Status</p>
                                     <div className="mt-2">
                                         <span className={getPaymentStatusClasses(payment.status)}>
@@ -920,35 +920,35 @@ export default function PaymentPage() {
                             </div>
                         </div>
 
-                        <div className="rounded-2xl border border-green-200/70 bg-gradient-to-br from-green-50 to-amber-50 p-6 shadow-sm dark:border-green-500/20 dark:from-green-950/30 dark:to-gray-900">
-                            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-green-700 dark:text-green-300">
+                        <div className="rounded-2xl border border-gray-200 bg-amber-50 p-6 shadow dark:border-gray-600 dark:bg-gray-800">
+                            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-green-600 dark:text-green-400">
                                 Amount Due
                             </p>
-                            <p className="mt-4 text-4xl font-bold text-gray-900 dark:text-white">
+                            <p className="mt-4 text-4xl font-bold text-green-600 dark:text-green-400">
                                 {formatMoney(payment.total_amount)}
                             </p>
-                            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
                                 Any applicable taxes and discounts are already reflected in this total.
                             </p>
 
                             <dl className="mt-6 space-y-4 text-sm">
-                                <div className="flex items-center justify-between gap-4 border-t border-green-200/80 pt-4 dark:border-green-500/20">
-                                    <dt className="text-gray-600 dark:text-gray-400">Subtotal</dt>
+                                <div className="flex items-center justify-between gap-4 border-t border-gray-200 pt-4 dark:border-gray-600">
+                                    <dt className="text-gray-500 dark:text-gray-400">Subtotal</dt>
                                     <dd className="font-semibold text-gray-900 dark:text-white">
                                         {formatMoney(payment.subtotal_amount)}
                                     </dd>
                                 </div>
                                 {groupedTaxes.map((tax) => (
-                                    <div key={tax.description} className="flex items-center justify-between gap-4 border-t border-green-200/80 pt-4 dark:border-green-500/20">
-                                        <dt className="text-gray-600 dark:text-gray-400">{tax.description}</dt>
+                                    <div key={tax.description} className="flex items-center justify-between gap-4 border-t border-gray-200 pt-4 dark:border-gray-600">
+                                        <dt className="text-gray-500 dark:text-gray-400">{tax.description}</dt>
                                         <dd className="font-semibold text-gray-900 dark:text-white">
                                             {formatMoney(tax.amount)}
                                         </dd>
                                     </div>
                                 ))}
-                                <div className="flex items-center justify-between gap-4 border-t border-green-200/80 pt-4 dark:border-green-500/20">
-                                    <dt className="text-gray-600 dark:text-gray-400">Total</dt>
-                                    <dd className="text-lg font-bold text-gray-900 dark:text-white">
+                                <div className="flex items-center justify-between gap-4 border-t border-gray-200 pt-4 dark:border-gray-600">
+                                    <dt className="text-gray-500 dark:text-gray-400">Total</dt>
+                                    <dd className="text-lg font-bold text-green-600 dark:text-green-400">
                                         {formatMoney(payment.total_amount)}
                                     </dd>
                                 </div>
@@ -958,14 +958,14 @@ export default function PaymentPage() {
                 </section>
 
                 <div className="grid gap-8 lg:grid-cols-[1.1fr,0.9fr]">
-                    <div className="page-card-styles">
+                    <div className="page-card-styles !bg-white dark:!bg-gray-700 dark:!border-gray-600">
                         <div className="flex items-start gap-4 mb-6">
-                            <div className="rounded-2xl bg-green-100 p-3 text-green-700 dark:bg-green-500/10 dark:text-green-300">
+                            <div className="rounded-2xl bg-green-100 p-3 text-green-700 dark:bg-green-900/30 dark:text-green-300">
                                 <CreditCard className="h-6 w-6" />
                             </div>
                             <div>
-                                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Checkout</h2>
-                                <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                                <h2 className="text-2xl font-bold text-green-600 dark:text-green-400">Checkout</h2>
+                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                                     Your payment details are processed securely by {providerName}.
                                 </p>
                             </div>
@@ -1005,22 +1005,22 @@ export default function PaymentPage() {
                             onError={handleError}
                         />
 
-                        <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row gap-3">
-                            <Button asChild variant="outline">
+                        <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-600 flex flex-col sm:flex-row gap-3">
+                            <Button asChild variant="outline" className="border-green-600 text-green-600 hover:bg-green-50 dark:border-green-400 dark:text-green-400 dark:hover:bg-green-900/30">
                                 <Link to="/family">Cancel and Return to Account</Link>
                             </Button>
                         </div>
                     </div>
 
                     <div className="space-y-6">
-                        <div className="page-card-styles">
+                        <div className="page-card-styles !bg-white dark:!bg-gray-700 dark:!border-gray-600">
                             <div className="flex items-start gap-4 mb-6">
-                                <div className="rounded-2xl bg-gray-100 p-3 text-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                                <div className="rounded-2xl bg-green-100 p-3 text-green-700 dark:bg-green-900/30 dark:text-green-300">
                                     <Receipt className="h-6 w-6" />
                                 </div>
                                 <div>
-                                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Payment Reference</h2>
-                                    <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                                    <h2 className="text-2xl font-bold text-green-600 dark:text-green-400">Payment Reference</h2>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                                         Details specific to this checkout session.
                                     </p>
                                 </div>
@@ -1057,14 +1057,14 @@ export default function PaymentPage() {
                             </div>
                         </div>
 
-                        <div className="page-card-styles">
+                        <div className="page-card-styles !bg-white dark:!bg-gray-700 dark:!border-gray-600">
                             <div className="flex items-start gap-4 mb-4">
-                                <div className="rounded-2xl bg-green-100 p-3 text-green-700 dark:bg-green-500/10 dark:text-green-300">
+                                <div className="rounded-2xl bg-green-100 p-3 text-green-700 dark:bg-green-900/30 dark:text-green-300">
                                     <ShieldCheck className="h-6 w-6" />
                                 </div>
                                 <div>
-                                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">Secure Checkout</h2>
-                                    <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                                    <h2 className="text-xl font-bold text-green-600 dark:text-green-400">Secure Checkout</h2>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                                         This payment link stays tied to the same payment record, so you can safely return and complete it later if checkout is interrupted.
                                     </p>
                                 </div>
@@ -1087,7 +1087,7 @@ function PaymentDetailRow({
     emphasized?: boolean;
 }) {
     return (
-        <div className="rounded-2xl border border-gray-200 bg-gray-50/80 p-4 dark:border-gray-700 dark:bg-gray-800/70">
+        <div className="rounded-2xl border border-gray-200 bg-amber-50 p-4 dark:border-gray-600 dark:bg-gray-800">
             <p className="text-sm text-gray-500 dark:text-gray-400">{label}</p>
             <div className="mt-2 text-gray-900 dark:text-white">
                 <span className={emphasized ? "text-lg font-bold" : "text-base font-semibold"}>
@@ -1145,12 +1145,12 @@ function formatCheckoutEnvironment(environment?: string | null) {
 
 function getPaymentStatusClasses(status: string | null | undefined) {
     if (status === "succeeded") {
-        return "inline-flex rounded-full bg-green-100 px-3 py-1 text-sm font-semibold text-green-700 dark:bg-green-500/10 dark:text-green-300";
+        return "inline-flex rounded-full bg-green-600 px-3 py-1 text-sm font-semibold text-white dark:bg-green-400 dark:text-gray-900";
     }
     if (status === "failed") {
         return "inline-flex rounded-full bg-red-100 px-3 py-1 text-sm font-semibold text-red-700 dark:bg-red-500/10 dark:text-red-300";
     }
-    return "inline-flex rounded-full bg-gray-100 px-3 py-1 text-sm font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-200";
+    return "inline-flex rounded-full bg-amber-50 px-3 py-1 text-sm font-semibold text-gray-900 dark:bg-gray-800 dark:text-gray-100";
 }
 
 // Optional: Add ErrorBoundary for route-level errors
@@ -1184,7 +1184,7 @@ export function ErrorBoundary() {
     return (
         <div className="min-h-screen page-background-styles py-12 text-foreground">
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="page-card-styles">
+                <div className="page-card-styles !bg-white dark:!bg-gray-700 dark:!border-gray-600">
                     <Alert variant="destructive">
                         <AlertTitle>Payment Page Error</AlertTitle>
                         <AlertDescription>
@@ -1196,7 +1196,7 @@ export function ErrorBoundary() {
                         </AlertDescription>
                     </Alert>
                     <div className="mt-8">
-                        <Button asChild>
+                        <Button asChild className="bg-green-600 text-white hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600">
                             <Link to="/family">Return to Account</Link>
                         </Button>
                     </div>

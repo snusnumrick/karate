@@ -98,7 +98,7 @@ function StripeCheckoutForm({ payment, onError }: StripeCheckoutFormProps) {
       <Button
         type="submit"
         disabled={!stripe || !elements || isProcessing}
-        className="w-full"
+        className="w-full font-bold py-3 px-6 bg-green-600 text-white hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600"
       >
         {isProcessing ? "Processing..." : "Complete Payment"}
       </Button>
@@ -140,7 +140,7 @@ export default function StripePaymentForm({
       variables: {
         colorPrimary: "#22c55e",
         colorDanger: "#ef4444",
-        borderRadius: "0.375rem",
+        borderRadius: "0.5rem",
       },
     };
     return {
@@ -150,14 +150,14 @@ export default function StripePaymentForm({
   }, [currentTheme, clientSecret]);
 
   return (
-    <ClientOnly fallback={<p className="text-center text-gray-600 dark:text-gray-400 py-8">Loading payment form...</p>}>
+    <ClientOnly fallback={<p className="text-center text-gray-500 dark:text-gray-400 py-8">Loading payment form...</p>}>
       {() =>
         stripePromise && stripeOptions ? (
           <Elements key={clientSecret ?? "stripe"} stripe={stripePromise} options={stripeOptions}>
             <StripeCheckoutForm payment={payment} onError={onError} />
           </Elements>
         ) : (
-          <p className="text-center text-gray-600 dark:text-gray-400 py-8">
+          <p className="text-center text-gray-500 dark:text-gray-400 py-8">
             Initializing payment form...
           </p>
         )

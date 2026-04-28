@@ -98,73 +98,73 @@ export default function SeminarDetail() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <Link
           to="/curriculum"
-          className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-300 dark:hover:text-white mb-6"
+          className="inline-flex items-center gap-2 text-sm font-medium text-green-600 transition-colors hover:text-green-700 hover:underline dark:text-green-400 dark:hover:text-green-300 mb-6"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to Curriculum
         </Link>
 
-        <section className="page-card-styles mb-8">
+        <section className="page-card-styles !bg-white dark:!bg-gray-700 dark:!border-gray-600 mb-8">
           <div className="grid gap-8 lg:grid-cols-[1.45fr,0.95fr] lg:items-start">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.24em] text-green-600 dark:text-green-400">
                 Seminar Pathway
               </p>
               <h1 className="page-header-styles mt-3 mb-4">{seminar.name}</h1>
-              <p className="text-lg leading-relaxed text-gray-600 dark:text-gray-300">
+              <p className="text-xl leading-relaxed text-gray-500 dark:text-gray-400">
                 {seminar.description || "Explore the next seminar series, review the schedule, and choose the run that fits your family best."}
               </p>
 
               <div className="flex flex-wrap gap-3 mt-6">
                 {seminar.ability_category && (
-                  <Badge variant="outline" className="text-sm border-green-200 bg-green-50 text-green-700 dark:border-green-500/40 dark:bg-green-500/10 dark:text-green-300">
+                  <Badge variant="outline" className="text-sm border-green-200 bg-green-100 text-green-800 dark:border-green-700 dark:bg-green-900/30 dark:text-green-200">
                     {toTitleCase(seminar.ability_category)}
                   </Badge>
                 )}
                 {seminar.seminar_type && (
-                  <Badge variant="secondary" className="text-sm">
+                  <Badge variant="secondary" className="text-sm bg-amber-50 text-gray-900 dark:bg-gray-800 dark:text-gray-100">
                     {toTitleCase(seminar.seminar_type)}
                   </Badge>
                 )}
                 {seminar.audience_scope && (
-                  <Badge className="text-sm bg-gray-900 text-white hover:bg-gray-900 dark:bg-white dark:text-gray-900">
+                  <Badge className="text-sm bg-green-600 text-white hover:bg-green-600 dark:bg-green-400 dark:text-gray-900">
                     {formatAudienceScope(seminar.audience_scope)}
                   </Badge>
                 )}
                 {seminar.min_capacity != null && (
-                  <Badge variant="outline" className="text-sm">
+                  <Badge variant="outline" className="text-sm border-gray-200 text-gray-700 dark:border-gray-600 dark:text-gray-200">
                     Minimum {seminar.min_capacity} participants
                   </Badge>
                 )}
               </div>
             </div>
 
-            <div className="rounded-2xl border border-green-200/70 bg-gradient-to-br from-green-50 to-amber-50 p-6 shadow-sm dark:border-green-500/20 dark:from-green-950/30 dark:to-gray-900">
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-green-700 dark:text-green-300">
+            <div className="rounded-2xl border border-gray-200 bg-amber-50 p-6 shadow dark:border-gray-600 dark:bg-gray-800">
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-green-600 dark:text-green-400">
                 At a Glance
               </p>
               <p className="mt-4 text-3xl font-bold text-gray-900 dark:text-white">
                 {defaultSeminarPrice || "Contact us"}
               </p>
-              <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
                 Default seminar rate
               </p>
 
               <dl className="mt-6 space-y-4 text-sm">
-                <div className="flex items-start justify-between gap-4 border-t border-green-200/80 pt-4 dark:border-green-500/20">
-                  <dt className="text-gray-600 dark:text-gray-400">Available runs</dt>
+                <div className="flex items-start justify-between gap-4 border-t border-gray-200 pt-4 dark:border-gray-600">
+                  <dt className="text-gray-500 dark:text-gray-400">Available runs</dt>
                   <dd className="font-semibold text-gray-900 dark:text-white">{activeSeriesCount}</dd>
                 </div>
                 {firstUpcomingSeries?.series_start_on && firstUpcomingSeries?.series_end_on && (
-                  <div className="flex items-start justify-between gap-4 border-t border-green-200/80 pt-4 dark:border-green-500/20">
-                    <dt className="text-gray-600 dark:text-gray-400">Next window</dt>
+                  <div className="flex items-start justify-between gap-4 border-t border-gray-200 pt-4 dark:border-gray-600">
+                    <dt className="text-gray-500 dark:text-gray-400">Next window</dt>
                     <dd className="text-right font-semibold text-gray-900 dark:text-white">
                       {formatDateRange(firstUpcomingSeries.series_start_on, firstUpcomingSeries.series_end_on)}
                     </dd>
                   </div>
                 )}
-                <div className="flex items-start justify-between gap-4 border-t border-green-200/80 pt-4 dark:border-green-500/20">
-                  <dt className="text-gray-600 dark:text-gray-400">Registration</dt>
+                <div className="flex items-start justify-between gap-4 border-t border-gray-200 pt-4 dark:border-gray-600">
+                  <dt className="text-gray-500 dark:text-gray-400">Registration</dt>
                   <dd className="text-right font-semibold text-gray-900 dark:text-white">
                     {getSeminarRegistrationSummary(seminar.classes)}
                   </dd>
@@ -175,7 +175,7 @@ export default function SeminarDetail() {
 
           <div className="grid gap-4 md:grid-cols-3 mt-8">
             {seminar.duration_minutes && (
-              <div className="rounded-2xl border border-gray-200 bg-gray-50/80 p-5 dark:border-gray-700 dark:bg-gray-800/70">
+              <div className="rounded-2xl border border-gray-200 bg-amber-50 p-5 dark:border-gray-600 dark:bg-gray-800">
                 <div className="flex items-center gap-3">
                   <Clock className="h-8 w-8 text-green-600 dark:text-green-400" />
                   <div>
@@ -187,7 +187,7 @@ export default function SeminarDetail() {
             )}
 
             {seminar.min_age !== undefined && seminar.max_age !== undefined && (
-              <div className="rounded-2xl border border-gray-200 bg-gray-50/80 p-5 dark:border-gray-700 dark:bg-gray-800/70">
+              <div className="rounded-2xl border border-gray-200 bg-amber-50 p-5 dark:border-gray-600 dark:bg-gray-800">
                 <div className="flex items-center gap-3">
                   <Users className="h-8 w-8 text-green-600 dark:text-green-400" />
                   <div>
@@ -198,7 +198,7 @@ export default function SeminarDetail() {
               </div>
             )}
 
-            <div className="rounded-2xl border border-gray-200 bg-gray-50/80 p-5 dark:border-gray-700 dark:bg-gray-800/70">
+            <div className="rounded-2xl border border-gray-200 bg-amber-50 p-5 dark:border-gray-600 dark:bg-gray-800">
               <div className="flex items-center gap-3">
                 <Calendar className="h-8 w-8 text-green-600 dark:text-green-400" />
                 <div>
@@ -215,10 +215,10 @@ export default function SeminarDetail() {
         {seminar.classes && seminar.classes.length > 0 ? (
           <section>
             <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
+              <h2 className="page-header-styles mb-4">
                 Available Series
               </h2>
-              <p className="text-lg text-gray-600 dark:text-gray-400 mx-auto">
+              <p className="page-subheader-styles">
                 Choose the seminar run that matches your timing, schedule, and registration needs.
               </p>
             </div>
@@ -232,7 +232,7 @@ export default function SeminarDetail() {
                 const loginWaitlistHref = `/login?redirectTo=${encodeURIComponent(waitlistHref)}`;
 
                 return (
-                  <div key={series.id} className="page-card-styles">
+                  <div key={series.id} className="page-card-styles !bg-white dark:!bg-gray-700 dark:!border-gray-600">
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="max-w-3xl">
                       {series.topic && (
@@ -240,27 +240,30 @@ export default function SeminarDetail() {
                           Topic
                         </p>
                       )}
-                      <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                      <h3 className="text-2xl font-bold text-green-600 dark:text-green-400">
                         {series.topic || series.name || 'Seminar Series'}
                       </h3>
                       {series.name && series.topic && (
                         <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">{series.name}</p>
                       )}
                       {series.description && (
-                        <p className="text-base leading-relaxed text-gray-600 dark:text-gray-300 mt-4">
+                        <p className="text-base leading-relaxed text-gray-500 dark:text-gray-400 mt-4">
                           {series.description}
                         </p>
                       )}
                     </div>
 
                     <div className="flex flex-wrap gap-2">
-                      <Badge variant={getSeriesStatusVariant(series)}>
+                      <Badge variant={getSeriesStatusVariant(series)} className={getSeriesStatusClassName(series)}>
                         {formatSeriesStatus(series.series_status)}
                       </Badge>
                       {series.max_capacity != null && series.enrollment_count >= series.max_capacity ? (
                         <Badge variant="destructive">Full</Badge>
                       ) : (
-                        <Badge variant={getRegistrationStatusVariant(registrationAvailability.displayStatus)}>
+                        <Badge
+                          variant={getRegistrationStatusVariant(registrationAvailability.displayStatus)}
+                          className={getRegistrationStatusClassName(registrationAvailability.displayStatus)}
+                        >
                           {formatRegistrationStatus(registrationAvailability.displayStatus)}
                         </Badge>
                       )}
@@ -268,10 +271,10 @@ export default function SeminarDetail() {
                   </div>
 
                   {(series.price_override_cents != null || seminar.single_purchase_price_cents != null || seminar.registration_fee_cents != null) && (
-                    <div className="mt-6 rounded-2xl border border-gray-200 bg-gray-50/90 p-4 dark:border-gray-700 dark:bg-gray-800/70">
+                    <div className="mt-6 rounded-2xl border border-gray-200 bg-amber-50 p-4 dark:border-gray-600 dark:bg-gray-800">
                       <div className="flex items-center justify-between gap-4">
-                        <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Series price</span>
-                        <span className="text-2xl font-bold text-green-700 dark:text-green-300">
+                        <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Series price</span>
+                        <span className="text-2xl font-bold text-green-600 dark:text-green-400">
                           {formatCurrency(series.price_override_cents ?? seminar.single_purchase_price_cents ?? seminar.registration_fee_cents)}
                         </span>
                       </div>
@@ -316,7 +319,7 @@ export default function SeminarDetail() {
                       </h4>
                       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                         {series.class_sessions.slice(0, 6).map((session, idx: number) => (
-                          <div key={session.id} className="rounded-xl border border-gray-200 bg-gray-50/80 p-4 dark:border-gray-700 dark:bg-gray-800/70">
+                          <div key={session.id} className="rounded-xl border border-gray-200 bg-amber-50 p-4 dark:border-gray-600 dark:bg-gray-800">
                             <div className="flex items-center justify-between gap-3">
                               <span className="text-sm font-semibold text-gray-900 dark:text-white">
                                 Session {session.sequence_number ?? idx + 1}
@@ -343,32 +346,32 @@ export default function SeminarDetail() {
                   )}
 
                   <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                    <div className="text-sm text-gray-500 dark:text-gray-400">
                       {registrationAvailability.message}
                     </div>
 
                     {registrationAvailability.canJoinWaitlist ? (
                       user ? (
-                        <Button asChild variant="outline">
+                        <Button asChild variant="outline" className="border-green-600 text-green-600 hover:bg-green-50 dark:border-green-400 dark:text-green-400 dark:hover:bg-green-900/30">
                           <Link to={waitlistHref}>Join Waitlist</Link>
                         </Button>
                       ) : (
-                        <Button asChild variant="outline">
+                        <Button asChild variant="outline" className="border-green-600 text-green-600 hover:bg-green-50 dark:border-green-400 dark:text-green-400 dark:hover:bg-green-900/30">
                           <Link to={loginWaitlistHref}>Sign In to Join Waitlist</Link>
                         </Button>
                       )
                     ) : registrationAvailability.canRegister ? (
                       user ? (
-                        <Button asChild>
+                        <Button asChild className="bg-green-600 text-white hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600">
                           <Link to={registerHref}>Register Now</Link>
                         </Button>
                       ) : (
-                        <Button asChild>
+                        <Button asChild className="bg-green-600 text-white hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600">
                           <Link to={loginRegisterHref}>Sign In to Register</Link>
                         </Button>
                       )
                     ) : (
-                      <div className="rounded-full border border-gray-200 px-4 py-2 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                      <div className="rounded-full border border-gray-200 bg-amber-50 px-4 py-2 text-sm text-gray-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400">
                         Registration unavailable online
                       </div>
                     )}
@@ -379,7 +382,7 @@ export default function SeminarDetail() {
             </div>
           </section>
         ) : (
-          <div className="page-card-styles text-center">
+          <div className="page-card-styles !bg-white dark:!bg-gray-700 dark:!border-gray-600 text-center">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">No series scheduled yet</h2>
             <p className="text-lg text-gray-600 dark:text-gray-400">
               Check back later for upcoming seminar dates and registration windows.
@@ -401,7 +404,7 @@ function SeriesMeta({
   children: ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-gray-50/80 p-4 dark:border-gray-700 dark:bg-gray-800/70">
+    <div className="rounded-xl border border-gray-200 bg-amber-50 p-4 dark:border-gray-600 dark:bg-gray-800">
       <div className="flex items-center gap-2 text-sm font-medium text-gray-500 dark:text-gray-400">
         {icon}
         {label}
@@ -505,6 +508,22 @@ function getRegistrationStatusVariant(status: string): 'default' | 'secondary' |
   if (status === 'open') return 'default';
   if (status === 'waitlisted') return 'outline';
   return 'secondary';
+}
+
+function getSeriesStatusClassName(series: SerializedSeries): string {
+  const status = series.series_status || 'tentative';
+  if (status === 'cancelled') return 'bg-red-600 text-white hover:bg-red-600 dark:bg-red-500 dark:text-white';
+  if (status === 'confirmed' || status === 'in_progress') {
+    return 'bg-green-600 text-white hover:bg-green-600 dark:bg-green-400 dark:text-gray-900';
+  }
+  if (status === 'completed') return 'bg-amber-50 text-gray-900 dark:bg-gray-800 dark:text-gray-100';
+  return 'border-gray-200 text-gray-700 dark:border-gray-600 dark:text-gray-200';
+}
+
+function getRegistrationStatusClassName(status: string): string {
+  if (status === 'open') return 'bg-green-600 text-white hover:bg-green-600 dark:bg-green-400 dark:text-gray-900';
+  if (status === 'waitlisted') return 'border-green-600 text-green-600 dark:border-green-400 dark:text-green-400';
+  return 'bg-amber-50 text-gray-900 dark:bg-gray-800 dark:text-gray-100';
 }
 
 function toTitleCase(value: string) {

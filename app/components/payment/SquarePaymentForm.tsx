@@ -522,7 +522,7 @@ export default function SquarePaymentForm({
                   variant="outline"
                   size="sm"
                   onClick={handleRetry}
-                  className="mt-2"
+                  className="mt-2 border-green-600 text-green-600 hover:bg-green-50 dark:border-green-400 dark:text-green-400 dark:hover:bg-green-900/30"
                 >
                   Retry Loading Payment Form
                 </Button>
@@ -542,7 +542,7 @@ export default function SquarePaymentForm({
   if (!sdkLoaded) {
     return (
       <div className="space-y-4">
-        <div className="text-center text-gray-600 dark:text-gray-400 py-8">
+        <div className="text-center text-gray-500 dark:text-gray-400 py-8">
           Loading Square payment form...
         </div>
       </div>
@@ -563,22 +563,22 @@ export default function SquarePaymentForm({
 
       <div className="space-y-4">
         <div className="space-y-2">
-          <label htmlFor="payment-amount" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          <label htmlFor="payment-amount" className="text-sm font-medium text-gray-900 dark:text-gray-100">
             Payment Amount
           </label>
-          <div id="payment-amount" className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+          <div id="payment-amount" className="text-2xl font-bold text-green-600 dark:text-green-400">
             {formatAmount(payment.total_amount)}
           </div>
         </div>
 
         <div className="space-y-2">
-          <label htmlFor="square-card-container" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          <label htmlFor="square-card-container" className="text-sm font-medium text-gray-900 dark:text-gray-100">
             Card Information
           </label>
           <div 
             id="square-card-container"
             ref={cardContainerRef}
-            className="w-full min-h-[100px] rounded-md border border-input bg-background px-3 py-3 text-sm shadow-sm transition-colors focus-within:outline-none focus-within:ring-1 focus-within:ring-ring"
+            className="input-custom-styles w-full min-h-[100px] rounded-lg border border-gray-200 bg-white px-3 py-3 text-sm shadow-sm transition-colors focus-within:outline-none focus-within:ring-1 dark:border-gray-600 dark:bg-gray-800"
           >
             {/* Square card element will be inserted here */}
           </div>
@@ -587,7 +587,7 @@ export default function SquarePaymentForm({
         <Button
           onClick={handlePayment}
           disabled={isLoading || !card}
-          className="w-full"
+          className="w-full font-bold py-3 px-6 bg-green-600 text-white hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600"
           size="lg"
         >
           {isLoading ? (

@@ -26,7 +26,7 @@ const SquarePaymentForm = lazy(() => import('./SquarePaymentForm'));
 // Loading fallback component
 function PaymentFormLoading() {
   return (
-    <div className="text-center text-gray-600 dark:text-gray-400 py-8">
+    <div className="text-center text-gray-500 dark:text-gray-400 py-8">
       Loading payment form...
     </div>
   );

@@ -817,7 +817,7 @@ export default function SeminarRegister() {
     return (
       <div className="min-h-screen page-background-styles py-12 text-foreground">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="page-card-styles text-center">
+          <div className="page-card-styles !bg-white dark:!bg-gray-700 dark:!border-gray-600 text-center">
             <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
             <h2 className="page-header-styles mb-4">
               {isWaitlistSuccess ? 'Added to Waitlist' : 'Registration Successful'}
@@ -828,10 +828,10 @@ export default function SeminarRegister() {
                 : `You're registered for ${series.name}. You can head back to your dashboard whenever you're ready.`}
             </p>
             <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-              <Button asChild>
+              <Button asChild className="bg-green-600 text-white hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600">
                 <Link to="/family">Go to Dashboard</Link>
               </Button>
-              <Button asChild variant="outline">
+              <Button asChild variant="outline" className="border-green-600 text-green-600 hover:bg-green-50 dark:border-green-400 dark:text-green-400 dark:hover:bg-green-900/30">
                 <Link to={seminarDetailHref}>Back to Seminar Details</Link>
               </Button>
             </div>
@@ -845,13 +845,13 @@ export default function SeminarRegister() {
     return (
       <div className="min-h-screen page-background-styles py-12 text-foreground">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="page-card-styles text-center">
+          <div className="page-card-styles !bg-white dark:!bg-gray-700 dark:!border-gray-600 text-center">
             <h1 className="page-header-styles mb-4">Seminar not found</h1>
             <p className="page-subheader-styles">
               We couldn&apos;t load this seminar registration page.
             </p>
             <div className="mt-8">
-              <Button asChild>
+              <Button asChild className="bg-green-600 text-white hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600">
                 <Link to="/curriculum">Back to Curriculum</Link>
               </Button>
             </div>
@@ -866,7 +866,7 @@ export default function SeminarRegister() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <Link
           to={seminarDetailHref}
-          className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-300 dark:hover:text-white mb-6"
+          className="inline-flex items-center gap-2 text-sm font-medium text-green-600 transition-colors hover:text-green-700 hover:underline dark:text-green-400 dark:hover:text-green-300 mb-6"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to Seminar Details
@@ -882,27 +882,27 @@ export default function SeminarRegister() {
           </p>
         </div>
 
-        <section className="page-card-styles mb-8">
+        <section className="page-card-styles !bg-white dark:!bg-gray-700 dark:!border-gray-600 mb-8">
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-2xl border border-gray-200 bg-gray-50/80 p-5 dark:border-gray-700 dark:bg-gray-800/70">
+            <div className="rounded-2xl border border-gray-200 bg-amber-50 p-5 dark:border-gray-600 dark:bg-gray-800">
               <p className="text-sm text-gray-500 dark:text-gray-400">Series</p>
               <p className="mt-2 text-lg font-semibold text-gray-900 dark:text-white">{series.name}</p>
             </div>
             {series.series_start_on && series.series_end_on && (
-              <div className="rounded-2xl border border-gray-200 bg-gray-50/80 p-5 dark:border-gray-700 dark:bg-gray-800/70">
+              <div className="rounded-2xl border border-gray-200 bg-amber-50 p-5 dark:border-gray-600 dark:bg-gray-800">
                 <p className="text-sm text-gray-500 dark:text-gray-400">Dates</p>
                 <p className="mt-2 text-lg font-semibold text-gray-900 dark:text-white">
                   {formatSeminarDateRange(series.series_start_on, series.series_end_on)}
                 </p>
               </div>
             )}
-            <div className="rounded-2xl border border-gray-200 bg-gray-50/80 p-5 dark:border-gray-700 dark:bg-gray-800/70">
+            <div className="rounded-2xl border border-gray-200 bg-amber-50 p-5 dark:border-gray-600 dark:bg-gray-800">
               <p className="text-sm text-gray-500 dark:text-gray-400">Fee</p>
               <p className="mt-2 text-lg font-semibold text-gray-900 dark:text-white">
                 {isPositive(seminarFee) ? seminarFee.toFormat() : 'Free'}
               </p>
             </div>
-            <div className="rounded-2xl border border-gray-200 bg-gray-50/80 p-5 dark:border-gray-700 dark:bg-gray-800/70">
+            <div className="rounded-2xl border border-gray-200 bg-amber-50 p-5 dark:border-gray-600 dark:bg-gray-800">
               <p className="text-sm text-gray-500 dark:text-gray-400">Registration</p>
               <p className="mt-2 text-lg font-semibold text-gray-900 dark:text-white">
                 {registrationAvailability.canJoinWaitlist
@@ -918,14 +918,16 @@ export default function SeminarRegister() {
         <div className="grid gap-8 lg:grid-cols-[1.45fr,0.9fr]">
           <Card className="form-container-styles border-gray-200/80 backdrop-blur-lg dark:border-gray-600/80">
             <CardHeader>
-              <CardTitle>Registration Information</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-2xl font-bold text-green-600 dark:text-green-400">
+                Registration Information
+              </CardTitle>
+              <CardDescription className="text-gray-500 dark:text-gray-400">
                 Complete the form below to register for this seminar
               </CardDescription>
             </CardHeader>
             <CardContent>
               {showAddStudentCta && addStudentUrl && (
-                <Alert className="mb-6">
+                <Alert className="mb-6 border-green-200 bg-green-100 dark:border-green-700 dark:bg-green-900/30">
                   <AlertTitle className="text-lg font-semibold">
                     {requiresStudentProfile ? 'Add a student before registering' : 'Need to register a child?'}
                   </AlertTitle>
@@ -936,7 +938,7 @@ export default function SeminarRegister() {
                         : 'You can register yourself for this seminar, or add a student now if you need to register a child.'}
                     </p>
                     <div>
-                      <Button asChild variant="secondary">
+                      <Button asChild className="bg-green-600 text-white hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600">
                         <Link to={addStudentUrl}>
                           <UserPlus className="h-4 w-4 mr-2" />
                           Add a student
@@ -965,11 +967,11 @@ export default function SeminarRegister() {
                 {/* Registration Type Selection */}
                 {registrationTypeSelectorVisible && (
                   <div className="mb-6">
-                    <Label className="mb-3 block text-sm font-semibold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
+                    <Label className="mb-3 block text-sm font-medium text-gray-900 dark:text-gray-100">
                       Who is registering?
                     </Label>
                     <RadioGroup value={registrationType} onValueChange={(value) => setRegistrationType(value as RegistrationType)}>
-                      <div className="rounded-xl border border-gray-200 bg-gray-50/80 p-4 mb-3 dark:border-gray-700 dark:bg-gray-800/70">
+                      <div className="rounded-xl border border-gray-200 bg-amber-50 p-4 mb-3 dark:border-gray-600 dark:bg-gray-800">
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="student" id="student" />
                           <Label htmlFor="student" className="font-normal text-gray-900 dark:text-white">
@@ -977,7 +979,7 @@ export default function SeminarRegister() {
                           </Label>
                         </div>
                       </div>
-                      <div className="rounded-xl border border-gray-200 bg-gray-50/80 p-4 dark:border-gray-700 dark:bg-gray-800/70">
+                      <div className="rounded-xl border border-gray-200 bg-amber-50 p-4 dark:border-gray-600 dark:bg-gray-800">
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="self" id="self" />
                           <Label htmlFor="self" className="font-normal text-gray-900 dark:text-white">
@@ -992,7 +994,7 @@ export default function SeminarRegister() {
                 {/* Student Selection */}
                 {registrationType === 'student' && students.length > 0 && (
                   <div className="mb-6">
-                    <Label htmlFor="studentId" className="text-sm font-semibold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
+                    <Label htmlFor="studentId" className="block text-sm font-medium mb-1 text-gray-900 dark:text-gray-100">
                       Select Student
                     </Label>
                     <select
@@ -1000,7 +1002,7 @@ export default function SeminarRegister() {
                       name="studentId"
                       value={selectedStudentId}
                       onChange={(e) => setSelectedStudentId(e.target.value)}
-                      className="input-custom-styles w-full mt-2 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                      className="input-custom-styles w-full mt-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                       required
                     >
                       <option value="">Select a student...</option>
@@ -1018,25 +1020,25 @@ export default function SeminarRegister() {
                   <div className="space-y-4 mb-6">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="firstName" className="text-sm font-semibold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">First Name *</Label>
-                        <Input id="firstName" name="firstName" required className="input-custom-styles mt-2 rounded-xl border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800" />
+                        <Label htmlFor="firstName" className="block text-sm font-medium mb-1 text-gray-900 dark:text-gray-100">First Name *</Label>
+                        <Input id="firstName" name="firstName" required className="input-custom-styles mt-2 rounded-xl border-gray-200 bg-white dark:border-gray-600 dark:bg-gray-800" />
                       </div>
                       <div>
-                        <Label htmlFor="lastName" className="text-sm font-semibold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">Last Name *</Label>
-                        <Input id="lastName" name="lastName" required className="input-custom-styles mt-2 rounded-xl border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800" />
+                        <Label htmlFor="lastName" className="block text-sm font-medium mb-1 text-gray-900 dark:text-gray-100">Last Name *</Label>
+                        <Input id="lastName" name="lastName" required className="input-custom-styles mt-2 rounded-xl border-gray-200 bg-white dark:border-gray-600 dark:bg-gray-800" />
                       </div>
                     </div>
                     <div>
-                      <Label htmlFor="email" className="text-sm font-semibold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">Email *</Label>
-                      <Input id="email" name="email" type="email" required className="input-custom-styles mt-2 rounded-xl border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800" />
+                      <Label htmlFor="email" className="block text-sm font-medium mb-1 text-gray-900 dark:text-gray-100">Email *</Label>
+                      <Input id="email" name="email" type="email" required className="input-custom-styles mt-2 rounded-xl border-gray-200 bg-white dark:border-gray-600 dark:bg-gray-800" />
                     </div>
                     <div>
-                      <Label htmlFor="phone" className="text-sm font-semibold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">Phone *</Label>
-                      <Input id="phone" name="phone" type="tel" required className="input-custom-styles mt-2 rounded-xl border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800" />
+                      <Label htmlFor="phone" className="block text-sm font-medium mb-1 text-gray-900 dark:text-gray-100">Phone *</Label>
+                      <Input id="phone" name="phone" type="tel" required className="input-custom-styles mt-2 rounded-xl border-gray-200 bg-white dark:border-gray-600 dark:bg-gray-800" />
                     </div>
                     <div>
-                      <Label htmlFor="emergencyContact" className="text-sm font-semibold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">Emergency Contact (Optional)</Label>
-                      <Input id="emergencyContact" name="emergencyContact" className="input-custom-styles mt-2 rounded-xl border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800" />
+                      <Label htmlFor="emergencyContact" className="block text-sm font-medium mb-1 text-gray-900 dark:text-gray-100">Emergency Contact (Optional)</Label>
+                      <Input id="emergencyContact" name="emergencyContact" className="input-custom-styles mt-2 rounded-xl border-gray-200 bg-white dark:border-gray-600 dark:bg-gray-800" />
                     </div>
                   </div>
                 )}
@@ -1103,7 +1105,7 @@ export default function SeminarRegister() {
 
                 {/* Submit Button */}
                 {requiresStudentProfile && addStudentUrl ? (
-                  <Button asChild className="w-full">
+                  <Button asChild className="w-full font-bold py-3 px-6 bg-green-600 text-white hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600">
                     <Link to={addStudentUrl}>
                       <UserPlus className="h-4 w-4 mr-2" />
                       Add a Student to Continue
@@ -1112,7 +1114,7 @@ export default function SeminarRegister() {
                 ) : (
                   <Button
                     type="submit"
-                    className="w-full"
+                    className="w-full font-bold py-3 px-6 bg-green-600 text-white hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600"
                     disabled={isSubmitting || !hasAllRequiredWaivers}
                   >
                     {isSubmitting ? 'Processing...' : isPositive(seminarFee) ? 'Continue to Payment' : 'Complete Registration'}
@@ -1123,17 +1125,17 @@ export default function SeminarRegister() {
           </Card>
 
           <div className="space-y-6">
-            <div className="page-card-styles lg:sticky lg:top-6">
+            <div className="page-card-styles !bg-white dark:!bg-gray-700 dark:!border-gray-600 lg:sticky lg:top-6">
               <div className="flex items-center justify-between gap-3 mb-6">
                 <div>
                   <p className="text-sm font-semibold uppercase tracking-[0.2em] text-green-600 dark:text-green-400">
                     Seminar Summary
                   </p>
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-2">
+                  <h2 className="text-2xl font-bold text-green-600 dark:text-green-400 mt-2">
                     {series.name}
                   </h2>
                 </div>
-                <div className="rounded-full bg-green-100 px-3 py-1 text-sm font-semibold text-green-700 dark:bg-green-500/10 dark:text-green-300">
+                <div className="rounded-full bg-green-600 px-3 py-1 text-sm font-semibold text-white dark:bg-green-400 dark:text-gray-900">
                   {registrationAvailability.canJoinWaitlist
                     ? 'Waitlist'
                     : registrationAvailability.canRegister
@@ -1197,9 +1199,9 @@ export default function SeminarRegister() {
                   />
                 )}
                 <Separator />
-                <div className="rounded-2xl border border-gray-200 bg-gray-50/80 p-5 dark:border-gray-700 dark:bg-gray-800/70">
+                <div className="rounded-2xl border border-gray-200 bg-amber-50 p-5 dark:border-gray-600 dark:bg-gray-800">
                   <p className="text-sm text-gray-500 dark:text-gray-400">Total Fee</p>
-                  <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
+                  <p className="mt-2 text-3xl font-bold text-green-600 dark:text-green-400">
                     {isPositive(seminarFee) ? seminarFee.toFormat() : 'Free'}
                   </p>
                 </div>
@@ -1222,7 +1224,7 @@ function SummaryRow({
   icon?: ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-gray-50/80 p-4 dark:border-gray-700 dark:bg-gray-800/70">
+    <div className="rounded-2xl border border-gray-200 bg-amber-50 p-4 dark:border-gray-600 dark:bg-gray-800">
       <p className="text-sm text-gray-500 dark:text-gray-400">{label}</p>
       <div className="mt-2 flex items-start gap-2">
         {icon}
