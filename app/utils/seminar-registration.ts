@@ -6,6 +6,8 @@ export type SeminarRegistrationSeries = {
   enrollment_count?: number | null;
 };
 
+export type SeminarRegistrationDisplayStatus = 'open' | 'closed' | 'waitlisted' | 'unavailable';
+
 export function getSeminarSeriesRegistrationAvailability(series: SeminarRegistrationSeries) {
   const isActive = series.is_active !== false;
   const allowsSelfEnrollment = series.allow_self_enrollment === true;
@@ -23,6 +25,12 @@ export function getSeminarSeriesRegistrationAvailability(series: SeminarRegistra
     canRegister,
     canJoinWaitlist,
     canUseOnlineRegistration,
+    displayStatus: getSeminarSeriesRegistrationDisplayStatus({
+      canUseOnlineRegistration,
+      canRegister,
+      canJoinWaitlist,
+      registrationStatus,
+    }),
     message: getSeminarSeriesRegistrationMessage({
       isActive,
       allowsSelfEnrollment,
@@ -50,6 +58,36 @@ export function getSeminarRegistrationSummary(seriesList: SeminarRegistrationSer
   }
 
   return 'Contact us to register';
+}
+
+function getSeminarSeriesRegistrationDisplayStatus({
+  canUseOnlineRegistration,
+  canRegister,
+  canJoinWaitlist,
+  registrationStatus,
+}: {
+  canUseOnlineRegistration: boolean;
+  canRegister: boolean;
+  canJoinWaitlist: boolean;
+  registrationStatus: string;
+}): SeminarRegistrationDisplayStatus {
+  if (!canUseOnlineRegistration) {
+    return 'unavailable';
+  }
+
+  if (canRegister) {
+    return 'open';
+  }
+
+  if (canJoinWaitlist) {
+    return 'waitlisted';
+  }
+
+  if (registrationStatus === 'closed') {
+    return 'closed';
+  }
+
+  return 'unavailable';
 }
 
 function getSeminarSeriesRegistrationMessage({

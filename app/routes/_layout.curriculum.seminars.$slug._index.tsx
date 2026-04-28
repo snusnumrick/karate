@@ -8,6 +8,7 @@ import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { ArrowLeft, Calendar, Clock, Users } from "lucide-react";
 import { formatMoney, fromCents, toCents } from "~/utils/money";
+import { formatDate } from "~/utils/misc";
 import {
   getSeminarRegistrationSummary,
   getSeminarSeriesRegistrationAvailability,
@@ -223,8 +224,15 @@ export default function SeminarDetail() {
             </div>
 
             <div className="grid gap-6">
-              {seminar.classes.map((series) => (
-                <div key={series.id} className="page-card-styles">
+              {seminar.classes.map((series) => {
+                const registrationAvailability = getSeminarSeriesRegistrationAvailability(series);
+                const registerHref = `/curriculum/seminars/${seminar.slug || seminar.id}/register?seriesId=${series.id}`;
+                const waitlistHref = `${registerHref}&waitlist=true`;
+                const loginRegisterHref = `/login?redirectTo=${encodeURIComponent(registerHref)}`;
+                const loginWaitlistHref = `/login?redirectTo=${encodeURIComponent(waitlistHref)}`;
+
+                return (
+                  <div key={series.id} className="page-card-styles">
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="max-w-3xl">
                       {series.topic && (
@@ -252,8 +260,8 @@ export default function SeminarDetail() {
                       {series.max_capacity != null && series.enrollment_count >= series.max_capacity ? (
                         <Badge variant="destructive">Full</Badge>
                       ) : (
-                        <Badge variant={getRegistrationStatusVariant(series)}>
-                          {formatRegistrationStatus(series.registration_status)}
+                        <Badge variant={getRegistrationStatusVariant(registrationAvailability.displayStatus)}>
+                          {formatRegistrationStatus(registrationAvailability.displayStatus)}
                         </Badge>
                       )}
                     </div>
@@ -334,49 +342,40 @@ export default function SeminarDetail() {
                     </div>
                   )}
 
-                  {(() => {
-                    const registrationAvailability = getSeminarSeriesRegistrationAvailability(series);
-                    const registerHref = `/curriculum/seminars/${seminar.slug || seminar.id}/register?seriesId=${series.id}`;
-                    const waitlistHref = `${registerHref}&waitlist=true`;
-                    const loginRegisterHref = `/login?redirectTo=${encodeURIComponent(registerHref)}`;
-                    const loginWaitlistHref = `/login?redirectTo=${encodeURIComponent(waitlistHref)}`;
+                  <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                      {registrationAvailability.message}
+                    </div>
 
-                    return (
-                      <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="text-sm text-gray-600 dark:text-gray-400">
-                          {registrationAvailability.message}
-                        </div>
-
-                        {registrationAvailability.canJoinWaitlist ? (
-                          user ? (
-                            <Button asChild variant="outline">
-                              <Link to={waitlistHref}>Join Waitlist</Link>
-                            </Button>
-                          ) : (
-                            <Button asChild variant="outline">
-                              <Link to={loginWaitlistHref}>Sign In to Join Waitlist</Link>
-                            </Button>
-                          )
-                        ) : registrationAvailability.canRegister ? (
-                          user ? (
-                            <Button asChild>
-                              <Link to={registerHref}>Register Now</Link>
-                            </Button>
-                          ) : (
-                            <Button asChild>
-                              <Link to={loginRegisterHref}>Sign In to Register</Link>
-                            </Button>
-                          )
-                        ) : (
-                          <div className="rounded-full border border-gray-200 px-4 py-2 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
-                            Registration unavailable online
-                          </div>
-                        )}
+                    {registrationAvailability.canJoinWaitlist ? (
+                      user ? (
+                        <Button asChild variant="outline">
+                          <Link to={waitlistHref}>Join Waitlist</Link>
+                        </Button>
+                      ) : (
+                        <Button asChild variant="outline">
+                          <Link to={loginWaitlistHref}>Sign In to Join Waitlist</Link>
+                        </Button>
+                      )
+                    ) : registrationAvailability.canRegister ? (
+                      user ? (
+                        <Button asChild>
+                          <Link to={registerHref}>Register Now</Link>
+                        </Button>
+                      ) : (
+                        <Button asChild>
+                          <Link to={loginRegisterHref}>Sign In to Register</Link>
+                        </Button>
+                      )
+                    ) : (
+                      <div className="rounded-full border border-gray-200 px-4 py-2 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                        Registration unavailable online
                       </div>
-                    );
-                  })()}
-                </div>
-              ))}
+                    )}
+                  </div>
+                  </div>
+                );
+              })}
             </div>
           </section>
         ) : (
@@ -439,15 +438,17 @@ function serializeSeminarForClient(
     single_purchase_price_cents: single_purchase_price ? toCents(single_purchase_price) : null,
     subscription_monthly_price_cents: subscription_monthly_price ? toCents(subscription_monthly_price) : null,
     subscription_yearly_price_cents: subscription_yearly_price ? toCents(subscription_yearly_price) : null,
-    classes: classes.map((cls) => ({
-      ...cls,
-      description: cls.description ?? null,
-      enrollment_count: enrollmentCountByClassId[cls.id] ?? 0,
-      class_sessions: (cls.class_sessions || []).map((session) => ({
-        ...session,
-        sequence_number: session.sequence_number ?? null,
+    classes: classes
+      .filter((cls) => cls.is_active !== false)
+      .map((cls) => ({
+        ...cls,
+        description: cls.description ?? null,
+        enrollment_count: enrollmentCountByClassId[cls.id] ?? 0,
+        class_sessions: (cls.class_sessions || []).map((session) => ({
+          ...session,
+          sequence_number: session.sequence_number ?? null,
+        })),
       })),
-    })),
   };
 }
 
@@ -487,6 +488,7 @@ function formatRegistrationStatus(status: string): string {
     'open': 'Registration Open',
     'closed': 'Registration Closed',
     'waitlisted': 'Waitlist Available',
+    'unavailable': 'Online Registration Unavailable',
   };
   return statusMap[status] || status;
 }
@@ -499,8 +501,7 @@ function getSeriesStatusVariant(series: SerializedSeries): 'default' | 'secondar
   return 'outline';
 }
 
-function getRegistrationStatusVariant(series: SerializedSeries): 'default' | 'secondary' | 'outline' {
-  const status = series.registration_status || 'closed';
+function getRegistrationStatusVariant(status: string): 'default' | 'secondary' | 'outline' {
   if (status === 'open') return 'default';
   if (status === 'waitlisted') return 'outline';
   return 'secondary';
@@ -522,11 +523,7 @@ function formatAudienceScope(scope: string) {
 }
 
 function formatSingleDate(value: string) {
-  return new Date(value).toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  return formatDate(value, { formatString: 'MMM d, yyyy' });
 }
 
 function formatDateRange(start: string, end: string) {

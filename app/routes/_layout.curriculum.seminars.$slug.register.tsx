@@ -17,6 +17,7 @@ import { Separator } from '~/components/ui/separator';
 import { AlertCircle, ArrowLeft, Calendar, Clock, Users, CheckCircle, UserPlus } from 'lucide-react';
 import { calculateTaxesForPayment } from '~/services/tax-rates.server';
 import { addMoney, isPositive, toCents, ZERO_MONEY, fromCents } from '~/utils/money';
+import { formatDate } from '~/utils/misc';
 import {
   buildEnrollmentPendingPaymentNotes,
   buildSeminarPaymentMarker,
@@ -1232,15 +1233,7 @@ function SummaryRow({
 }
 
 function formatSeminarDateRange(start: string, end: string) {
-  return `${new Date(start).toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })} - ${new Date(end).toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })}`;
+  return `${formatDate(start, { formatString: 'MMM d, yyyy' })} - ${formatDate(end, { formatString: 'MMM d, yyyy' })}`;
 }
 
 function formatSeminarCapacity(minCapacity?: number | null, maxCapacity?: number | null) {

@@ -111,6 +111,7 @@ export async function loader() {
         )
       `)
             .eq('is_active', true)
+            .eq('program.is_active', true)
             .order('name');
 
         if (error) {

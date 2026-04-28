@@ -77,6 +77,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       )
     `)
     .eq('is_active', true)
+    .eq('program.is_active', true)
     .order('name');
 
   if (error) {

@@ -598,6 +598,7 @@ export async function getSeminarWithSeries(
     `)
     .eq('id', seminarId)
     .eq('engagement_type', 'seminar')
+    .eq('is_active', true)
     .single();
 
   if (error) {
@@ -609,42 +610,44 @@ export async function getSeminarWithSeries(
 
   const seminar = mapProgramFromRow(data);
 
-  const classes = (data.classes || []).map((cls) => {
-    const sortedSessions = (cls.class_sessions || []).sort((a, b) => {
-      if (
-        a.sequence_number !== null &&
-        b.sequence_number !== null &&
-        a.sequence_number !== undefined &&
-        b.sequence_number !== undefined
-      ) {
-        return a.sequence_number - b.sequence_number;
-      }
-      return new Date(a.session_date).getTime() - new Date(b.session_date).getTime();
-    });
+  const classes = (data.classes || [])
+    .filter((cls) => cls.is_active !== false)
+    .map((cls) => {
+      const sortedSessions = (cls.class_sessions || []).sort((a, b) => {
+        if (
+          a.sequence_number !== null &&
+          b.sequence_number !== null &&
+          a.sequence_number !== undefined &&
+          b.sequence_number !== undefined
+        ) {
+          return a.sequence_number - b.sequence_number;
+        }
+        return new Date(a.session_date).getTime() - new Date(b.session_date).getTime();
+      });
 
-    return {
-      ...cls,
-      description: cls.description ?? undefined,
-      topic: cls.topic ?? undefined,
-      series_status: cls.series_status ?? 'tentative',
-      registration_status: cls.registration_status ?? 'closed',
-      series_start_on: cls.series_start_on ?? undefined,
-      series_end_on: cls.series_end_on ?? undefined,
-      sessions_per_week_override: cls.sessions_per_week_override ?? undefined,
-      session_duration_minutes: cls.session_duration_minutes ?? undefined,
-      series_session_quota: cls.series_session_quota ?? undefined,
-      price_override_cents: cls.price_override_cents ?? undefined,
-      registration_fee_override_cents: cls.registration_fee_override_cents ?? undefined,
-      min_capacity: cls.min_capacity ?? undefined,
-      max_capacity: cls.max_capacity ?? undefined,
-      allow_self_enrollment: cls.allow_self_enrollment ?? false,
-      on_demand: cls.on_demand ?? false,
-      class_sessions: sortedSessions.map((session) => ({
-        ...session,
-        sequence_number: session.sequence_number ?? undefined,
-      })),
-    };
-  });
+      return {
+        ...cls,
+        description: cls.description ?? undefined,
+        topic: cls.topic ?? undefined,
+        series_status: cls.series_status ?? 'tentative',
+        registration_status: cls.registration_status ?? 'closed',
+        series_start_on: cls.series_start_on ?? undefined,
+        series_end_on: cls.series_end_on ?? undefined,
+        sessions_per_week_override: cls.sessions_per_week_override ?? undefined,
+        session_duration_minutes: cls.session_duration_minutes ?? undefined,
+        series_session_quota: cls.series_session_quota ?? undefined,
+        price_override_cents: cls.price_override_cents ?? undefined,
+        registration_fee_override_cents: cls.registration_fee_override_cents ?? undefined,
+        min_capacity: cls.min_capacity ?? undefined,
+        max_capacity: cls.max_capacity ?? undefined,
+        allow_self_enrollment: cls.allow_self_enrollment ?? false,
+        on_demand: cls.on_demand ?? false,
+        class_sessions: sortedSessions.map((session) => ({
+          ...session,
+          sequence_number: session.sequence_number ?? undefined,
+        })),
+      };
+    });
 
   return {
     ...seminar,
@@ -663,6 +666,7 @@ export async function getProgramBySlug(
     .from('programs')
     .select(PROGRAM_SELECT_COLUMNS)
     .eq('slug', slug)
+    .eq('is_active', true)
     .single();
 
   if (error) {

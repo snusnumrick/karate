@@ -151,6 +151,8 @@ describe('curriculum loader filters', () => {
 
     expect(mockGetPrograms).toHaveBeenNthCalledWith(1, { is_active: true, engagement_type: 'program' });
     expect(mockGetPrograms).toHaveBeenNthCalledWith(2, { is_active: true, engagement_type: 'seminar' });
+    expect((classesQuery.eq as ReturnType<typeof vi.fn>).mock.calls).toContainEqual(['is_active', true]);
+    expect((classesQuery.eq as ReturnType<typeof vi.fn>).mock.calls).toContainEqual(['program.is_active', true]);
     expect(payload.classes.map((classItem: { id: string }) => classItem.id)).toEqual([
       'class-1',
       'class-2',

@@ -255,7 +255,7 @@ export async function updateClass(
 }
 
 /**
- * Delete a class (soft delete by setting is_active to false)
+ * Permanently delete a class and database-cascaded child records.
  */
 export async function deleteClass(
   id: string,
@@ -278,7 +278,7 @@ export async function deleteClass(
 
   const { error } = await supabase
     .from('classes')
-    .update({ is_active: false, updated_at: new Date().toISOString() })
+    .delete()
     .eq('id', id);
 
   if (error) {

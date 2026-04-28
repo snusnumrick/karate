@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { getAdultPrograms, getUpcomingPublicSeminars } from '../program.server';
+import { getAdultPrograms, getProgramBySlug, getSeminarWithSeries, getUpcomingPublicSeminars } from '../program.server';
 import { getSelfEnrollableClasses } from '../class.server';
 
 type QueryResult = { data: unknown; error: unknown };
@@ -13,6 +13,14 @@ function createThenableQuery(result: QueryResult) {
   query.order = vi.fn(() => query);
   query.then = (onFulfilled: (value: QueryResult) => unknown, onRejected?: (reason: unknown) => unknown) =>
     Promise.resolve(result).then(onFulfilled, onRejected);
+  return query;
+}
+
+function createSingleQuery(result: QueryResult) {
+  const query: Record<string, unknown> = {};
+  query.select = vi.fn(() => query);
+  query.eq = vi.fn(() => query);
+  query.single = vi.fn().mockResolvedValue(result);
   return query;
 }
 
@@ -54,6 +62,92 @@ describe('curriculum filtering queries', () => {
       (call) => call[0] === 'engagement_type'
     );
     expect(engagementEqUsed).toBe(false);
+  });
+
+  it('getProgramBySlug only returns active programs for public slug lookups', async () => {
+    const query = createSingleQuery({ data: null, error: { code: 'PGRST116' } });
+    const supabase = {
+      from: vi.fn(() => query),
+    };
+
+    await expect(getProgramBySlug('summer-camp', supabase as never)).resolves.toBeNull();
+
+    expect(supabase.from).toHaveBeenCalledWith('programs');
+    expect((query.eq as ReturnType<typeof vi.fn>).mock.calls).toContainEqual(['slug', 'summer-camp']);
+    expect((query.eq as ReturnType<typeof vi.fn>).mock.calls).toContainEqual(['is_active', true]);
+  });
+
+  it('getSeminarWithSeries only returns active seminar templates and active runs', async () => {
+    const query = createSingleQuery({
+      data: {
+        id: 'seminar-1',
+        name: 'Summer Camp',
+        description: null,
+        duration_minutes: null,
+        engagement_type: 'seminar',
+        ability_category: null,
+        delivery_format: null,
+        seminar_type: null,
+        audience_scope: 'youth',
+        slug: 'summer-camp',
+        min_capacity: null,
+        max_capacity: null,
+        sessions_per_week: null,
+        min_sessions_per_week: null,
+        max_sessions_per_week: null,
+        min_belt_rank: null,
+        max_belt_rank: null,
+        belt_rank_required: false,
+        prerequisite_programs: null,
+        min_age: null,
+        max_age: null,
+        gender_restriction: 'none',
+        special_needs_support: false,
+        monthly_fee_cents: null,
+        registration_fee_cents: null,
+        yearly_fee_cents: null,
+        individual_session_fee_cents: null,
+        single_purchase_price_cents: null,
+        subscription_monthly_price_cents: null,
+        subscription_yearly_price_cents: null,
+        required_waiver_id: null,
+        is_active: true,
+        created_at: '2026-04-20T00:00:00+00:00',
+        updated_at: '2026-04-20T00:00:00+00:00',
+        classes: [
+          {
+            id: 'inactive-run',
+            name: 'Inactive Run',
+            is_active: false,
+            registration_status: 'open',
+            allow_self_enrollment: true,
+            class_sessions: [],
+          },
+          {
+            id: 'active-run',
+            name: 'Active Run',
+            is_active: true,
+            registration_status: 'open',
+            allow_self_enrollment: true,
+            class_sessions: [],
+          },
+        ],
+      },
+      error: null,
+    });
+    const supabase = {
+      from: vi.fn(() => query),
+    };
+
+    const seminar = await getSeminarWithSeries('seminar-1', supabase as never);
+
+    expect((query.eq as ReturnType<typeof vi.fn>).mock.calls).toContainEqual(['id', 'seminar-1']);
+    expect((query.eq as ReturnType<typeof vi.fn>).mock.calls).toContainEqual([
+      'engagement_type',
+      'seminar',
+    ]);
+    expect((query.eq as ReturnType<typeof vi.fn>).mock.calls).toContainEqual(['is_active', true]);
+    expect(seminar?.classes.map((series) => series.id)).toEqual(['active-run']);
   });
 
   it('getSelfEnrollableClasses applies open + active + self-enrollment filters', async () => {

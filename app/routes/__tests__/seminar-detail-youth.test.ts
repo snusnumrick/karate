@@ -84,6 +84,33 @@ describe('seminar detail loader audience filtering', () => {
     expect(response.status).not.toBe(404);
   });
 
+  it('excludes inactive seminar series from the public detail payload', async () => {
+    mockGetSeminarWithSeries.mockResolvedValue({
+      ...baseSeminar,
+      classes: [
+        {
+          id: 'inactive-series',
+          name: 'August 3',
+          is_active: false,
+          allow_self_enrollment: true,
+          registration_status: 'open',
+        },
+        {
+          id: 'active-series',
+          name: 'August 3',
+          is_active: true,
+          allow_self_enrollment: true,
+          registration_status: 'open',
+        },
+      ],
+    });
+
+    const response = await (loader as Function)(makeLoaderArgs('summer-camp'));
+
+    const payload = await response.json();
+    expect(payload.seminar.classes.map((series: { id: string }) => series.id)).toEqual(['active-series']);
+  });
+
   it('throws 404 when seminar not found', async () => {
     mockGetSeminarWithSeries.mockResolvedValue(null);
 
