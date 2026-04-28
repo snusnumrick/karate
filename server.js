@@ -67,32 +67,25 @@ function deriveNonceForRequest(request) {
     const baseUrl = `${protocol}://${host}`;
     
     const data = `${baseUrl}|${ua}|${al}|${xfwdHost}|${xfwdProto}`;
-    console.log('server.js nonce data:', { baseUrl, ua: ua.substring(0, 50), al, xfwdHost, xfwdProto, data: data.substring(0, 100) });
     const digest = crypto.createHmac('sha256', NONCE_SECRET).update(data).digest('base64');
     return digest.slice(0, 22);
 }
 
 // Define getLoadContext function
 function getLoadContext(args) {
-  console.log('getLoadContext called with:', typeof args, Object.keys(args || {}));
-  console.log('getLoadContext full args:', args);
-  
   // Try different patterns for getting the request
   let request = args?.request || args;
   
   // If args is the request itself (Express request object)
   if (args && args.headers && args.method && args.url) {
     request = args;
-    console.log('Using args as request directly');
   }
   
   if (!request || !request.headers) {
-    console.log('No valid request found, using fallback nonce');
     return { nonce: 'fallback-no-request' };
   }
   
   const nonce = deriveNonceForRequest(request);
-  console.log('server.js getLoadContext nonce:', nonce, 'length:', nonce?.length);
   return { nonce };
 }
 
@@ -104,11 +97,6 @@ const remixHandler = createRequestHandler({
 app.all(
   "*",
   (req, res, next) => {
-    // Always serve document requests as non-cacheable to avoid stale HTML shells after deploy.
-    if (req.method === "GET" && req.accepts("html")) {
-      res.setHeader("Cache-Control", "no-store, max-age=0, must-revalidate");
-    }
-
     return remixHandler(req, res, next);
   }
 );

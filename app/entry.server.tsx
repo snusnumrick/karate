@@ -12,6 +12,7 @@ import { createReadableStreamFromReadable, EntryContext } from "@remix-run/node"
 import { deriveNonceForRequest } from "./utils/nonce.server";
 import { getPaymentProvider } from "./services/payments/index.server";
 import * as Sentry from "@sentry/remix";
+import { getDocumentCacheControl } from "./utils/public-cache.server";
 
 // Extend EntryContext to include nonce property
 interface ExtendedEntryContext extends EntryContext {
@@ -274,7 +275,7 @@ export default function handleRequest(
 
     const csp = generateCsp(nonce);
     responseHeaders.set("Content-Security-Policy", csp);
-    responseHeaders.set("Cache-Control", "no-store, max-age=0, must-revalidate");
+    responseHeaders.set("Cache-Control", getDocumentCacheControl(request, responseStatusCode));
     
     responseHeaders.set("X-Frame-Options", "DENY");
     responseHeaders.set("X-Content-Type-Options", "nosniff");

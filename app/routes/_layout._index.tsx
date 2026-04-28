@@ -3,7 +3,6 @@ import type { LinksFunction, MetaFunction, MetaArgs, MetaDescriptor,  LoaderFunc
 import { Link, useLoaderData } from "@remix-run/react";
 import { json } from "@remix-run/node";
 import { performance } from "node:perf_hooks";
-import { parse } from "cookie";
 import { MapPin, Clock, Users, Phone, Mail, Award, GraduationCap, Baby, Trophy, Dumbbell, Brain, ShieldCheck, Star, Footprints, Wind, Calendar, ExternalLink } from 'lucide-react'; // Import icons for environment
 import { siteConfig } from "~/config/site"; // Import site config
 import { EventService, type UpcomingEvent } from "~/services/event.server";
@@ -17,6 +16,8 @@ import { useNonce } from "~/context/nonce";
 import { JsonLd } from "~/components/JsonLd";
 import { DEFAULT_SCHEDULE, getDefaultAgeRangeLabel } from "~/constants/schedule";
 import { formatMoney, isPositive, toDollars, serializeMoney, deserializeMoney, type MoneyJSON } from "~/utils/money";
+import { hasSupabaseAuthSignal } from "~/utils/auth-cookies.server";
+import { getDocumentCacheControl } from "~/utils/public-cache.server";
 // Server imports moved to loader function only
 
 type UpcomingEventWithFormatted = UpcomingEvent & {
@@ -140,16 +141,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     }
 
     try {
-        const cookies = parse(request.headers.get('cookie') ?? '');
-        const cookieKeys = Object.keys(cookies);
-        const hasSessionCookie = cookieKeys.some((key) =>
-            key.startsWith('sb-') ||
-            key.startsWith('sb:') ||
-            key.endsWith('-token')
-        );
-        const hasAuthHeader = Boolean(request.headers.get('authorization'));
-
-        const shouldFetchAuth = hasSessionCookie || hasAuthHeader;
+        const shouldFetchAuth = hasSupabaseAuthSignal(request);
 
         const authPromise = shouldFetchAuth
             ? time('auth', async () => {
@@ -199,7 +191,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
             .join(', ');
 
         const headers = new Headers(authHeaders);
-        headers.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
+        headers.set('Cache-Control', getDocumentCacheControl(request));
         if (serverTimingHeader) {
             headers.set('Server-Timing', serverTimingHeader);
         }
@@ -479,7 +471,6 @@ export default function Index() {
                         alt=""
                         className="h-full w-full object-cover object-center"
                         loading="eager"
-                        fetchPriority="high"
                         aria-hidden="true"
                     />
                 </picture>

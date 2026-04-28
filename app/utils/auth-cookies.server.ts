@@ -1,9 +1,18 @@
 import { parse, serialize } from "cookie";
 
-function isSupabaseAuthCookieName(cookieName: string): boolean {
+export function isSupabaseAuthCookieName(cookieName: string): boolean {
   return cookieName.startsWith("sb-")
     || cookieName.startsWith("sb:")
     || cookieName.endsWith("-token");
+}
+
+export function hasSupabaseAuthCookie(request: Request): boolean {
+  const cookies = parse(request.headers.get("cookie") ?? "");
+  return Object.keys(cookies).some(isSupabaseAuthCookieName);
+}
+
+export function hasSupabaseAuthSignal(request: Request): boolean {
+  return hasSupabaseAuthCookie(request) || Boolean(request.headers.get("authorization"));
 }
 
 export function clearSupabaseAuthCookies(request: Request, headers: Headers): void {
@@ -51,4 +60,3 @@ export function isAuthSessionMissingError(error: unknown): boolean {
   const { message } = error as AuthErrorLike;
   return typeof message === "string" && message.includes("Auth session missing");
 }
-

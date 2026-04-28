@@ -72,6 +72,23 @@ type SupabaseServerClientReturn = {
     }
 };
 
+export function getSupabaseBrowserEnv() {
+    const supabaseUrl = process.env.SUPABASE_URL?.trim() || '';
+    const supabaseAnonKey = process.env.SUPABASE_ANON_KEY?.trim() || '';
+
+    if (!supabaseUrl) {
+        throw new Error('Missing or invalid SUPABASE_URL environment variable. Check server configuration.');
+    }
+    if (!supabaseAnonKey) {
+        throw new Error('Missing or invalid SUPABASE_ANON_KEY environment variable. Check server configuration.');
+    }
+
+    return {
+        SUPABASE_URL: supabaseUrl,
+        SUPABASE_ANON_KEY: supabaseAnonKey,
+    };
+}
+
 function bindClientMethod<T>(value: T, thisArg: unknown): T {
     if (typeof value !== "function") {
         return value;
@@ -84,17 +101,12 @@ export function getSupabaseServerClient(request: Request): SupabaseServerClientR
     const response = new Response();
 
     // Trim potential whitespace and check for empty strings explicitly
-    const supabaseUrl = process.env.SUPABASE_URL?.trim() || '';
+    const ENV = getSupabaseBrowserEnv();
+    const supabaseUrl = ENV.SUPABASE_URL;
+    const supabaseAnonKey = ENV.SUPABASE_ANON_KEY;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || '';
-    const supabaseAnonKey = process.env.SUPABASE_ANON_KEY?.trim() || '';
 
     // Provide specific error messages
-    if (!supabaseUrl) {
-        throw new Error('Missing or invalid SUPABASE_URL environment variable. Check server configuration.');
-    }
-    if (!supabaseAnonKey) {
-        throw new Error('Missing or invalid SUPABASE_ANON_KEY environment variable. Check server configuration.');
-    }
     if (!supabaseServiceKey) {
         throw new Error('Missing or invalid SUPABASE_SERVICE_ROLE_KEY environment variable. Check server configuration.');
     }
@@ -133,12 +145,6 @@ export function getSupabaseServerClient(request: Request): SupabaseServerClientR
             return bindClientMethod(Reflect.get(target, prop, receiver), target);
         }
     }) as TypedSupabaseClient;
-
-    const ENV = { // Pass environment variables needed by client
-        SUPABASE_URL: supabaseUrl,
-        SUPABASE_ANON_KEY: supabaseAnonKey,
-        // DO NOT PASS SERVICE ROLE KEY TO CLIENT - Security risk
-    }
 
     return {
         serviceRoleClient,

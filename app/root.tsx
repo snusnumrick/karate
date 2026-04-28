@@ -22,6 +22,11 @@ import { csrf } from "~/utils/csrf.server";
 import { ClientOnly } from "~/components/client-only";
 import { ToasterWrapper } from "~/components/toaster-wrapper";
 import { SpeedInsights } from "@vercel/speed-insights/react";
+import {
+    getDocumentCacheControl,
+    isAnonymousHomepageDocumentRequest
+} from "~/utils/public-cache.server";
+import { shouldRevalidateRootForAnonymousCsrf } from "~/utils/public-cache";
 
 import "./tailwind.css";
 
@@ -43,8 +48,12 @@ export async function loader({context, request}: LoaderFunctionArgs) {
         nonce = deriveNonceForRequest(request);
     }
 
-    // Use the incoming request so we reuse any existing CSRF token
-    const [csrfToken, csrfCookieHeader] = await csrf.commitToken(request);
+    let csrfToken = '';
+    let csrfCookieHeader: string | null = null;
+    if (!isAnonymousHomepageDocumentRequest(request)) {
+        // Use the incoming request so we reuse any existing CSRF token.
+        [csrfToken, csrfCookieHeader] = await csrf.commitToken(request);
+    }
 
     // Expose necessary environment variables to the client
     const ENV = {
@@ -52,12 +61,13 @@ export async function loader({context, request}: LoaderFunctionArgs) {
         SENTRY_DSN: process.env.SENTRY_DSN || '',
     };
 
-    return json(
-        { nonce, csrfToken, ENV },
-        {
-            headers: csrfCookieHeader ? { "Set-Cookie": csrfCookieHeader } : {},
-        }
-    );
+    const headers = new Headers();
+    headers.set("Cache-Control", getDocumentCacheControl(request));
+    if (csrfCookieHeader) {
+        headers.append("Set-Cookie", csrfCookieHeader);
+    }
+
+    return json({ nonce, csrfToken, ENV }, { headers });
 }
 
 export async function action() {
@@ -65,6 +75,22 @@ export async function action() {
         status: 405,
         headers: { Allow: "GET" },
     });
+}
+
+export function shouldRevalidate({
+    currentUrl,
+    nextUrl,
+    defaultShouldRevalidate,
+}: {
+    currentUrl: URL;
+    nextUrl: URL;
+    defaultShouldRevalidate: boolean;
+}) {
+    if (shouldRevalidateRootForAnonymousCsrf(currentUrl, nextUrl)) {
+        return true;
+    }
+
+    return defaultShouldRevalidate;
 }
 
 export const links: LinksFunction = () => [

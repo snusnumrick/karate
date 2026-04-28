@@ -7,25 +7,39 @@ import PublicNavbar from "~/components/PublicNavbar";
 import FamilyNavbar from "~/components/FamilyNavbar";
 import AdminNavbar from "~/components/AdminNavbar";
 import Footer from "~/components/Footer";
-import { getUserRole } from "~/utils/supabase.server";
+import { getSupabaseBrowserEnv, getUserRole } from "~/utils/supabase.server";
 import { getSiteData } from "~/utils/site-data.server";
 import { setSiteData } from "~/utils/site-data.client";
 import type { Database } from "~/types/database.types";
 import InstructorNavbar from "~/components/InstructorNavbar";
 import { isAdminRole, isInstructorRole, type UserRole } from '~/types/auth';
 import { getOptionalSession } from "~/utils/auth.server";
+import { hasSupabaseAuthSignal } from "~/utils/auth-cookies.server";
+import { getDocumentCacheControl } from "~/utils/public-cache.server";
 
 export async function loader({ request }: LoaderFunctionArgs) {
-    const { session, response: { headers }, ENV } = await getOptionalSession(request);
+    const ENV = getSupabaseBrowserEnv();
+    let headers = new Headers();
+    let session: Awaited<ReturnType<typeof getOptionalSession>>['session'] = null;
     let userRole: UserRole | null = null;
-    if (session?.user) {
-        userRole = await getUserRole(session.user.id);
+
+    if (hasSupabaseAuthSignal(request)) {
+        const sessionResult = await getOptionalSession(request);
+        session = sessionResult.session;
+        headers = sessionResult.response.headers;
+
+        if (session?.user) {
+            userRole = await getUserRole(session.user.id);
+        }
     }
+
     const isAdmin = isAdminRole(userRole);
     const isInstructor = isInstructorRole(userRole) || isAdmin;
 
     // Fetch site data for consistent information across all pages
     const siteData = await getSiteData();
+
+    headers.set("Cache-Control", getDocumentCacheControl(request));
 
     return json({ session, ENV, userRole, isAdmin, isInstructor, siteData }, { headers });
 }
