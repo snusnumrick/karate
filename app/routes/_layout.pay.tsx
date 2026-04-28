@@ -756,7 +756,6 @@ export default function PaymentPage() {
   const paymentStatusLabel = formatPaymentStatus(payment.status);
   const hasDiscount = Boolean(payment.discount_amount && payment.discount_amount > 0);
   const paymentStartedAt = formatPaymentStartedAt(payment.created_at);
-  const checkoutEnvironmentLabel = formatCheckoutEnvironment(providerConfig.environment);
   const linkedStudentNames = formatLinkedStudentNames(payment.payment_students);
   const taxesIncludedLabel = groupedTaxes.length > 0
     ? groupedTaxes.map((tax) => tax.description).join(", ")
@@ -1007,23 +1006,6 @@ function formatPaymentStartedAt(value: string | null | undefined) {
     hour: "numeric",
     minute: "2-digit",
   });
-}
-
-function formatCheckoutEnvironment(environment?: string | null) {
-  if (!environment) {
-    return "Standard checkout";
-  }
-
-  const normalized = environment.toLowerCase();
-  if (normalized === "sandbox" || normalized === "test") {
-    return "Test environment";
-  }
-
-  if (normalized === "production" || normalized === "live") {
-    return "Live environment";
-  }
-
-  return environment;
 }
 
 function getPaymentStatusClasses(status: string | null | undefined) {
