@@ -91,7 +91,11 @@ export default function IntroLayout() {
     }, [siteData]);
 
     // Use useMemo to ensure single client instance per environment
-    const supabase = React.useMemo<SupabaseClient<Database>>(() => {
+    const supabase = React.useMemo<SupabaseClient<Database> | null>(() => {
+        if (typeof window === "undefined") {
+            return null;
+        }
+
         return getSupabaseBrowserAuthClient({
             url: ENV.SUPABASE_URL!,
             anonKey: ENV.SUPABASE_ANON_KEY!,
@@ -103,7 +107,7 @@ export default function IntroLayout() {
             <main>
                 <Outlet />
             </main>
-            <AuthTokenSender supabase={supabase} />
+            {supabase && <AuthTokenSender supabase={supabase} />}
         </div>
     );
 }
