@@ -8,6 +8,10 @@ import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { ArrowLeft, Calendar, Clock, Users } from "lucide-react";
 import { formatMoney, fromCents, toCents } from "~/utils/money";
+import {
+  getSeminarRegistrationSummary,
+  getSeminarSeriesRegistrationAvailability,
+} from "~/utils/seminar-registration";
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
   const { slug } = params;
@@ -161,9 +165,7 @@ export default function SeminarDetail() {
                 <div className="flex items-start justify-between gap-4 border-t border-green-200/80 pt-4 dark:border-green-500/20">
                   <dt className="text-gray-600 dark:text-gray-400">Registration</dt>
                   <dd className="text-right font-semibold text-gray-900 dark:text-white">
-                    {seminar.classes?.some((series) => series.allow_self_enrollment && series.is_active)
-                      ? 'Online sign-up available'
-                      : 'Contact us to register'}
+                    {getSeminarRegistrationSummary(seminar.classes)}
                   </dd>
                 </div>
               </dl>
@@ -333,7 +335,7 @@ export default function SeminarDetail() {
                   )}
 
                   {(() => {
-                    const isFull = series.max_capacity != null && series.enrollment_count >= series.max_capacity;
+                    const registrationAvailability = getSeminarSeriesRegistrationAvailability(series);
                     const registerHref = `/curriculum/seminars/${seminar.slug || seminar.id}/register?seriesId=${series.id}`;
                     const waitlistHref = `${registerHref}&waitlist=true`;
                     const loginRegisterHref = `/login?redirectTo=${encodeURIComponent(registerHref)}`;
@@ -342,34 +344,28 @@ export default function SeminarDetail() {
                     return (
                       <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="text-sm text-gray-600 dark:text-gray-400">
-                          {series.allow_self_enrollment && series.is_active
-                            ? isFull
-                              ? "This series is full. Join the waitlist and we will contact you if a spot opens."
-                              : "Self-registration is available for this series."
-                            : "Contact us to register for this series."}
+                          {registrationAvailability.message}
                         </div>
 
-                        {series.is_active && series.allow_self_enrollment ? (
-                          isFull ? (
-                            user ? (
-                              <Button asChild variant="outline">
-                                <Link to={waitlistHref}>Join Waitlist</Link>
-                              </Button>
-                            ) : (
-                              <Button asChild variant="outline">
-                                <Link to={loginWaitlistHref}>Sign In to Join Waitlist</Link>
-                              </Button>
-                            )
+                        {registrationAvailability.canJoinWaitlist ? (
+                          user ? (
+                            <Button asChild variant="outline">
+                              <Link to={waitlistHref}>Join Waitlist</Link>
+                            </Button>
                           ) : (
-                            user ? (
-                              <Button asChild>
-                                <Link to={registerHref}>Register Now</Link>
-                              </Button>
-                            ) : (
-                              <Button asChild>
-                                <Link to={loginRegisterHref}>Sign In to Register</Link>
-                              </Button>
-                            )
+                            <Button asChild variant="outline">
+                              <Link to={loginWaitlistHref}>Sign In to Join Waitlist</Link>
+                            </Button>
+                          )
+                        ) : registrationAvailability.canRegister ? (
+                          user ? (
+                            <Button asChild>
+                              <Link to={registerHref}>Register Now</Link>
+                            </Button>
+                          ) : (
+                            <Button asChild>
+                              <Link to={loginRegisterHref}>Sign In to Register</Link>
+                            </Button>
                           )
                         ) : (
                           <div className="rounded-full border border-gray-200 px-4 py-2 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">

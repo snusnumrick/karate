@@ -23,6 +23,7 @@ import {
   buildSeminarPaymentNotes,
   extractSeminarPendingPaymentId,
 } from '~/utils/seminar-payment-notes';
+import { getSeminarSeriesRegistrationAvailability } from '~/utils/seminar-registration';
 import { useState, type ReactNode } from 'react';
 
 export {
@@ -316,6 +317,14 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   if (!series.allow_self_enrollment) {
     throw new Response("This seminar series does not allow self-registration.", { status: 403 });
   }
+  const registrationAvailability = getSeminarSeriesRegistrationAvailability(series);
+  if (isWaitlist) {
+    if (!registrationAvailability.canJoinWaitlist) {
+      throw new Response("The waitlist is not available for this seminar series.", { status: 403 });
+    }
+  } else if (!registrationAvailability.canRegister) {
+    throw new Response("Registration is not open for this seminar series.", { status: 403 });
+  }
 
   // If not authenticated, redirect to login
   if (!user) {
@@ -410,6 +419,28 @@ async function handleSeminarRegistration(formData: FormData, request: Request) {
   try {
     const seriesId = formData.get('seriesId') as string;
     const registrationType = formData.get('registrationType') as RegistrationType;
+    const isWaitlist = formData.get('waitlist') === 'true';
+
+    // Get series and program details before any registration sub-flow can proceed.
+    const { data: series } = await supabaseServer
+      .from('classes')
+      .select('*, programs(*)')
+      .eq('id', seriesId)
+      .single();
+
+    if (!series) {
+      return json({ error: 'Series not found' }, { status: 404 });
+    }
+
+    const registrationAvailability = getSeminarSeriesRegistrationAvailability(series);
+    if (isWaitlist) {
+      if (!registrationAvailability.canJoinWaitlist) {
+        return json({ error: 'The waitlist is not available for this seminar series.' }, { status: 400 });
+      }
+    } else if (!registrationAvailability.canRegister) {
+      return json({ error: 'Registration is not open for this seminar series.' }, { status: 400 });
+    }
+
     const { data: profile } = await supabaseServer
       .from('profiles')
       .select('family_id')
@@ -444,17 +475,6 @@ async function handleSeminarRegistration(formData: FormData, request: Request) {
 
     let studentId: string;
     let familyId: string;
-
-    // Get series and program details for pricing and audience checks
-    const { data: series } = await supabaseServer
-      .from('classes')
-      .select('*, programs(*)')
-      .eq('id', seriesId)
-      .single();
-
-    if (!series) {
-      return json({ error: 'Series not found' }, { status: 404 });
-    }
 
     const adultRegistrationAllowed = seminarSupportsAdultRegistration(series.programs?.audience_scope);
 
@@ -547,8 +567,6 @@ async function handleSeminarRegistration(formData: FormData, request: Request) {
       ? addMoney(seminarFee, taxCalculation.totalTaxAmount)
       : ZERO_MONEY;
     const paymentTotalCents = paymentRequired ? toCents(paymentTotal) : 0;
-
-    const isWaitlist = formData.get('waitlist') === 'true';
 
     const { data: existingEnrollment } = await supabaseAdmin
       .from('enrollments')
@@ -787,6 +805,7 @@ export default function SeminarRegister() {
       : seminar?.registration_fee_cents
         ? fromCents(seminar.registration_fee_cents)
         : ZERO_MONEY;
+  const registrationAvailability = getSeminarSeriesRegistrationAvailability(series);
 
   const showSuccess = actionData && 'success' in actionData && actionData.success && 'paymentRequired' in actionData && !actionData.paymentRequired;
   const seminarDetailHref = seminar ? `/curriculum/seminars/${seminar.slug || seminar.id}` : '/curriculum';
@@ -885,7 +904,11 @@ export default function SeminarRegister() {
             <div className="rounded-2xl border border-gray-200 bg-gray-50/80 p-5 dark:border-gray-700 dark:bg-gray-800/70">
               <p className="text-sm text-gray-500 dark:text-gray-400">Registration</p>
               <p className="mt-2 text-lg font-semibold text-gray-900 dark:text-white">
-                {series.allow_self_enrollment ? 'Online sign-up open' : 'Contact us to register'}
+                {registrationAvailability.canJoinWaitlist
+                  ? 'Online waitlist available'
+                  : registrationAvailability.canRegister
+                    ? 'Online sign-up open'
+                    : 'Registration not open'}
               </p>
             </div>
           </div>
@@ -1110,7 +1133,11 @@ export default function SeminarRegister() {
                   </h2>
                 </div>
                 <div className="rounded-full bg-green-100 px-3 py-1 text-sm font-semibold text-green-700 dark:bg-green-500/10 dark:text-green-300">
-                  {series.allow_self_enrollment ? 'Open' : 'By request'}
+                  {registrationAvailability.canJoinWaitlist
+                    ? 'Waitlist'
+                    : registrationAvailability.canRegister
+                      ? 'Open'
+                      : 'Closed'}
                 </div>
               </div>
 
@@ -1154,10 +1181,10 @@ export default function SeminarRegister() {
                     icon={<Clock className="h-4 w-4 text-green-600 dark:text-green-400" />}
                   />
                 )}
-                {series.allow_self_enrollment && (
+                {(registrationAvailability.canRegister || registrationAvailability.canJoinWaitlist) && (
                   <SummaryRow
                     label="Registration"
-                    value="Self-registration available"
+                    value={registrationAvailability.canJoinWaitlist ? 'Waitlist available' : 'Self-registration available'}
                     icon={<Users className="h-4 w-4 text-green-600 dark:text-green-400" />}
                   />
                 )}
