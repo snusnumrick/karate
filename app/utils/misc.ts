@@ -91,13 +91,15 @@ export function formatPercentage(rate: number): string {
  *                     'datetime': Formats as date and time (e.g., 'Jan 1, 2024, 1:30 PM').
  * @returns The formatted date string, or 'N/A' or 'Invalid Date'.
  */
+type FormatDateOptions = {
+    locale?: string;
+    formatString?: string;
+    type?: 'date' | 'datetime';
+};
+
 export function formatDate(
     date: string | Date | null | undefined,
-    options?: {
-        locale?: string;
-        formatString?: string;
-        type?: 'date' | 'datetime';
-    }
+    options?: FormatDateOptions
 ): string {
     if (!date) {
         return 'N/A';
@@ -168,6 +170,23 @@ export function formatDate(
         console.error(`Error formatting date (type: ${formatType}, locale: ${currentLocale}):`, error);
         return 'Invalid Date';
     }
+}
+
+/**
+ * Formats values that represent a calendar date, even if the database/client
+ * serialized them as a timestamp. Use this for date-only fields like birthdays,
+ * session dates, due dates, and seminar ranges.
+ */
+export function formatDateOnly(
+    date: string | Date | null | undefined,
+    options?: Omit<FormatDateOptions, 'type'>
+): string {
+    if (typeof date === 'string') {
+        const dateOnly = date.match(/^(\d{4}-\d{2}-\d{2})(?:[T\s].*)?$/)?.[1] ?? date;
+        return formatDate(dateOnly, { ...options, type: 'date' });
+    }
+
+    return formatDate(date, { ...options, type: 'date' });
 }
 
 /**

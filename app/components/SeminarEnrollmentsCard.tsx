@@ -2,6 +2,7 @@ import { Link } from '@remix-run/react';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { Calendar, Clock, BookOpen } from 'lucide-react';
+import { formatDateOnly } from '~/utils/misc';
 
 function extractPaymentId(notes?: string | null): string | null {
   if (!notes) return null;
@@ -96,8 +97,8 @@ export function SeminarEnrollmentsCard({ enrollments, isAdult = false }: Seminar
                 <div className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
                   <Calendar className="h-3 w-3" />
                   <span>
-                    {new Date(enrollment.class.series_start_on).toLocaleDateString()} -{' '}
-                    {new Date(enrollment.class.series_end_on).toLocaleDateString()}
+                    {formatDateOnly(enrollment.class.series_start_on, { formatString: 'M/d/yyyy' })} -{' '}
+                    {formatDateOnly(enrollment.class.series_end_on, { formatString: 'M/d/yyyy' })}
                   </span>
                 </div>
               )}

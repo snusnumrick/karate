@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { formatDate, getTodayLocalDateString } from '~/utils/misc';
+import { formatDate, formatDateOnly, getTodayLocalDateString } from '~/utils/misc';
 
 describe('formatDate', () => {
   describe('timezone-safe date parsing', () => {
@@ -173,6 +173,16 @@ describe('formatDate', () => {
 
       expect(clientFormatted).toBe('2025-10-16');
     });
+  });
+});
+
+describe('formatDateOnly', () => {
+  it('formats date-only strings without shifting dates', () => {
+    expect(formatDateOnly('2026-07-06', { formatString: 'M/d/yyyy' })).toBe('7/6/2026');
+  });
+
+  it('formats timestamp-shaped date-only values without shifting dates', () => {
+    expect(formatDateOnly('2026-07-06T00:00:00.000Z', { formatString: 'M/d/yyyy' })).toBe('7/6/2026');
   });
 });
 
