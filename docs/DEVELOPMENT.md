@@ -20,8 +20,8 @@ This guide covers the complete development setup and workflow for the karate sch
 
 Before starting development, ensure you have the following installed:
 
-- **Node.js**: Version 22-24 (see `engines` in package.json)
-- **npm**: Latest version (comes with Node.js)
+- **Node.js**: Version 22 (pinned by `.nvmrc` / `.node-version`; enforced by `engines` in package.json)
+- **npm**: 10.x (comes with the pinned Node 22 runtime)
 - **Git**: For version control
 - **Supabase CLI**: For database management and type generation
 - **Stripe CLI**: For webhook testing (optional)
@@ -31,8 +31,8 @@ Before starting development, ensure you have the following installed:
 ```bash
 # Install Node.js (using nvm recommended)
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
-nvm install 22
-nvm use 22
+nvm install
+nvm use
 
 # Install Supabase CLI
 npm install -g supabase
