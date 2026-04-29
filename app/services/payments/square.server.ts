@@ -22,6 +22,116 @@ import type * as SquareSdk from 'square';
 import { siteConfig } from '~/config/site';
 import { getSupabaseAdminClient } from '~/utils/supabase.server';
 
+type SquareApiErrorDetails = {
+  statusCode?: number;
+  categories: string[];
+  codes: string[];
+  details: string[];
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function getSquareStatusCode(error: unknown): number | undefined {
+  if (!isRecord(error)) {
+    return undefined;
+  }
+
+  const statusCode = error.statusCode;
+  if (typeof statusCode === 'number') {
+    return statusCode;
+  }
+
+  const status = error.status;
+  return typeof status === 'number' ? status : undefined;
+}
+
+function getSquareErrors(error: unknown): Record<string, unknown>[] {
+  if (!isRecord(error)) {
+    return [];
+  }
+
+  const directErrors = error.errors;
+  if (Array.isArray(directErrors)) {
+    return directErrors.filter(isRecord);
+  }
+
+  const body = error.body;
+  if (isRecord(body) && Array.isArray(body.errors)) {
+    return body.errors.filter(isRecord);
+  }
+
+  return [];
+}
+
+function getSquareApiErrorDetails(error: unknown): SquareApiErrorDetails {
+  const errors = getSquareErrors(error);
+
+  return {
+    statusCode: getSquareStatusCode(error),
+    categories: errors
+      .map((entry) => entry.category)
+      .filter((category): category is string => typeof category === 'string'),
+    codes: errors
+      .map((entry) => entry.code)
+      .filter((code): code is string => typeof code === 'string'),
+    details: errors
+      .map((entry) => entry.detail)
+      .filter((detail): detail is string => typeof detail === 'string'),
+  };
+}
+
+function hasSquareErrorMatch(details: SquareApiErrorDetails, values: string[]): boolean {
+  const normalizedValues = new Set(values.map((value) => value.toUpperCase()));
+
+  return [...details.categories, ...details.codes].some((value) =>
+    normalizedValues.has(value.toUpperCase()),
+  );
+}
+
+function getSquareOperatorHint(details: SquareApiErrorDetails): string | null {
+  if (
+    details.statusCode === 401 ||
+    hasSquareErrorMatch(details, ['AUTHENTICATION_ERROR', 'UNAUTHORIZED', 'ACCESS_TOKEN_EXPIRED', 'ACCESS_TOKEN_REVOKED'])
+  ) {
+    return 'Check SQUARE_ACCESS_TOKEN in the hosting environment. It must belong to the same Square environment/application as SQUARE_APPLICATION_ID and SQUARE_LOCATION_ID, and Vercel must be redeployed after changes.';
+  }
+
+  if (
+    details.statusCode === 403 ||
+    hasSquareErrorMatch(details, ['FORBIDDEN', 'INSUFFICIENT_SCOPES', 'APPLICATION_DISABLED', 'CLIENT_DISABLED'])
+  ) {
+    return 'Check that the Square token has payments permission and that the application/location are enabled for payment processing.';
+  }
+
+  return null;
+}
+
+export function getSquarePaymentConfirmationUserMessage(error: unknown): string {
+  const details = getSquareApiErrorDetails(error);
+
+  if (
+    details.statusCode === 401 ||
+    hasSquareErrorMatch(details, ['AUTHENTICATION_ERROR', 'UNAUTHORIZED', 'ACCESS_TOKEN_EXPIRED', 'ACCESS_TOKEN_REVOKED'])
+  ) {
+    return 'Payment processor authentication is misconfigured. Please contact support so we can complete this payment.';
+  }
+
+  if (
+    details.statusCode === 403 ||
+    hasSquareErrorMatch(details, ['FORBIDDEN', 'INSUFFICIENT_SCOPES', 'APPLICATION_DISABLED', 'CLIENT_DISABLED'])
+  ) {
+    return 'The payment processor is not authorized for this payment. Please contact support so we can complete this payment.';
+  }
+
+  if (hasSquareErrorMatch(details, ['PAYMENT_METHOD_ERROR', 'CARD_DECLINED', 'VERIFY_CVV_FAILURE', 'VERIFY_AVS_FAILURE'])) {
+    return 'Payment was declined. Please try a different payment method.';
+  }
+
+  return 'Payment could not be completed. Please try again or contact support if the issue persists.';
+}
+
 export class SquarePaymentProvider extends PaymentProvider {
   private applicationId: string;
   private locationId: string;
@@ -306,11 +416,20 @@ export class SquarePaymentProvider extends PaymentProvider {
     } catch (error) {
       // Enhanced error logging for production debugging
       const errorMessage = error instanceof Error ? error.message : String(error);
+      const squareErrorDetails = getSquareApiErrorDetails(error);
+      const operatorHint = getSquareOperatorHint(squareErrorDetails);
       console.error(`[Square] Payment confirmation failed for intent ${request.payment_intent_id}:`, {
         error: errorMessage,
         paymentIntentId: request.payment_intent_id,
         hasPaymentMethodId: !!request.payment_method_id,
         environment: this.environment,
+        locationId: this.locationId,
+        applicationIdPrefix: this.applicationId.split('-').slice(0, 2).join('-'),
+        squareStatusCode: squareErrorDetails.statusCode,
+        squareErrorCategories: squareErrorDetails.categories,
+        squareErrorCodes: squareErrorDetails.codes,
+        squareErrorDetails: squareErrorDetails.details,
+        operatorHint,
         timestamp: new Date().toISOString()
       });
       
@@ -324,7 +443,7 @@ export class SquarePaymentProvider extends PaymentProvider {
         // Example: sendToMonitoring(error, { context: 'square_payment_confirmation' });
       }
 
-      throw new Error(`Square payment confirmation failed: ${errorMessage}`);
+      throw new Error(getSquarePaymentConfirmationUserMessage(error));
     }
   }
 

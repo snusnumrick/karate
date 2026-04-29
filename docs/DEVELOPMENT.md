@@ -123,7 +123,7 @@ If you plan to test the Square provider locally, add the following values. All k
 
 ```env
 # Square Configuration
-SQUARE_ACCESS_TOKEN=EAAAExxxxxxxxxxxxxxxxxxxxxxxx  # Sandbox access token
+SQUARE_ACCESS_TOKEN=EAAAxxxxxxxxxxxxxxxxxxxxxxxx   # Sandbox access token
 SQUARE_LOCATION_ID=LRxxxxxxxxxxxxxxx              # Sandbox location ID
 SQUARE_APPLICATION_ID=sandbox-sq0idb-xxxxxxxxxx   # Sandbox application ID
 SQUARE_ENVIRONMENT=sandbox                        # Must be "sandbox" for development
@@ -566,7 +566,7 @@ npm run validate:square
 **Solution**:
 - Sandbox Application ID must start with `sandbox-`
 - Production Application ID must start with `sq0idp-`
-- Access tokens should start with `EAAAE`
+- Access tokens should start with `EAAA`
 - Environment must be exactly `sandbox` or `production`
 
 **Problem**: `InvalidApplicationIdError: The Payment 'applicationId' option is not in the correct format`

@@ -259,7 +259,7 @@ npx web-push generate-vapid-keys
    supabase secrets set STRIPE_SECRET_KEY=sk_live_...
 
    # Square (required for Square intent sync)
-   supabase secrets set SQUARE_ACCESS_TOKEN=EAAAE...
+   supabase secrets set SQUARE_ACCESS_TOKEN=EAAA...
    supabase secrets set SQUARE_ENVIRONMENT=production
    ```
 
@@ -406,6 +406,7 @@ Run the Square configuration validator before deployment:
 
 ```bash
 npm run validate:square
+npm run test:square-auth
 ```
 
 This validates:
@@ -413,6 +414,16 @@ This validates:
 - ✅ Application ID format matches environment (production: `sq0idp-*`, sandbox: `sandbox-*`)
 - ✅ Environment setting is valid (`sandbox` or `production`)
 - ✅ CSP domain requirements
+- ✅ The access token can authenticate with Square and read the configured location
+
+For Vercel-specific checks, pull the production environment first, then point the diagnostic script at that file:
+
+```bash
+vercel env pull .env.vercel.production --environment=production
+DOTENV_CONFIG_PATH=.env.vercel.production npm run test:square-auth
+```
+
+After changing Square environment variables in Vercel, redeploy the app so server functions receive the new values.
 
 #### Square Production Checklist
 

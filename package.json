@@ -13,6 +13,7 @@
     "typecheck": "tsc",
     "typecheck:deno": "deno check supabase/functions/**/*.ts",
     "validate:square": "node scripts/validate-square-config.js",
+    "test:square-auth": "node scripts/check-square-auth.js",
     "render-mermaid": "mkdir -p diagrams && mmdc -i README.md -o diagrams/README-charts.svg --outputFormat svg --configFile mermaid-config.json",
     "test": "npm run lint && npm run typecheck && vitest run",
     "test:unit": "vitest run",

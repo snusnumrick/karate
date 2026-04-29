@@ -37,8 +37,8 @@ const VALIDATION_RULES = {
   },
   
   SQUARE_ACCESS_TOKEN: (value) => {
-    if (!value.startsWith('EAAAE')) {
-      return 'Access token should start with "EAAAE"';
+    if (!value.startsWith('EAAA')) {
+      return 'Access token should start with "EAAA"';
     }
     if (value.length < 50) {
       return 'Access token appears to be too short';
